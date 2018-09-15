@@ -2,3 +2,4 @@
 
 This is the code for the ESP8266 VFD Clock.
 
+Cuurently a collection of individual parts, soon to be integrated.
