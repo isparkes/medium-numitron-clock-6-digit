@@ -16,6 +16,7 @@
 //**********************************************************************************
 //**********************************************************************************
 // Standard Libraries
+#include <FS.h>
 #include <Wire.h>
 
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
@@ -32,7 +33,7 @@
 #include "DisplayDefs.h"
 
 // Software version shown in config menu
-#define SOFTWARE_VERSION      1
+#define SOFTWARE_VERSION    1
 
 // how often we make reference to the external time provider
 #define READ_TIME_PROVIDER_MILLIS 60000 // Update the internal time provider from the external source once every minute
@@ -319,41 +320,8 @@ Transition transition(500, 1000, 3000);
 #define DIGIT_9 SEG_A | SEG_B | SEG_C | SEG_D | SEG_F | SEG_G
 #define DIGIT_MINUS SEG_G
 
-
 byte digitData[10] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9};
 byte data1[6] = {1, 2, 4, 8, 16, 32};
-
-#define MSK_A  B01111111
-#define MSK_B  B10111111
-#define MSK_C  B11011111
-#define MSK_D  B11101111
-#define MSK_E  B11110111
-#define MSK_F  B11111011
-#define MSK_G  B11111101
-#define MSK_DP B11111110
-
-#define GRD_1  B10000000
-#define GRD_2  B01000000
-#define GRD_3  B00100000
-#define GRD_4  B00010000
-#define GRD_5  B00001000
-#define GRD_6  B00000100
-#define TLED1  B00000010
-#define TLED2  B00000001
-
-#define MSK_1   B01111111
-#define MSK_2   B10111111
-#define MSK_3   B11011111
-#define MSK_4   B11101111
-#define MSK_5   B11110111
-#define MSK_6   B11111011
-#define MSK_TL1 B11111101
-#define MSK_TL2 B11111110
-
-#define MSK_ALL B00000011
-
-byte register1 = 0;
-byte register2 = 0;
 
 byte NumberArray[6]    = {0, 0, 0, 0, 0, 0};
 byte currNumberArray[6] = {0, 0, 0, 0, 0, 0};
@@ -516,19 +484,19 @@ const byte colourTimeB[] = {   0,   0,   0, 255, 255, 255,   0,  31, 255, 127};
 void setup()
 {
   setupDebug();
-
+  
   pinMode(LED_DOUT, OUTPUT);
-
+  
   pinMode(pirPin, INPUT_PULLUP);
   digitalWrite(pirPin, HIGH);
-
+  
   pinMode(LATCHPin, OUTPUT);
   pinMode(CLOCKPin, OUTPUT);
   pinMode(DATA1Pin, OUTPUT);
   pinMode(DATA2Pin, OUTPUT);
 
   debugMsg("Starting");
-
+  
   // NOTE:
   // Grounding the input pin causes it to actuate
   // pinMode(inputPin1, INPUT_PULLUP);
@@ -619,11 +587,11 @@ void setup()
     // We don't want to stay in test mode forever
     long startTestMode = lastCheckMillis;
 
-
+    
     while (inLoop) {
       // Otherwise we get SOFT WDT
       yield();
-
+      
       nowMillis = millis();
       if (nowMillis - lastCheckMillis > 1000) {
         lastCheckMillis = nowMillis;
@@ -635,7 +603,7 @@ void setup()
       blankTubes = (nowMillis - startTestMode > TEST_MODE_MAX_MS);
 
       loadNumberArraySameValue(secCount);
-
+      
       // debugMsg("Setting display: " + String(secCount));
       outputDisplay();
 
@@ -644,7 +612,7 @@ void setup()
         setLeds();
         lastSecCount = secCount;
       }
-
+      
       // debugMsg("Checing test mode exit condition");
       button1.checkButton(nowMillis);
       if (button1.isButtonPressedNow() && (secCount == 8)) {
@@ -677,7 +645,7 @@ void setup()
 
   // mark that we have done the EEPROM setup
   // EEPROM.write(EE_NEED_SETUP, false);
-
+  
   debugMsg("Exit startup");
 }
 
@@ -781,7 +749,7 @@ void loop()
 void performOncePerSecondProcessing() {
 
   debugMsg("Time: " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
-
+  
   // Store the current value and reset
   lastImpressionsPerSec = impressionsPerSec;
   impressionsPerSec = 0;
@@ -823,7 +791,7 @@ void performOncePerSecondProcessing() {
       if (nativeBlanked)
         debugMsg(" -> Native");
     }
-
+      
     // reset the blanking period selection timer
     if (nowMillis > blankSuppressedSelectionTimoutMillis) {
       blankSuppressedSelectionTimoutMillis = 0;
@@ -2570,9 +2538,6 @@ void setTubesAndLEDSBlankMode() {
 }
 
 void randomRGBFlash(int delayVal) {
-  register2 |= TLED1;
-  register2 |= TLED2;
-  
   if (random(3) == 0) {
     setAllLEDs(255,0,0);
   }
@@ -2583,9 +2548,6 @@ void randomRGBFlash(int delayVal) {
     setAllLEDs(0,0,255);
   }
   delay(delayVal);
-  
-  register2 = TLED1;
-  register2 |= TLED2;
   
   setAllLEDs(0,0,0);
   delay(delayVal);
