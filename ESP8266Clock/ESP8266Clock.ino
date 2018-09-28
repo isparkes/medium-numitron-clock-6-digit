@@ -4,10 +4,9 @@
 //*  - Real Time Clock interface for DS3231                                        *
 //*  - Digit fading with configurable fade length                                  *
 //*  - Digit scrollback with configurable scroll speed                             *
-//*  - Configuration stored in EEPROM                                              *
+//*  - Configuration stored in Flash (JSON)                                        *
 //*  - Low hardware component count (as much as possible done in code)             *
 //*  - Single button operation with software debounce                              *
-//*  - Single K155ID1 for digit display (other versions use 2 or even 6!)          *
 //*  - Automatic dimming, using a Light Dependent Resistor                         *
 //*  - RGB back light management using individually addressable WS2812B            *
 //*  - PIR sensor to turn off display when no one is around                        *
@@ -18,69 +17,27 @@
 //**********************************************************************************
 // Standard Libraries
 #include <Wire.h>
-#include <EEPROM.h>
 
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
-#include <DS3231.h>
-#include <TimeLib.h>
-#include <Adafruit_NeoPixel.h>
+#include <DS3231.h>             // Wickert V1.0.2
+#include <TimeLib.h>            // Margolis V1.5.0
+#include <NeoPixelBus.h>        // Makuna V2.3.4
+#include <WiFiManager.h>        // tzapu V0.14.0
+#include <ArduinoJson.h>        // Blanchon V5.13.6 NOT V6.x.x!
 
 // Other parts of the code, broken out for clarity
 #include "ClockButton.h"
 #include "Transition.h"
 #include "DisplayDefs.h"
 
-//**********************************************************************************
-//**********************************************************************************
-//*                               Constants                                        *
-//**********************************************************************************
-//**********************************************************************************
-#define EE_12_24              1      // 12 or 24 hour mode
-#define EE_FADE_STEPS         2      // How quickly we fade, higher = slower
-#define EE_DATE_FORMAT        3      // Date format to display
-#define EE_DAY_BLANKING       4      // Blanking setting
-#define EE_DIM_DARK_LO        5      // Dimming dark value
-#define EE_DIM_DARK_HI        6      // Dimming dark value
-#define EE_BLANK_LEAD_ZERO    7      // If we blank leading zero on hours
-#define EE_DIGIT_COUNT_HI     8      // The number of times we go round the main loop
-#define EE_DIGIT_COUNT_LO     9      // The number of times we go round the main loop
-#define EE_SCROLLBACK         10     // if we use scollback or not
-#define EE_FADE               11     // if we use fade or not
-// #define EE_PULSE_LO           12     // The pulse on width for the PWM mode
-// #define EE_PULSE_HI           13     // The pulse on width for the PWM mode
-#define EE_SCROLL_STEPS       14     // The steps in a scrollback
-#define EE_BACKLIGHT_MODE     15     // The back light node
-#define EE_DIM_BRIGHT_LO      16     // Dimming bright value
-#define EE_DIM_BRIGHT_HI      17     // Dimming bright value
-#define EE_DIM_SMOOTH_SPEED   18     // Dimming adaptation speed
-#define EE_RED_INTENSITY      19     // Red channel backlight max intensity
-#define EE_GRN_INTENSITY      20     // Green channel backlight max intensity
-#define EE_BLU_INTENSITY      21     // Blue channel backlight max intensity
-// #define EE_HV_VOLTAGE         22     // The HV voltage we want to use
-#define EE_SUPPRESS_ACP       23     // Do we want to suppress ACP during dimmed time
-#define EE_HOUR_BLANK_START   24     // Start of daily blanking period
-#define EE_HOUR_BLANK_END     25     // End of daily blanking period
-#define EE_CYCLE_SPEED        26     // How fast the color cycling does it's stuff
-// #define EE_PWM_TOP_LO         27     // The PWM top value if we know it, 0xFF if we need to calculate
-// #define EE_PWM_TOP_HI         28     // The PWM top value if we know it, 0xFF if we need to calculate
-// #define EE_HVG_NEED_CALIB     29     // 1 if we need to calibrate the HVGenerator, otherwise 0
-#define EE_MIN_DIM_LO         30     // The min dim value
-#define EE_MIN_DIM_HI         31     // The min dim value
-#define EE_ANTI_GHOST         32     // The value we use for anti-ghosting
-#define EE_NEED_SETUP         33     // used for detecting auto config for startup. By default the flashed, empty EEPROM shows us we need to do a setup 
-#define EE_USE_LDR            34     // if we use the LDR or not (if we don't use the LDR, it has 100% brightness
-#define EE_BLANK_MODE         35     // blank tubes, or LEDs or both
-#define EE_SLOTS_MODE         36     // Show date every now and again
-#define EE_PIR_TIMEOUT_LO     37     // The PIR timeout time in S, low byte
-#define EE_PIR_TIMEOUT_HI     38     // The PIR timeout time in S, high byte
-#define EE_PIR_PULLUP         39     // If we use the internal pullup on the PIR pin (false = use 3V3 PIR, PIR connected, true = no PIR connected or 5V PIR)
-
 // Software version shown in config menu
 #define SOFTWARE_VERSION    353
 
 // how often we make reference to the external time provider
 #define READ_TIME_PROVIDER_MILLIS 60000 // Update the internal time provider from the external source once every minute
+
+#define DEBUG     // DEBUG / DEBUG_OFF
 
 // Display handling
 #define DIGIT_DISPLAY_COUNT   1000 // The number of times to traverse inner fade loop per digit
@@ -153,8 +110,6 @@
 #define MODE_DAY_BLANKING               12 // Mode "05"
 #define MODE_HR_BLNK_START              13 // Mode "06" - skipped if not using hour blanking
 #define MODE_HR_BLNK_END                14 // Mode "07" - skipped if not using hour blanking
-#define MODE_SUPPRESS_ACP               15 // Mode "08" 1 = suppress ACP when fully dimmed
-#define SUPPRESS_ACP_DEFAULT            true
 
 #define MODE_USE_LDR                    16 // Mode "09" 1 = use LDR, 0 = don't (and have 100% brightness)
 #define MODE_USE_LDR_DEFAULT            true
@@ -203,9 +158,6 @@
 #define MODE_TUBE_TEST                  41
 
 #define MODE_MAX                        41
-
-// Pseudo mode - burn the tubes and nothing else
-#define MODE_DIGIT_BURN                 99 // Digit burn mode - accesible by super long press
 
 // Temporary display modes - accessed by a short press ( < 1S ) on the button when in MODE_TIME
 #define TEMP_MODE_MIN                   0
@@ -290,6 +242,10 @@
 #define DO_NOT_APPLY_LEAD_0_BLANK     false
 #define APPLY_LEAD_0_BLANK            true
 
+#define PixelCount  6
+
+#define colorSaturation 16
+
 //**********************************************************************************
 //**********************************************************************************
 //*                               Variables                                        *
@@ -322,34 +278,34 @@
 
 
 // button input
-#define inputPin1   1     // TX
+#define inputPin1   5     // TX needs to move to 5 (D1) was 1
 
 // PIR input
 #define pirPin      16    // D0 
 
 // PWM capable output for backlight - Neo Pixel chain
-#define LED_DOUT    3     // RX
+#define LED_DOUT    2     // D4
 
 #define LDRPin      A0    // ADC input
 
 // Shift register
 #define LATCHPin    14    // D5
 #define CLOCKPin    12    // D6
-#define DATA1Pin    13    // D7
-#define DATA2Pin    15    // D8
+#define DATA1Pin    15    // D8 - Segments
+#define DATA2Pin    13    // D7 - Grids
 
 //**********************************************************************************
 Transition transition(500, 1000, 3000);
 
 // ************************ Display management ************************
-#define SEG_A  B10000000
-#define SEG_B  B01000000
-#define SEG_C  B00100000
-#define SEG_D  B00010000
-#define SEG_E  B00001000
-#define SEG_F  B00000100
-#define SEG_G  B00000010
-#define SEG_DP B00000001
+#define SEG_A  B00000001
+#define SEG_B  B00000010
+#define SEG_C  B00000100
+#define SEG_D  B00001000
+#define SEG_E  B00010000
+#define SEG_F  B00100000
+#define SEG_G  B01000000
+#define SEG_DP B10000000
 
 #define DIGIT_0 SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F
 #define DIGIT_1 SEG_B | SEG_C
@@ -361,8 +317,11 @@ Transition transition(500, 1000, 3000);
 #define DIGIT_7 SEG_A | SEG_B | SEG_C
 #define DIGIT_8 SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G
 #define DIGIT_9 SEG_A | SEG_B | SEG_C | SEG_D | SEG_F | SEG_G
+#define DIGIT_MINUS SEG_G
 
-byte digitMap[10]    = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9};
+
+byte digitData[10] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9};
+byte data1[6] = {1, 2, 4, 8, 16, 32};
 
 #define MSK_A  B01111111
 #define MSK_B  B10111111
@@ -433,9 +392,6 @@ int minDim = MIN_DIM_DEFAULT;
 unsigned int tempDisplayModeDuration;      // time for the end of the temporary display
 int  tempDisplayMode;
 
-int acpOffset = 0;        // Used to provide one arm bandit scolling
-int acpTick = 0;          // The number of counts before we scroll
-boolean suppressACP = false;
 byte slotsMode = SLOTS_MODE_DEFAULT;
 
 byte currentMode = MODE_TIME;   // Initial cold start mode
@@ -508,7 +464,7 @@ byte ledG[6];
 byte ledB[6];
 
 // set up the NeoPixel library
-Adafruit_NeoPixel leds = Adafruit_NeoPixel(6, LED_DOUT, NEO_GRB + NEO_KHZ800);
+NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(PixelCount, LED_DOUT);
 
 // Strategy 3
 int changeSteps = 0;
@@ -518,15 +474,9 @@ int impressionsPerSec = 0;
 int lastImpressionsPerSec = 0;
 
 // ********************** Input switch management **********************
-ClockButton button1(inputPin1, false);
+ClockButton button1(inputPin1, true);
 
-// **************************** digit healing ****************************
-// This is a special mode which repairs cathode poisoning by driving a
-// single element at full power. To be used with care!
-// In theory, this should not be necessary because we have ACP every 10mins,
-// but some tubes just want to be poisoned
-byte digitBurnDigit = 0;
-byte digitBurnValue = 0;
+WiFiManager wifiManager;
 
 // ************************************************************
 // LED brightness correction: The perceived brightness is not linear
@@ -565,22 +515,35 @@ const byte colourTimeB[] = {   0,   0,   0, 255, 255, 255,   0,  31, 255, 127};
 //**********************************************************************************
 void setup()
 {
-  pinMode(LED_DOUT, OUTPUT);
-  pinMode(pirPin, INPUT);
+  setupDebug();
 
-  // The LEDS sometimes glow at startup, it annoys me, so turn them completely off
-  tlPWM = 0;
-  setAllLEDs(0,0,0);
+  pinMode(LED_DOUT, OUTPUT);
+
+  pinMode(pirPin, INPUT_PULLUP);
+  digitalWrite(pirPin, HIGH);
+
+  pinMode(LATCHPin, OUTPUT);
+  pinMode(CLOCKPin, OUTPUT);
+  pinMode(DATA1Pin, OUTPUT);
+  pinMode(DATA2Pin, OUTPUT);
+
+  debugMsg("Starting");
 
   // NOTE:
   // Grounding the input pin causes it to actuate
-  pinMode(inputPin1, INPUT ); // set the input pin 1
-  digitalWrite(inputPin1, HIGH); // set pin 1 as a pull up resistor.
+  // pinMode(inputPin1, INPUT_PULLUP);
+  pinMode(inputPin1, INPUT);
+
+  // The LEDS sometimes glow at startup, it annoys me, so turn them completely off
+  //tlPWM = 0;
+  setAllLEDs(0,0,0);
 
   // **********************************************************************
 
+  debugMsg("Setting up LEDs");
+  
   // Set up the LED output
-  leds.begin();
+  leds.Begin();
 
   // Set up the PRNG with something so that it looks random
   randomSeed(analogRead(LDRPin));
@@ -598,16 +561,16 @@ void setup()
     }
 
     // mark that we have done the EEPROM setup
-    EEPROM.write(EE_NEED_SETUP, true);
+  //  EEPROM.write(EE_NEED_SETUP, true);
   }
 
   // If the button is held down while we are flashing, then do the test pattern
   boolean doTestPattern = false;
 
   // Detect factory reset: button pressed on start or uninitialised EEPROM
-  if (EEPROM.read(EE_NEED_SETUP)) {
+//  if (EEPROM.read(EE_NEED_SETUP)) {
     doTestPattern = true;
-  }
+//  }
 
   // Clear down any spurious button action
   button1.reset();
@@ -622,12 +585,13 @@ void setup()
   }
 
   // Read EEPROM values
-  readEEPROMValues();
+//  readEEPROMValues();
 
   // Not setting the pullup resistor allows us to use 3V3 devices (e.g. RCWL-0516)
   digitalWrite(pirPin, usePIRPullup); // set pull up resistor - if no PIR connected, default to "triggered"
 
   if (doTestPattern) {
+    debugMsg("Doing test sequence");
     boolean oldUseLDR = useLDR;
     byte oldBacklightMode = backlightMode;
 
@@ -647,6 +611,7 @@ void setup()
     allBright();
 
     int secCount = 0;
+    int lastSecCount = 0;
     lastCheckMillis = millis();
 
     boolean inLoop = true;
@@ -654,7 +619,11 @@ void setup()
     // We don't want to stay in test mode forever
     long startTestMode = lastCheckMillis;
 
+    
     while (inLoop) {
+      // Otherwise we get SOFT WDT
+      yield();
+      
       nowMillis = millis();
       if (nowMillis - lastCheckMillis > 1000) {
         lastCheckMillis = nowMillis;
@@ -666,9 +635,17 @@ void setup()
       blankTubes = (nowMillis - startTestMode > TEST_MODE_MAX_MS);
 
       loadNumberArraySameValue(secCount);
+
+      // debugMsg("Setting display: " + String(secCount));
       outputDisplay();
 
+      // debugMsg("Setting LEDs");
+      if (lastSecCount != secCount) {
         setLeds();
+        lastSecCount = secCount;
+      }
+
+      // debugMsg("Checing test mode exit condition");
       button1.checkButton(nowMillis);
       if (button1.isButtonPressedNow() && (secCount == 8)) {
         inLoop = false;
@@ -687,7 +664,7 @@ void setup()
 
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
-  setTime(12, 34, 56, 1, 3, 2017);
+  setTime(15, 24, 00, 28, 9, 2018);
   getRTCTime();
 
   // Show the version for 1 s
@@ -699,7 +676,9 @@ void setup()
   setTubesAndLEDSBlankMode();
 
   // mark that we have done the EEPROM setup
-  EEPROM.write(EE_NEED_SETUP, false);
+  // EEPROM.write(EE_NEED_SETUP, false);
+
+  debugMsg("Exit startup");
 }
 
 //**********************************************************************************
@@ -709,7 +688,7 @@ void setup()
 //**********************************************************************************
 boolean millisNotSet = true;
 void loop()
-{
+{  
   nowMillis = millis();
 
   // shows us how fast the inner loop is running
@@ -753,20 +732,11 @@ void loop()
   }
 
   // ******* Set the display mode *******
-  if (button1.isButtonPressedReleased8S()) {
-    // 8 Sec press toggles burn mode
-    if (currentMode == MODE_DIGIT_BURN) {
-      currentMode = MODE_MIN;
-    } else {
-      currentMode = MODE_DIGIT_BURN;
-    }
-
-    nextMode = currentMode;
-  } else if (button1.isButtonPressedReleased2S()) {
+  if (button1.isButtonPressedReleased2S()) {
     currentMode = MODE_MIN;
 
     // Store the EEPROM if we exit the config mode
-    saveEEPROMValues();
+//    saveEEPROMValues();
 
     // Preset the display
     allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
@@ -779,7 +749,7 @@ void loop()
       currentMode = MODE_MIN;
 
       // Store the EEPROM if we exit the config mode
-      saveEEPROMValues();
+//      saveEEPROMValues();
 
       // Preset the display
       allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
@@ -799,49 +769,18 @@ void loop()
   digitOffCount = getDimmingFromLDR();
   fadeStep = digitOffCount / fadeSteps;
 
-  // One armed bandit trigger every 10th minute
-  if ((currentMode != MODE_DIGIT_BURN) && (nextMode != MODE_DIGIT_BURN)) {
-    if (acpOffset == 0) {
-      if (((minute() % 10) == 9) && (second() == 15)) {
-        // suppress ACP when fully dimmed
-        if (suppressACP) {
-          if (digitOffCount > minDim) {
-            acpOffset = 1;
-          }
-        } else {
-          acpOffset = 1;
-        }
-      }
-    }
-
-    // One armed bandit handling
-    if (acpOffset > 0) {
-      if (acpTick >= acpOffset) {
-        acpTick = 0;
-        acpOffset++;
-        if (acpOffset == 50) {
-          acpOffset = 0;
-        }
-      } else {
-        acpTick++;
-      }
-    }
-
-    // Set normal output display
-    outputDisplay();
-  } else {
-    // Digit burn mode
-    digitOn(digitBurnDigit, digitBurnValue);
-  }
-
   // Prepare the tick and backlight LEDs
   setLeds();
+
+  outputDisplay();
 }
 
 // ************************************************************
 // Called once per second
 // ************************************************************
 void performOncePerSecondProcessing() {
+
+  debugMsg("Time: " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
 
   // Store the current value and reset
   lastImpressionsPerSec = impressionsPerSec;
@@ -877,6 +816,14 @@ void performOncePerSecondProcessing() {
     // Check if we are in blanking suppression mode
     blanked = (nativeBlanked || pirBlanked) && (blankSuppressedMillis == 0);
 
+    if (blanked) {
+      debugMsg("blanked");
+      if (pirBlanked)
+        debugMsg(" -> PIR");
+      if (nativeBlanked)
+        debugMsg(" -> Native");
+    }
+
     // reset the blanking period selection timer
     if (nowMillis > blankSuppressedSelectionTimoutMillis) {
       blankSuppressedSelectionTimoutMillis = 0;
@@ -885,6 +832,7 @@ void performOncePerSecondProcessing() {
   } else {
     blanked = false;
   }
+
   setTubesAndLEDSBlankMode();
 
   // Decrement the value display counter
@@ -912,6 +860,13 @@ void performOncePerMinuteProcessing() {
   // AM/PM indicator
   if (hourMode) {
     dpArray[1] = (hour() > 12);
+  }
+
+  for (int idx = 0 ; idx < 6; idx++) {
+    debugMsg("  Idx: " + String(idx));
+    debugMsg("   NA: " + String(NumberArray[idx]));
+    debugMsg("  CNA: " + String(currNumberArray[idx]));
+    debugMsg("   DT: " + String(displayType[idx]));
   }
 }
 
@@ -1026,6 +981,9 @@ void setLeds()
 boolean checkPIR(unsigned long nowMillis) {
   boolean pirvalue = (digitalRead(pirPin) == HIGH);
 
+  // testing
+  pirvalue = true;
+
   dpArray[5] = pirvalue;
   
   if (pirvalue) {
@@ -1059,9 +1017,10 @@ void setAllLEDs(byte red, byte green, byte blue) {
 // ************************************************************
 void outputLEDBuffer() {
   for (int i = 0 ; i < 6 ; i++) {
-    leds.setPixelColor(i, leds.Color(ledR[i], ledG[i], ledB[i]));
+    RgbColor color(ledR[i], ledG[i], ledB[i]);
+    leds.SetPixelColor(i, color);
   }
-  leds.show();
+  leds.Show();
 }
 
 // ************************************************************
@@ -1175,11 +1134,6 @@ void setNextMode() {
         displayConfig();
         break;
       }
-    case MODE_SUPPRESS_ACP: {
-        loadNumberArrayConfBool(suppressACP, nextMode - MODE_12_24);
-        displayConfig();
-        break;
-      }
     case MODE_BLANK_MODE: {
         loadNumberArrayConfInt(blankMode, nextMode - MODE_12_24);
         displayConfig();
@@ -1290,9 +1244,6 @@ void setNextMode() {
         allNormal();
         break;
       }
-    case MODE_DIGIT_BURN: {
-        // Nothing: handled separately to suppress multiplexing
-      }
   }
 }
 
@@ -1388,48 +1339,32 @@ void processCurrentMode() {
           allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
 
         } else {
-          if (acpOffset > 0) {
-            loadNumberArrayACP();
-            allBright();
-          } else {
-            if (slotsMode > SLOTS_MODE_MIN) {
-              if (second() == 50) {
+          if (slotsMode > SLOTS_MODE_MIN) {
+            if (second() == 50) {
 
-                // initialise the slots values
-                loadNumberArrayDate();
-                transition.setAlternateValues();
-                loadNumberArrayTime();
-                transition.setRegularValues();
-                allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+              // initialise the slots values
+              loadNumberArrayDate();
+              transition.setAlternateValues();
+              loadNumberArrayTime();
+              transition.setRegularValues();
+              allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
 
-                transition.start(nowMillis);
+              transition.start(nowMillis);
+            }
+
+            // initialise the slots mode
+            boolean msgDisplaying;
+            switch (slotsMode) {
+              case SLOTS_MODE_1M_SCR_SCR:
+              {
+                msgDisplaying = transition.scrollInScrambleOut(nowMillis);
+                break;
               }
-
-              // initialise the slots mode
-              boolean msgDisplaying;
-              switch (slotsMode) {
-                case SLOTS_MODE_1M_SCR_SCR:
-                {
-                  msgDisplaying = transition.scrollInScrambleOut(nowMillis);
-                  break;
-                }
-              }
+            }
               
-              // Continue slots
-              if (msgDisplaying) {
-                transition.updateRegularDisplaySeconds(second());
-              } else {
-                // no slots mode, check if we are in valueDisplayMode
-                if (valueDisplayTime > 0) {
-                  loadNumberArrayValue();
-                  loadDisplayConfigValue();
-                } else {
-                  // normal time
-                  loadNumberArrayTime();
-
-                  allFadeOrNormal(APPLY_LEAD_0_BLANK);
-                }
-              }
+            // Continue slots
+            if (msgDisplaying) {
+              transition.updateRegularDisplaySeconds(second());
             } else {
               // no slots mode, check if we are in valueDisplayMode
               if (valueDisplayTime > 0) {
@@ -1438,9 +1373,18 @@ void processCurrentMode() {
               } else {
                 // normal time
                 loadNumberArrayTime();
-
                 allFadeOrNormal(APPLY_LEAD_0_BLANK);
               }
+            }
+          } else {
+            // no slots mode, check if we are in valueDisplayMode
+            if (valueDisplayTime > 0) {
+              loadNumberArrayValue();
+              loadDisplayConfigValue();
+            } else {
+              // normal time
+              loadNumberArrayTime();
+              allFadeOrNormal(APPLY_LEAD_0_BLANK);
             }
           }
         }
@@ -1567,14 +1511,6 @@ void processCurrentMode() {
           }
         }
         loadNumberArrayConfInt(blankHourEnd, currentMode - MODE_12_24);
-        displayConfig();
-        break;
-      }
-    case MODE_SUPPRESS_ACP: {
-        if (button1.isButtonPressedAndReleased()) {
-          suppressACP = !suppressACP;
-        }
-        loadNumberArrayConfBool(suppressACP, currentMode - MODE_12_24);
         displayConfig();
         break;
       }
@@ -1825,20 +1761,6 @@ void processCurrentMode() {
         loadNumberArrayTestDigits();
         break;
       }
-    case MODE_DIGIT_BURN: {
-        if (button1.isButtonPressedAndReleased()) {
-          digitBurnValue += 1;
-          if (digitBurnValue > 9) {
-            digitBurnValue = 0;
-
-            digitOff();
-            digitBurnDigit += 1;
-            if (digitBurnDigit > 5) {
-              digitBurnDigit = 0;
-            }
-          }
-        }
-      }
   }
 }
 
@@ -2035,18 +1957,6 @@ void loadNumberArrayTestDigits() {
 }
 
 // ************************************************************
-// Do the Anti Cathode Poisoning
-// ************************************************************
-void loadNumberArrayACP() {
-  NumberArray[5] = (second() + acpOffset) % 10;
-  NumberArray[4] = (second() / 10 + acpOffset) % 10;
-  NumberArray[3] = (minute() + acpOffset) % 10;
-  NumberArray[2] = (minute() / 10 + acpOffset) % 10;
-  NumberArray[1] = (hour() + acpOffset)  % 10;
-  NumberArray[0] = (hour() / 10 + acpOffset) % 10;
-}
-
-// ************************************************************
 // Show an integer configuration value
 // ************************************************************
 void loadNumberArrayConfInt(int confValue, int confNum) {
@@ -2086,20 +1996,6 @@ void loadNumberArrayIP(byte byte1, byte byte2) {
   NumberArray[2] = (byte1) % 10;
   NumberArray[1] = (byte1 / 10) % 10;
   NumberArray[0] = (byte1 / 100) % 10;
-}
-
-// ************************************************************
-// Decode the value to send to the 74141 and send it
-// We do this via the decoder to allow easy adaptation to
-// other pin layouts.
-// ************************************************************
-void setRegister1(int num1)
-{
-  register1 = digitMap[num1];
-}
-
-void setDP() {
-  register1 |= SEG_DP;
 }
 
 // ************************************************************
@@ -2224,20 +2120,19 @@ void outputDisplay()
       currNumberArray[i] = NumberArray[i];
     }
 
-    for (int timer = 0 ; timer < dispCount ; timer++) {
-      if (timer == digitOnTime) {
+    for (int timer = 0 ; timer < 3000 ; timer++) {
+      if (timer == 100) {
         digitOn(i, currNumberArray[i]);
       }
 
-      if  (timer == digitSwitchTime) {
-        setRegister1(NumberArray[i]);
+      if  (timer == 9999) {
+        digitOn(i, NumberArray[i]);
         if (dpArray[i]) {
-          setDP();
+          // setDP();
         }
-        shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, LSBFIRST, register1, register2);
       }
 
-      if (timer == digitOffTime) {
+      if (timer == 2000) {
         digitOff();
       }
     }
@@ -2256,24 +2151,15 @@ void outputDisplay()
 // Assumes that all digits have previously been turned off
 // by a call to "digitOff"
 // ************************************************************
-void digitOn(int digit, int value) {
-  switch (digit) {
-    case 0: register2 &= MSK_ALL; register2 |= GRD_1; break;
-    case 1: register2 &= MSK_ALL; register2 |= GRD_2; break;
-    case 2: register2 &= MSK_ALL; register2 |= GRD_3; break;
-    case 3: register2 &= MSK_ALL; register2 |= GRD_4; break;
-    case 4: register2 &= MSK_ALL; register2 |= GRD_5; break;
-    case 5: register2 &= MSK_ALL; register2 |= GRD_6; break;
-  }
-  setRegister1(value);
+void digitOn(byte digit, byte value) {
+  shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, data1[digit],digitData[value]);
 }
 
 // ************************************************************
 // Finish displaying a digit and turn the HVGen off
 // ************************************************************
 void digitOff() {
-  // turn all digits off - equivalent to digitalWrite(ledPin_a_n,LOW); (n=1,2,3,4,5,6) but much faster
-  register2 &= MSK_ALL;
+  shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, 0, 0);
 }
 
 // ************************************************************
@@ -2772,6 +2658,34 @@ float getRTCTemp() {
   }
 }
 
+// ************************************************************
+// Perform the parallel shift out to the registers
+// ************************************************************
+void shiftOutDual(uint8_t _loadPin,
+                  uint8_t _dataPin1,
+                  uint8_t _dataPin2,
+                  uint8_t _clockPin,
+                  uint8_t _bitOrder,
+                  uint8_t _val1,
+                  uint8_t _val2) {
+  uint8_t i;
+
+  digitalWrite(_loadPin, LOW);
+  for (i = 0; i < 8; i++) {
+    if (_bitOrder == LSBFIRST) {
+      digitalWrite(_dataPin1, !!(_val1 & (1 << i)));
+      digitalWrite(_dataPin2, !!(_val2 & (1 << i)));
+    }
+    else {
+      digitalWrite(_dataPin1, !!(_val1 & (1 << (7 - i))));
+      digitalWrite(_dataPin2, !!(_val2 & (1 << (7 - i))));
+    }
+    digitalWrite(_clockPin, HIGH);
+    digitalWrite(_clockPin, LOW);
+  }
+  digitalWrite(_loadPin, HIGH);
+}
+
 //**********************************************************************************
 //**********************************************************************************
 //*                               EEPROM interface                                 *
@@ -2781,151 +2695,10 @@ float getRTCTemp() {
 // ************************************************************
 // Save current values back to EEPROM
 // ************************************************************
-void saveEEPROMValues() {
-  EEPROM.write(EE_12_24, hourMode);
-  EEPROM.write(EE_FADE_STEPS, fadeSteps);
-  EEPROM.write(EE_DATE_FORMAT, dateFormat);
-  EEPROM.write(EE_DAY_BLANKING, dayBlanking);
-  EEPROM.write(EE_DIM_DARK_LO, dimDark % 256);
-  EEPROM.write(EE_DIM_DARK_HI, dimDark / 256);
-  EEPROM.write(EE_BLANK_LEAD_ZERO, blankLeading);
-  EEPROM.write(EE_SCROLLBACK, scrollback);
-  EEPROM.write(EE_FADE, fade);
-  EEPROM.write(EE_SCROLL_STEPS, scrollSteps);
-  EEPROM.write(EE_DIM_BRIGHT_LO, dimBright % 256);
-  EEPROM.write(EE_DIM_BRIGHT_HI, dimBright / 256);
-  EEPROM.write(EE_DIM_SMOOTH_SPEED, sensorSmoothCountLDR);
-  EEPROM.write(EE_RED_INTENSITY, redCnl);
-  EEPROM.write(EE_GRN_INTENSITY, grnCnl);
-  EEPROM.write(EE_BLU_INTENSITY, bluCnl);
-  EEPROM.write(EE_BACKLIGHT_MODE, backlightMode);
-  EEPROM.write(EE_SUPPRESS_ACP, suppressACP);
-  EEPROM.write(EE_HOUR_BLANK_START, blankHourStart);
-  EEPROM.write(EE_HOUR_BLANK_END, blankHourEnd);
-  EEPROM.write(EE_CYCLE_SPEED, cycleSpeed);
-  EEPROM.write(EE_MIN_DIM_LO, minDim % 256);
-  EEPROM.write(EE_MIN_DIM_HI, minDim / 256);
-  EEPROM.write(EE_ANTI_GHOST, antiGhost);
-  EEPROM.write(EE_PIR_TIMEOUT_LO, pirTimeout % 256);
-  EEPROM.write(EE_PIR_TIMEOUT_HI, pirTimeout / 256);
-  EEPROM.write(EE_USE_LDR, useLDR);
-  EEPROM.write(EE_BLANK_MODE, blankMode);
-  EEPROM.write(EE_SLOTS_MODE, slotsMode);
-  EEPROM.write(EE_PIR_PULLUP, usePIRPullup);
-}
 
 // ************************************************************
 // read EEPROM values
 // ************************************************************
-void readEEPROMValues() {
-  hourMode = EEPROM.read(EE_12_24);
-
-  fadeSteps = EEPROM.read(EE_FADE_STEPS);
-  if ((fadeSteps < FADE_STEPS_MIN) || (fadeSteps > FADE_STEPS_MAX)) {
-    fadeSteps = FADE_STEPS_DEFAULT;
-  }
-
-  dateFormat = EEPROM.read(EE_DATE_FORMAT);
-  if ((dateFormat < DATE_FORMAT_MIN) || (dateFormat > DATE_FORMAT_MAX)) {
-    dateFormat = DATE_FORMAT_DEFAULT;
-  }
-
-  dayBlanking = EEPROM.read(EE_DAY_BLANKING);
-  if ((dayBlanking < DAY_BLANKING_MIN) || (dayBlanking > DAY_BLANKING_MAX)) {
-    dayBlanking = DAY_BLANKING_DEFAULT;
-  }
-
-  dimDark = EEPROM.read(EE_DIM_DARK_HI) * 256 + EEPROM.read(EE_DIM_DARK_LO);
-  if ((dimDark < SENSOR_LOW_MIN) || (dimDark > SENSOR_LOW_MAX)) {
-    dimDark = SENSOR_LOW_DEFAULT;
-  }
-
-  blankLeading = EEPROM.read(EE_BLANK_LEAD_ZERO);
-  scrollback = EEPROM.read(EE_SCROLLBACK);
-  fade = EEPROM.read(EE_FADE);
-
-  scrollSteps = EEPROM.read(EE_SCROLL_STEPS);
-  if ((scrollSteps < SCROLL_STEPS_MIN) || (scrollSteps > SCROLL_STEPS_MAX)) {
-    scrollSteps = SCROLL_STEPS_DEFAULT;
-  }
-
-  dimBright = EEPROM.read(EE_DIM_BRIGHT_HI) * 256 + EEPROM.read(EE_DIM_BRIGHT_LO);
-  if ((dimBright < SENSOR_HIGH_MIN) || (dimBright > SENSOR_HIGH_MAX)) {
-    dimBright = SENSOR_HIGH_DEFAULT;
-  }
-
-  sensorSmoothCountLDR = EEPROM.read(EE_DIM_SMOOTH_SPEED);
-  if ((sensorSmoothCountLDR < SENSOR_SMOOTH_READINGS_MIN) || (sensorSmoothCountLDR > SENSOR_SMOOTH_READINGS_MAX)) {
-    sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
-  }
-
-  backlightMode = EEPROM.read(EE_BACKLIGHT_MODE);
-  if ((backlightMode < BACKLIGHT_MIN) || (backlightMode > BACKLIGHT_MAX)) {
-    backlightMode = BACKLIGHT_DEFAULT;
-  }
-
-  redCnl = EEPROM.read(EE_RED_INTENSITY);
-  if ((redCnl < COLOUR_CNL_MIN) || (redCnl > COLOUR_CNL_MAX)) {
-    redCnl = COLOUR_RED_CNL_DEFAULT;
-  }
-
-  grnCnl = EEPROM.read(EE_GRN_INTENSITY);
-  if ((grnCnl < COLOUR_CNL_MIN) || (grnCnl > COLOUR_CNL_MAX)) {
-    grnCnl = COLOUR_GRN_CNL_DEFAULT;
-  }
-
-  bluCnl = EEPROM.read(EE_BLU_INTENSITY);
-  if ((bluCnl < COLOUR_CNL_MIN) || (bluCnl > COLOUR_CNL_MAX)) {
-    bluCnl = COLOUR_BLU_CNL_DEFAULT;
-  }
-
-  suppressACP = EEPROM.read(EE_SUPPRESS_ACP);
-
-  blankHourStart = EEPROM.read(EE_HOUR_BLANK_START);
-  if ((blankHourStart < 0) || (blankHourStart > HOURS_MAX)) {
-    blankHourStart = 0;
-  }
-
-  blankHourEnd = EEPROM.read(EE_HOUR_BLANK_END);
-  if ((blankHourEnd < 0) || (blankHourEnd > HOURS_MAX)) {
-    blankHourEnd = 7;
-  }
-
-  cycleSpeed = EEPROM.read(EE_CYCLE_SPEED);
-  if ((cycleSpeed < CYCLE_SPEED_MIN) || (cycleSpeed > CYCLE_SPEED_MAX)) {
-    cycleSpeed = CYCLE_SPEED_DEFAULT;
-  }
-
-  minDim = EEPROM.read(EE_MIN_DIM_HI) * 256 + EEPROM.read(EE_MIN_DIM_LO);
-  if ((minDim < MIN_DIM_MIN) || (minDim > MIN_DIM_MAX)) {
-    minDim = MIN_DIM_DEFAULT;
-  }
-
-  antiGhost = EEPROM.read(EE_ANTI_GHOST);
-  if ((antiGhost < ANTI_GHOST_MIN) || (antiGhost > ANTI_GHOST_MAX)) {
-    antiGhost = ANTI_GHOST_DEFAULT;
-  }
-  dispCount = DIGIT_DISPLAY_COUNT + antiGhost;
-
-  pirTimeout = EEPROM.read(EE_PIR_TIMEOUT_HI) * 256 + EEPROM.read(EE_PIR_TIMEOUT_LO);
-  if ((pirTimeout < PIR_TIMEOUT_MIN) || (pirTimeout > PIR_TIMEOUT_MAX)) {
-    pirTimeout = PIR_TIMEOUT_DEFAULT;
-  }
-
-  blankMode= EEPROM.read(EE_BLANK_MODE);
-  if ((blankMode < BLANK_MODE_MIN) || (blankMode > BLANK_MODE_MAX)) {
-    blankMode = BLANK_MODE_DEFAULT;
-  }
-
-  useLDR = EEPROM.read(EE_USE_LDR);
-
-  slotsMode= EEPROM.read(EE_SLOTS_MODE);
-  if ((slotsMode < SLOTS_MODE_MIN) || (slotsMode > SLOTS_MODE_MAX)) {
-    slotsMode = SLOTS_MODE_DEFAULT;
-  }
-
-  usePIRPullup = EEPROM.read(EE_PIR_PULLUP);
-}
 
 // ************************************************************
 // Reset EEPROM values back to what they once were
@@ -2948,7 +2721,6 @@ void factoryReset() {
   redCnl = COLOUR_RED_CNL_DEFAULT;
   grnCnl = COLOUR_GRN_CNL_DEFAULT;
   bluCnl = COLOUR_BLU_CNL_DEFAULT;
-  suppressACP = SUPPRESS_ACP_DEFAULT;
   blankHourStart = 0;
   blankHourEnd = 7;
   cycleSpeed = CYCLE_SPEED_DEFAULT;
@@ -2960,7 +2732,7 @@ void factoryReset() {
   slotsMode = SLOTS_MODE_DEFAULT;
   usePIRPullup = USE_PIR_PULLUP_DEFAULT;
 
-  saveEEPROMValues();
+  //saveEEPROMValues();
 }
 
 //**********************************************************************************
@@ -3003,28 +2775,21 @@ int getDimmingFromLDR() {
   }
 }
 
-void shiftOutDual(uint8_t _loadPin,
-                  uint8_t _dataPin1,
-                  uint8_t _dataPin2,
-                  uint8_t _clockPin,
-                  uint8_t _bitOrder,
-                  uint8_t _val1,
-                  uint8_t _val2) {
-  uint8_t i;
+void setupDebug() {
+  #ifdef DEBUG
+  Serial.begin(115200);
+  wifiManager.setDebugOutput(true);
+  #endif
+}
 
-  digitalWrite(_loadPin, LOW);
-  for (i = 0; i < 8; i++) {
-    if (_bitOrder == LSBFIRST) {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << i)));
-      digitalWrite(_dataPin2, !!(_val2 & (1 << i)));
-    }
-    else {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << (7 - i))));
-      digitalWrite(_dataPin2, !!(_val2 & (1 << (7 - i))));
-    }
+void debugMsg(String message) {
+  #ifdef DEBUG
+  Serial.println(message);
+  #endif
+}
 
-    digitalWrite(_clockPin, HIGH);
-    digitalWrite(_clockPin, LOW);
-    digitalWrite(_loadPin, HIGH);
-  }
+void debugMsgCont(String message) {
+  #ifdef DEBUG
+  Serial.print(message);
+  #endif
 }
