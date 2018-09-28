@@ -2,20 +2,21 @@
    Test of parallel shifting out of two bytes at once, using two data lines.
 */
 
-#include <NeoPixelBus.h>
+#include <NeoPixelBus.h>        // Makuna V2.3.4
 
-const uint16_t PixelCount = 6; // make sure to set this to the number of pixels in your strip
-const uint8_t PixelPin = 2;  // make sure to set this to the correct pin, ignored for Esp8266
+const uint16_t PixelCount = 6;  // make sure to set this to the number of pixels in your strip
+const uint8_t PixelPin = 2;     // make sure to set this to the correct pin, ignored for Esp8266
 
 #define colorSaturation 16
 
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 RgbColor red(colorSaturation, 0, 0);
 
-const int dataPin1 = 15;   // D? - Outputs the byte to transfer
-const int dataPin2 = 13;   // D? - Outputs the byte to transfer
-const int loadPin = 14;    // D? - Controls the internal transference of data in SN74HC595 internal registers
-const int clockPin = 12;   // D? - Generates the clock signal to control the transference of data
+// Shift register
+#define LATCHPin    14    // D5
+#define CLOCKPin    12    // D6
+#define DATA1Pin    15    // D8 - Segments
+#define DATA2Pin    13    // D7 - Grids
 
 const int LDRPin = A0;
 
@@ -61,10 +62,10 @@ int count = 0;
 void setup() {
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(dataPin1, OUTPUT);
-  pinMode(dataPin2, OUTPUT);
-  pinMode(loadPin, OUTPUT);
-  pinMode(clockPin, OUTPUT);
+  pinMode(LATCHPin, OUTPUT);
+  pinMode(CLOCKPin, OUTPUT);
+  pinMode(DATA1Pin, OUTPUT);
+  pinMode(DATA2Pin, OUTPUT);
   //
   //  digitalWrite(dataPin1, HIGH);
   //  digitalWrite(dataPin2, HIGH);
@@ -128,9 +129,9 @@ void loop() {
   for (int i = 0 ; i < 6 ; i++) {
     for (int loop = 0 ; loop < 3000 ; loop++) {
       if (loop == 200)
-        shiftOutDual(loadPin, dataPin1, dataPin2, clockPin, MSBFIRST, data1[i], digitData[data2[i]]);
+        shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, data1[i], digitData[data2[i]]);
       if (loop == dimmingTop)
-        shiftOutDual(loadPin, dataPin1, dataPin2, clockPin, MSBFIRST, 0, 0);
+        shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, 0, 0);
     }
   }
   
@@ -178,4 +179,3 @@ int getLDRDimmingTop() {
     dimmingSmoothing += ((rawLDR - dimmingSmoothing) / 5);
     return dimmingSmoothing * 2;
 }
-
