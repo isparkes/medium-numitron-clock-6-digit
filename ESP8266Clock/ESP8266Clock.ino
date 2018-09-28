@@ -32,20 +32,20 @@
 #include "DisplayDefs.h"
 
 // Software version shown in config menu
-#define SOFTWARE_VERSION    353
+#define SOFTWARE_VERSION      1
 
 // how often we make reference to the external time provider
 #define READ_TIME_PROVIDER_MILLIS 60000 // Update the internal time provider from the external source once every minute
 
-#define DEBUG     // DEBUG / DEBUG_OFF
+#define DEBUG_OFF     // DEBUG / DEBUG_OFF
 
 // Display handling
-#define DIGIT_DISPLAY_COUNT   1000 // The number of times to traverse inner fade loop per digit
-#define DIGIT_DISPLAY_ON      0    // Switch on the digit at the beginning by default
-#define DIGIT_DISPLAY_OFF     999  // Switch off the digit at the end by default
+#define DIGIT_DISPLAY_COUNT   3000 // The number of times to traverse inner fade loop per digit
+#define DIGIT_DISPLAY_ON      100  // Switch on the digit after the "front porch" by default
+#define DIGIT_DISPLAY_OFF     2000 // Switch off the digit at the end by default
 #define DIGIT_DISPLAY_NEVER   -1   // When we don't want to switch on or off (i.e. blanking)
-#define DISPLAY_COUNT_MAX     2000 // Maximum value we can set to
-#define DISPLAY_COUNT_MIN     500  // Minimum value we can set to
+#define DISPLAY_COUNT_MAX     2999 // Maximum value we can set to
+#define DISPLAY_COUNT_MIN     101  // Minimum value we can set to
 
 #define MIN_DIM_DEFAULT       100  // The default minimum dim count
 #define MIN_DIM_MIN           100  // The minimum dim count
@@ -619,11 +619,11 @@ void setup()
     // We don't want to stay in test mode forever
     long startTestMode = lastCheckMillis;
 
-    
+
     while (inLoop) {
       // Otherwise we get SOFT WDT
       yield();
-      
+
       nowMillis = millis();
       if (nowMillis - lastCheckMillis > 1000) {
         lastCheckMillis = nowMillis;
@@ -664,7 +664,7 @@ void setup()
 
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
-  setTime(15, 24, 00, 28, 9, 2018);
+  setTime(19, 23, 00, 28, 9, 2018);
   getRTCTime();
 
   // Show the version for 1 s
@@ -2120,19 +2120,19 @@ void outputDisplay()
       currNumberArray[i] = NumberArray[i];
     }
 
-    for (int timer = 0 ; timer < 3000 ; timer++) {
-      if (timer == 100) {
+    for (int timer = 0 ; timer < DIGIT_DISPLAY_COUNT ; timer++) {
+      if (timer == DIGIT_DISPLAY_ON) {
         digitOn(i, currNumberArray[i]);
       }
 
-      if  (timer == 9999) {
+      if  (timer == digitSwitchTime) {
         digitOn(i, NumberArray[i]);
         if (dpArray[i]) {
           // setDP();
         }
       }
 
-      if (timer == 2000) {
+      if (timer == digitOffTime) {
         digitOff();
       }
     }
@@ -2756,7 +2756,11 @@ void factoryReset() {
 // ******************************************************************
 int getDimmingFromLDR() {
   if (useLDR) {
-    int rawSensorVal = 1023 - analogRead(LDRPin);
+    int rawLDR = analogRead(LDRPin);
+    if (rawLDR < 100) rawLDR = 100;
+    if (rawLDR > 1000) rawLDR = 1000;
+    int rawSensorVal = 1100 - rawLDR;
+    
     double sensorDiff = rawSensorVal - sensorLDRSmoothed;
     sensorLDRSmoothed += (sensorDiff / sensorSmoothCountLDR);
 
@@ -2765,7 +2769,7 @@ int getDimmingFromLDR() {
     if (sensorSmoothedResult > dimBright) sensorSmoothedResult = dimBright;
     sensorSmoothedResult = (sensorSmoothedResult - dimDark) * sensorFactor;
 
-    int returnValue = sensorSmoothedResult;
+    int returnValue = sensorSmoothedResult * 2;
 
     if (returnValue < minDim) returnValue = minDim;
     if (returnValue > DIGIT_DISPLAY_OFF) returnValue = DIGIT_DISPLAY_OFF;
