@@ -41,6 +41,7 @@
 #define DEBUG_OFF     // DEBUG / DEBUG_OFF
 
 // Display handling
+#define DIGIT_DISPLAY_START   0    // Inner loop start point per digit
 #define DIGIT_DISPLAY_COUNT   3000 // The number of times to traverse inner fade loop per digit
 #define DIGIT_DISPLAY_ON      100  // Switch on the digit after the "front porch" by default
 #define DIGIT_DISPLAY_OFF     2000 // Switch off the digit at the end by default
@@ -444,37 +445,8 @@ int lastImpressionsPerSec = 0;
 // ********************** Input switch management **********************
 ClockButton button1(inputPin1, true);
 
+// ********************** WiFi server management ***********************
 WiFiManager wifiManager;
-
-// ************************************************************
-// LED brightness correction: The perceived brightness is not linear
-// ************************************************************
-const byte dim_curve[] = {
-  0,   1,   1,   2,   2,   2,   2,   2,   2,   3,   3,   3,   3,   3,   3,   3,
-  3,   3,   3,   3,   3,   3,   3,   4,   4,   4,   4,   4,   4,   4,   4,   4,
-  4,   4,   4,   5,   5,   5,   5,   5,   5,   5,   5,   5,   5,   6,   6,   6,
-  6,   6,   6,   6,   6,   7,   7,   7,   7,   7,   7,   7,   8,   8,   8,   8,
-  8,   8,   9,   9,   9,   9,   9,   9,   10,  10,  10,  10,  10,  11,  11,  11,
-  11,  11,  12,  12,  12,  12,  12,  13,  13,  13,  13,  14,  14,  14,  14,  15,
-  15,  15,  16,  16,  16,  16,  17,  17,  17,  18,  18,  18,  19,  19,  19,  20,
-  20,  20,  21,  21,  22,  22,  22,  23,  23,  24,  24,  25,  25,  25,  26,  26,
-  27,  27,  28,  28,  29,  29,  30,  30,  31,  32,  32,  33,  33,  34,  35,  35,
-  36,  36,  37,  38,  38,  39,  40,  40,  41,  42,  43,  43,  44,  45,  46,  47,
-  48,  48,  49,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  62,
-  63,  64,  65,  66,  68,  69,  70,  71,  73,  74,  75,  76,  78,  79,  81,  82,
-  83,  85,  86,  88,  90,  91,  93,  94,  96,  98,  99,  101, 103, 105, 107, 109,
-  110, 112, 114, 116, 118, 121, 123, 125, 127, 129, 132, 134, 136, 139, 141, 144,
-  146, 149, 151, 154, 157, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 190,
-  193, 196, 200, 203, 207, 211, 214, 218, 222, 226, 230, 234, 238, 242, 248, 255,
-};
-
-const byte rgb_backlight_curve[] = {0, 16, 32, 48, 64, 80, 99, 112, 128, 144, 160, 176, 192, 208, 224, 240, 255};
-
-// Used to define "colourTime" colours
-//                             0    1    2    3    4    5    6    7    8    9
-const byte colourTimeR[] = { 255, 255,   0,   0,   0, 255, 255,   0,  15, 127};
-const byte colourTimeG[] = {   0, 255, 255, 255,   0,   0,  64, 255,  31, 127};
-const byte colourTimeB[] = {   0,   0,   0, 255, 255, 255,   0,  31, 255, 127};
 
 //**********************************************************************************
 //**********************************************************************************
@@ -486,8 +458,13 @@ void setup()
   setupDebug();
   
   pinMode(LED_DOUT, OUTPUT);
-  
-  pinMode(pirPin, INPUT_PULLUP);
+
+  if (usePIRPullup) {
+    debugMsg("Setting PIR pullup");
+    pinMode(pirPin, INPUT_PULLUP);
+  } else {
+    pinMode(pirPin, INPUT);
+  }
   digitalWrite(pirPin, HIGH);
   
   pinMode(LATCHPin, OUTPUT);
@@ -555,9 +532,6 @@ void setup()
   // Read EEPROM values
 //  readEEPROMValues();
 
-  // Not setting the pullup resistor allows us to use 3V3 devices (e.g. RCWL-0516)
-  digitalWrite(pirPin, usePIRPullup); // set pull up resistor - if no PIR connected, default to "triggered"
-
   if (doTestPattern) {
     debugMsg("Doing test sequence");
     boolean oldUseLDR = useLDR;
@@ -587,11 +561,10 @@ void setup()
     // We don't want to stay in test mode forever
     long startTestMode = lastCheckMillis;
 
-    
     while (inLoop) {
       // Otherwise we get SOFT WDT
       yield();
-      
+
       nowMillis = millis();
       if (nowMillis - lastCheckMillis > 1000) {
         lastCheckMillis = nowMillis;
@@ -632,7 +605,7 @@ void setup()
 
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
-  setTime(19, 23, 00, 28, 9, 2018);
+  setTime(21, 36, 00, 28, 9, 2018);
   getRTCTime();
 
   // Show the version for 1 s
@@ -662,26 +635,33 @@ void loop()
   // shows us how fast the inner loop is running
   impressionsPerSec++;
 
-  // We don't want to get the time from the external time provider always,
-  // just enough to keep the internal time provider correct
-  // This keeps the outer loop fast and responsive
-  // We do this once per minute
+  // -------------------------------------------------------------------------------
+  
   if (abs(nowMillis - lastCheckMillis) >= 1000) {
-    performOncePerSecondProcessing();
-
-    // we only want to once per minute processing to be called once each minute 
     if ((second() == 0) && (!triggeredThisSec)) {
+      if ((minute() == 0)) {
+        if (hour() == 0) {
+          performOncePerDayProcessing();
+        }
+        
+        performOncePerHourProcessing();
+      }
+      
       performOncePerMinuteProcessing();
-      triggeredThisSec = true;
     }
 
-    if ((second() == 1) && triggeredThisSec) {
+    performOncePerSecondProcessing();
+
+    // Make sure we don't call multiple times
+    triggeredThisSec = true;
+    
+    if ((second() > 0) && triggeredThisSec) {
       triggeredThisSec = false;
     }
 
     lastCheckMillis = nowMillis;
   }
-
+  
   // Check button, we evaluate below
   button1.checkButton(nowMillis);
 
@@ -839,6 +819,18 @@ void performOncePerMinuteProcessing() {
 }
 
 // ************************************************************
+// Called once per hour
+// ************************************************************
+void performOncePerHourProcessing() {
+}
+
+// ************************************************************
+// Called once per day
+// ************************************************************
+void performOncePerDayProcessing() {
+}
+
+// ************************************************************
 // Set the seconds tick led(s) and the back lights
 // ************************************************************
 void setLeds()
@@ -950,7 +942,7 @@ boolean checkPIR(unsigned long nowMillis) {
   boolean pirvalue = (digitalRead(pirPin) == HIGH);
 
   // testing
-  pirvalue = true;
+  //pirvalue = true;
 
   dpArray[5] = pirvalue;
   
@@ -1995,7 +1987,7 @@ void outputDisplay()
       case BLANKED:
         {
           digitOnTime = DIGIT_DISPLAY_NEVER;
-          digitOffTime = DIGIT_DISPLAY_ON;
+          digitOffTime = DIGIT_DISPLAY_OFF;
           break;
         }
       case DIMMED:
@@ -2024,7 +2016,7 @@ void outputDisplay()
             digitOffTime = digitOffCount;
           } else {
             digitOnTime = DIGIT_DISPLAY_NEVER;
-            digitOffTime = DIGIT_DISPLAY_ON;
+            digitOffTime = DIGIT_DISPLAY_OFF;
           }
           break;
         }
@@ -2088,16 +2080,14 @@ void outputDisplay()
       currNumberArray[i] = NumberArray[i];
     }
 
-    for (int timer = 0 ; timer < DIGIT_DISPLAY_COUNT ; timer++) {
-      if (timer == DIGIT_DISPLAY_ON) {
-        digitOn(i, currNumberArray[i]);
+    // Main display loop - everything up to now was preparation
+    for (int timer = DIGIT_DISPLAY_START ; timer < DIGIT_DISPLAY_COUNT ; timer++) {
+      if (timer == digitOnTime) {
+        digitOn(i, currNumberArray[i], dpArray[i]);
       }
 
       if  (timer == digitSwitchTime) {
-        digitOn(i, NumberArray[i]);
-        if (dpArray[i]) {
-          // setDP();
-        }
+        digitOn(i, NumberArray[i], dpArray[i]);
       }
 
       if (timer == digitOffTime) {
@@ -2119,8 +2109,11 @@ void outputDisplay()
 // Assumes that all digits have previously been turned off
 // by a call to "digitOff"
 // ************************************************************
-void digitOn(byte digit, byte value) {
-  shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, data1[digit],digitData[value]);
+void digitOn(byte digit, byte value, bool setDp) {
+  byte dispValue = digitData[value];
+  if (setDp)
+    dispValue |= SEG_DP;
+  shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, data1[digit], dispValue);
 }
 
 // ************************************************************
