@@ -65,13 +65,10 @@ int blinkOnTime = 1000;
 int blinkTopTime = 2000;
 unsigned long lastMillis = 0;
 
-// Timer for how often we send the I2C data
-long lastI2CUpdateTime = 0;
 byte preferredI2CSlaveAddress = 0xFF;
 byte preferredAddressFoundBy = 0; // 0 = not found, 1 = found by default, 2 = found by ping
 
 // Pin 1 on ESP-01, pin 2 on ESP-12E
-#define blueLedPin 1
 boolean blueLedState = true;
 int blinkMode = 0; // 0 = Connected, short flash, 1 = connected, update blink, 2 = connected, no time server
 
@@ -422,7 +419,6 @@ double sensorFactor = (double)(DIGIT_DISPLAY_OFF) / (double)(dimBright - dimDark
 int sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
 int sensorSmoothCountHV = SENSOR_SMOOTH_READINGS_DEFAULT / 8;
 boolean useLDR = true;
-boolean usePIRPullup = true;
 
 // ************************ Clock variables ************************
 // RTC, uses Analogue pins A4 (SDA) and A5 (SCL)
@@ -439,11 +435,13 @@ boolean blanked = false;
 byte blankSuppressStep = 0;    // The press we are on: 1 press = suppress for 1 min, 2 press = 1 hour, 3 = 1 day
 unsigned long blankSuppressedMillis = 0;   // The end time of the blanking, 0 if we are not suppressed
 unsigned long blankSuppressedSelectionTimoutMillis = 0;   // Used for determining the end of the blanking period selection timeout
-boolean hourMode = false;
+
+boolean hourMode = false; // 24H
 
 // PIR
 unsigned long pirTimeout = PIR_TIMEOUT_DEFAULT;
 unsigned long pirLastSeen = 0;
+boolean usePIRPullup = true;
 
 boolean triggeredThisSec = false;
 
@@ -483,6 +481,8 @@ byte currentColour = 0;
 int impressionsPerSec = 0;
 int lastImpressionsPerSec = 0;
 
+long lastUpdateFromServer = 0;
+
 // ********************** Input switch management **********************
 ClockButton button1(inputPin1, true);
 
@@ -498,9 +498,6 @@ void setup()
 {
   setupDebug();
 
-
-
-
   wifiManager.setConfigPortalTimeout(60);
 
   boolean connected = false;
@@ -515,7 +512,7 @@ void setup()
       delay(100);
     }
     #endif
-    connected = wifiManager.autoConnect("NixieClockTimeModule","SetMeUp!");
+    connected = wifiManager.autoConnect("VFDClock","SetMeUp!");
   }
 
   #ifdef DEBUG
@@ -554,11 +551,8 @@ void setup()
   server.on("/local.css",   localCSSHandler);
   server.onNotFound(handleNotFound);
 
-
-  
   server.begin();
   debugMsg("HTTP server started");
-  
   
   pinMode(LED_DOUT, OUTPUT);
 
@@ -831,10 +825,7 @@ void loop()
 // ************************************************************
 // Called once per second
 // ************************************************************
-void performOncePerSecondProcessing() {
-
-  debugMsg("Time: " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
-  
+void performOncePerSecondProcessing() {  
   // Store the current value and reset
   lastImpressionsPerSec = impressionsPerSec;
   impressionsPerSec = 0;
@@ -926,14 +917,13 @@ void performOncePerMinuteProcessing() {
         
     // all OK, flash 10 millisecond per second
     debugMsg("Normal time serve mode");
+
+    lastUpdateFromServer = nowMillis;
   } else {
     // connected, but time server not found, flash middle speed
     blinkMode = 2;
     debugMsg("Connected, but no time server found");
   }
-
-  // Allow the IP to be displayed on the clock
-  // sendIPAddressToI2C(WiFi.localIP());
 }
 
 // ************************************************************
@@ -1060,7 +1050,7 @@ boolean checkPIR(unsigned long nowMillis) {
   boolean pirvalue = (digitalRead(pirPin) == HIGH);
 
   // testing
-  //pirvalue = true;
+  pirvalue = true;
 
   dpArray[5] = pirvalue;
   
@@ -2761,55 +2751,6 @@ void shiftOutDual(uint8_t _loadPin,
 
 //**********************************************************************************
 //**********************************************************************************
-//*                               EEPROM interface                                 *
-//**********************************************************************************
-//**********************************************************************************
-
-// ************************************************************
-// Save current values back to EEPROM
-// ************************************************************
-
-// ************************************************************
-// read EEPROM values
-// ************************************************************
-
-// ************************************************************
-// Reset EEPROM values back to what they once were
-// ************************************************************
-void factoryReset() {
-  hourMode = HOUR_MODE_DEFAULT;
-  blankLeading = LEAD_BLANK_DEFAULT;
-  scrollback = SCROLLBACK_DEFAULT;
-  fade = FADE_DEFAULT;
-  fadeSteps = FADE_STEPS_DEFAULT;
-  dateFormat = DATE_FORMAT_DEFAULT;
-  dayBlanking = DAY_BLANKING_DEFAULT;
-  dimDark = SENSOR_LOW_DEFAULT;
-  scrollSteps = SCROLL_STEPS_DEFAULT;
-  dimBright = SENSOR_HIGH_DEFAULT;
-  sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
-  dateFormat = DATE_FORMAT_DEFAULT;
-  dayBlanking = DAY_BLANKING_DEFAULT;
-  backlightMode = BACKLIGHT_DEFAULT;
-  redCnl = COLOUR_RED_CNL_DEFAULT;
-  grnCnl = COLOUR_GRN_CNL_DEFAULT;
-  bluCnl = COLOUR_BLU_CNL_DEFAULT;
-  blankHourStart = 0;
-  blankHourEnd = 7;
-  cycleSpeed = CYCLE_SPEED_DEFAULT;
-  minDim = MIN_DIM_DEFAULT;
-  antiGhost = ANTI_GHOST_DEFAULT;
-  pirTimeout = PIR_TIMEOUT_DEFAULT;
-  useLDR = USE_LDR_DEFAULT;
-  blankMode = BLANK_MODE_DEFAULT;
-  slotsMode = SLOTS_MODE_DEFAULT;
-  usePIRPullup = USE_PIR_PULLUP_DEFAULT;
-
-  //saveEEPROMValues();
-}
-
-//**********************************************************************************
-//**********************************************************************************
 //*                          Light Dependent Resistor                              *
 //**********************************************************************************
 //**********************************************************************************
@@ -2873,11 +2814,48 @@ void debugMsgCont(String message) {
 
 void toggleBlueLED() {
   blueLedState = ! blueLedState;
-  digitalWrite(blueLedPin, blueLedState);
+  digitalWrite(BUILTIN_LED, blueLedState);
 }
 
 void setBlueLED(boolean newState) {
-  digitalWrite(blueLedPin, newState);
+  digitalWrite(BUILTIN_LED, newState);
+}
+
+String formatIPAsString(IPAddress ip) {
+  return String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
+}
+
+void setTimeFromServer(String timeString) {
+  int years = getIntValue(timeString, ',', 0);
+  byte months = getIntValue(timeString, ',', 1);
+  byte days = getIntValue(timeString, ',', 2);
+  byte hours = getIntValue(timeString, ',', 3);
+  byte minutes = getIntValue(timeString, ',', 4);
+  byte seconds = getIntValue(timeString, ',', 5);
+  setTime(hours, minutes, seconds, days, months, years);
+}
+
+int getIntValue(String data, char separator, int index) {
+  String result = getValue(data, separator, index);
+  return atoi(result.c_str());
+}
+
+/**
+   Split a string based on a separator, get the element given by index
+*/
+String getValue(String data, char separator, int index)
+{
+  int found = 0;
+  int strIndex[] = {0, -1};
+  int maxIndex = data.length() - 1;
+  for (int i = 0; i <= maxIndex && found <= index; i++) {
+    if (data.charAt(i) == separator || i == maxIndex) {
+      found++;
+      strIndex[0] = strIndex[1] + 1;
+      strIndex[1] = (i == maxIndex) ? i + 1 : i;
+    }
+  }
+  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -2955,9 +2933,41 @@ void saveConfigToSpiffs() {
   SPIFFS.end();
 }
 
-String formatIPAsString(IPAddress ip) {
-  return String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
+// ************************************************************
+// Reset configuration values back to what they once were
+// ************************************************************
+void factoryReset() {
+  hourMode = HOUR_MODE_DEFAULT;
+  blankLeading = LEAD_BLANK_DEFAULT;
+  scrollback = SCROLLBACK_DEFAULT;
+  fade = FADE_DEFAULT;
+  fadeSteps = FADE_STEPS_DEFAULT;
+  dateFormat = DATE_FORMAT_DEFAULT;
+  dayBlanking = DAY_BLANKING_DEFAULT;
+  dimDark = SENSOR_LOW_DEFAULT;
+  scrollSteps = SCROLL_STEPS_DEFAULT;
+  dimBright = SENSOR_HIGH_DEFAULT;
+  sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
+  dateFormat = DATE_FORMAT_DEFAULT;
+  dayBlanking = DAY_BLANKING_DEFAULT;
+  backlightMode = BACKLIGHT_DEFAULT;
+  redCnl = COLOUR_RED_CNL_DEFAULT;
+  grnCnl = COLOUR_GRN_CNL_DEFAULT;
+  bluCnl = COLOUR_BLU_CNL_DEFAULT;
+  blankHourStart = 0;
+  blankHourEnd = 7;
+  cycleSpeed = CYCLE_SPEED_DEFAULT;
+  minDim = MIN_DIM_DEFAULT;
+  antiGhost = ANTI_GHOST_DEFAULT;
+  pirTimeout = PIR_TIMEOUT_DEFAULT;
+  useLDR = USE_LDR_DEFAULT;
+  blankMode = BLANK_MODE_DEFAULT;
+  slotsMode = SLOTS_MODE_DEFAULT;
+  usePIRPullup = USE_PIR_PULLUP_DEFAULT;
+
+  //saveConfigToSpiffs();
 }
+
 
 // ----------------------------------------------------------------------------------------------------
 // ------------------------------------------- Page Handlers ------------------------------------------
@@ -3002,8 +3012,8 @@ void rootPageHandler()
 
   response_message += getTableRow2Col("Uptime", uptimeString);
 
-  String lastUpdateString = ""; lastUpdateString += (millis() - lastI2CUpdateTime);
-  response_message += getTableRow2Col("Time last update", lastUpdateString);
+  String lastUpdateString = ""; lastUpdateString += (nowMillis - lastUpdateFromServer);
+  response_message += getTableRow2Col("Time since last update", lastUpdateString);
 
   response_message += getTableRow2Col("Version", SOFTWARE_VERSION);
   response_message += getTableRow2Col("Serial Number", serialNumber);
@@ -3028,12 +3038,6 @@ void rootPageHandler()
 
   response_message += getTableFoot();
 
-  float voltaje = (float)ESP.getVcc()/(float)1024;
-  voltaje -= 0.01f;  // by default reads high
-  char dtostrfbuffer[15];
-  dtostrf(voltaje,7, 2, dtostrfbuffer);
-  String vccString = String(dtostrfbuffer);
-  
   // ESP8266 Info table
   response_message += getTableHead2Col("ESP8266 information", "Name", "Value");
   response_message += getTableRow2Col("Sketch size", ESP.getSketchSize());
@@ -3045,7 +3049,8 @@ void rootPageHandler()
   response_message += getTableRow2Col("Chip ID", ESP.getChipId());
   response_message += getTableRow2Col("Flash Chip ID", ESP.getFlashChipId());
   response_message += getTableRow2Col("Flash size", ESP.getFlashChipRealSize());
-  response_message += getTableRow2Col("Vcc", vccString);
+  response_message += getTableRow2Col("LDR Value", sensorLDRSmoothed);
+  response_message += getTableRow2Col("Impressions/Sec", lastImpressionsPerSec);
   response_message += getTableFoot();
 
   response_message += getHTMLFoot();
@@ -3160,14 +3165,14 @@ void clockConfigPageHandler()
   if (server.hasArg("12h24hMode"))
   {
     debugMsg("Got 24h mode param: " + server.arg("12h24hMode"));
-    if ((server.arg("12h24hMode") == "24h") && (hourMode)) {
-      debugMsg("I2C --> Set 24h mode");
-      hourMode = true;
+    if (server.arg("12h24hMode") == "24h") {
+      debugMsg("Set 24h mode");
+      hourMode = false;
     }
 
-    if ((server.arg("12h24hMode") == "12h")  && (!hourMode)) {
-      debugMsg("I2C --> Set 12h mode");
-      hourMode = false;
+    if (server.arg("12h24hMode") == "12h") {
+      debugMsg("Set 12h mode");
+      hourMode = true;
     }
   }
 
@@ -3176,13 +3181,13 @@ void clockConfigPageHandler()
   if (server.hasArg("blankLeading"))
   {
     debugMsg("Got blankLeading param: " + server.arg("blankLeading"));
-    if ((server.arg("blankLeading") == "blank") && (!blankLeading)) {
-      debugMsg("I2C --> Set blank leading zero");
+    if (server.arg("blankLeading") == "blank") {
+      debugMsg("Set blank leading zero");
       blankLeading = false;
     }
 
-    if ((server.arg("blankLeading") == "show") && (blankLeading)) {
-      debugMsg("I2C --> Set show leading zero");
+    if (server.arg("blankLeading") == "show") {
+      debugMsg("Set show leading zero");
       blankLeading = true;
     }
   }
@@ -3192,13 +3197,13 @@ void clockConfigPageHandler()
   if (server.hasArg("useScrollback"))
   {
     debugMsg("Got useScrollback param: " + server.arg("useScrollback"));
-    if ((server.arg("useScrollback") == "on") && (!scrollback)) {
-      debugMsg("I2C --> Set scrollback on");
+    if (server.arg("useScrollback") == "on") {
+      debugMsg("Set scrollback on");
       scrollback = true;
     }
 
-    if ((server.arg("useScrollback") == "off") && (scrollback)) {
-      debugMsg("I2C --> Set scrollback off");
+    if (server.arg("useScrollback") == "off") {
+      debugMsg("Set scrollback off");
       scrollback = false;
     }
   }
@@ -3208,14 +3213,14 @@ void clockConfigPageHandler()
   if (server.hasArg("fade"))
   {
     debugMsg("Got fade param: " + server.arg("fade"));
-    if ((server.arg("fade") == "on") && (!fade)) {
-      debugMsg("I2C --> Set fade on");
-      fade = false;
+    if (server.arg("fade") == "on") {
+      debugMsg("Set fade on");
+      fade = true;
     }
 
-    if ((server.arg("fade") == "off") && (fade)) {
-      debugMsg("I2C --> Set fade off");
-      fade = true;
+    if (server.arg("fade") == "off") {
+      debugMsg("Set fade off");
+      fade = false;
     }
   }
 
@@ -3224,14 +3229,14 @@ void clockConfigPageHandler()
   if (server.hasArg("useLDR"))
   {
     debugMsg("Got useLDR param: " + server.arg("useLDR"));
-    if ((server.arg("useLDR") == "on") && (!useLDR)) {
-      debugMsg("I2C --> Set useLDR on");
-      useLDR = false;
+    if (server.arg("useLDR") == "on") {
+      debugMsg("Set useLDR on");
+      useLDR = true;
     }
 
-    if ((server.arg("useLDR") == "off") && (useLDR)) {
-      debugMsg("I2C --> Set useLDR off");
-      useLDR = true;
+    if (server.arg("useLDR") == "off") {
+      debugMsg("Set useLDR off");
+      useLDR = false;
     }
   }
 
@@ -3402,12 +3407,12 @@ void clockConfigPageHandler()
 
   // 12/24 mode
   response_message += getRadioGroupHeader("12H/24H mode:");
-  if (hourMode == 0) {
-    response_message += getRadioButton("12h24hMode", " 12H", "12h", false);
-    response_message += getRadioButton("12h24hMode", " 24H", "24h", true);
-  } else {
+  if (hourMode) {
     response_message += getRadioButton("12h24hMode", " 12H", "12h", true);
     response_message += getRadioButton("12h24hMode", " 24H", "24h", false);
+  } else {
+    response_message += getRadioButton("12h24hMode", " 12H", "12h", false);
+    response_message += getRadioButton("12h24hMode", " 24H", "24h", true);
   }
   response_message += getRadioGroupFooter();
 
@@ -3869,37 +3874,4 @@ String getSubmitButton(String buttonText) {
   result += buttonText;
   result += "\"></div></div>";
   return result;
-}
-
-void setTimeFromServer(String timeString) {
-  int years = getIntValue(timeString, ',', 0);
-  byte months = getIntValue(timeString, ',', 1);
-  byte days = getIntValue(timeString, ',', 2);
-  byte hours = getIntValue(timeString, ',', 3);
-  byte minutes = getIntValue(timeString, ',', 4);
-  byte seconds = getIntValue(timeString, ',', 5);
-  setTime(hours, minutes, seconds, days, months, years);
-}
-
-int getIntValue(String data, char separator, int index) {
-  String result = getValue(data, separator, index);
-  return atoi(result.c_str());
-}
-
-/**
-   Split a string based on a separator, get the element given by index
-*/
-String getValue(String data, char separator, int index)
-{
-  int found = 0;
-  int strIndex[] = {0, -1};
-  int maxIndex = data.length() - 1;
-  for (int i = 0; i <= maxIndex && found <= index; i++) {
-    if (data.charAt(i) == separator || i == maxIndex) {
-      found++;
-      strIndex[0] = strIndex[1] + 1;
-      strIndex[1] = (i == maxIndex) ? i + 1 : i;
-    }
-  }
-  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
