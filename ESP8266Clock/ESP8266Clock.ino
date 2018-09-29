@@ -10,6 +10,18 @@
 //*  - Automatic dimming, using a Light Dependent Resistor                         *
 //*  - RGB back light management using individually addressable WS2812B            *
 //*  - PIR sensor to turn off display when no one is around                        *
+//*   Program with following settings (status line / IDE):
+//*
+//*    Board: Wemos D1 R2 & Mini
+//*    Crystal Frequency: 26MHz,
+//*    Flash: 80MHz, 
+//*    CPU: 160MHz, 
+//*    Flash Mode: QIO, 
+//*    Upload speed: 115200, 
+//*    Flash size: 4M (1M SPIFFS), 
+//*    Reset method: ck, Disabled, none
+//*    Erase Flash: All falsh contents,
+//*    Builtin LED: 1
 //*                                                                                *
 //*  nixie@protonmail.ch                                                           *
 //*                                                                                *
@@ -18,14 +30,15 @@
 // Standard Libraries
 #include <FS.h>
 #include <Wire.h>
+#include <ESP8266HTTPClient.h>
 
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
 #include <DS3231.h>             // Wickert V1.0.2
 #include <TimeLib.h>            // Margolis V1.5.0
 #include <NeoPixelBus.h>        // Makuna V2.3.4
-#include <WiFiManager.h>        // tzapu V0.14.0
-#include <ArduinoJson.h>        // Blanchon V5.13.6 NOT V6.x.x!
+#include <WiFiManager.h>          // https://github.com/tzapu/WiFiManager  (0.14.0)
+#include <ArduinoJson.h>          // https://github.com/bblanchon/ArduinoJson (5.13.2)
 
 // Other parts of the code, broken out for clarity
 #include "ClockButton.h"
@@ -38,7 +51,35 @@
 // how often we make reference to the external time provider
 #define READ_TIME_PROVIDER_MILLIS 60000 // Update the internal time provider from the external source once every minute
 
-#define DEBUG_OFF     // DEBUG / DEBUG_OFF
+#define DEBUG     // DEBUG / DEBUG_OFF
+
+// ------------------------ Wifi ------------------------
+
+#define DEFAULT_TIME_SERVER_URL_1 "http://its.internet-box.ch/getTime/Europe/Zurich"
+#define DEFAULT_TIME_SERVER_URL_2 "http://time-zone-server.scapp.io/getTime/Europe/Zurich"
+
+const char *serialNumber = "0x0x0x";  // this is to be customized at burn time
+
+// used for flashing the blue LED
+int blinkOnTime = 1000;
+int blinkTopTime = 2000;
+unsigned long lastMillis = 0;
+
+// Timer for how often we send the I2C data
+long lastI2CUpdateTime = 0;
+byte preferredI2CSlaveAddress = 0xFF;
+byte preferredAddressFoundBy = 0; // 0 = not found, 1 = found by default, 2 = found by ping
+
+// Pin 1 on ESP-01, pin 2 on ESP-12E
+#define blueLedPin 1
+boolean blueLedState = true;
+int blinkMode = 0; // 0 = Connected, short flash, 1 = connected, update blink, 2 = connected, no time server
+
+String timeServerURL = DEFAULT_TIME_SERVER_URL_1;
+
+ESP8266WebServer server(80);
+
+// ------------------------ Wifi ------------------------
 
 // Display handling
 #define DIGIT_DISPLAY_START   0    // Inner loop start point per digit
@@ -456,6 +497,68 @@ WiFiManager wifiManager;
 void setup()
 {
   setupDebug();
+
+
+
+
+  wifiManager.setConfigPortalTimeout(60);
+
+  boolean connected = false;
+  while (!connected) {
+    #ifndef DEBUG
+      for (int i = 0 ; i < 5 ; i++) {
+      blueLedState = false;
+      setBlueLED(blueLedState);
+      delay(100);
+      blueLedState = true;
+      setBlueLED(blueLedState);
+      delay(100);
+    }
+    #endif
+    connected = wifiManager.autoConnect("NixieClockTimeModule","SetMeUp!");
+  }
+
+  #ifdef DEBUG
+    debugMsg("Connected!");
+  #else  
+    for (int i = 0 ; i < 3 ; i++) {
+      blueLedState = false;
+      setBlueLED(blueLedState);
+      delay(50);
+      blueLedState = true;
+      setBlueLED(blueLedState);
+      delay(500);
+    }
+  #endif
+
+  if(!getConfigfromSpiffs()) {
+    debugMsg("Setting default tzs");
+    timeServerURL = DEFAULT_TIME_SERVER_URL_1;
+    saveConfigToSpiffs();
+  }
+  
+  IPAddress apIP = WiFi.softAPIP();
+  IPAddress myIP = WiFi.localIP();
+  debugMsg("AP IP address: " + formatIPAsString(apIP));
+  debugMsg("IP address: " + formatIPAsString(myIP));
+
+  Wire.begin(0, 2); // SDA = 0, SCL = 2
+  debugMsg("I2C master started");
+  
+  /* Set page handler functions */
+  server.on("/",            rootPageHandler);
+  server.on("/time",        timeServerPageHandler);
+  server.on("/reset",       resetPageHandler);
+  server.on("/updatetime",  updateTimePageHandler);
+  server.on("/clockconfig", clockConfigPageHandler);
+  server.on("/local.css",   localCSSHandler);
+  server.onNotFound(handleNotFound);
+
+
+  
+  server.begin();
+  debugMsg("HTTP server started");
+  
   
   pinMode(LED_DOUT, OUTPUT);
 
@@ -630,6 +733,8 @@ void setup()
 boolean millisNotSet = true;
 void loop()
 {  
+  server.handleClient();
+  
   nowMillis = millis();
 
   // shows us how fast the inner loop is running
@@ -810,12 +915,25 @@ void performOncePerMinuteProcessing() {
     dpArray[1] = (hour() > 12);
   }
 
-  for (int idx = 0 ; idx < 6; idx++) {
-    debugMsg("  Idx: " + String(idx));
-    debugMsg("   NA: " + String(NumberArray[idx]));
-    debugMsg("  CNA: " + String(currNumberArray[idx]));
-    debugMsg("   DT: " + String(displayType[idx]));
+  // Try to recover the current time
+  String timeStr = getTimeFromTimeZoneServer();
+
+  // Send the time to the I2C client, but only if there was no error
+  if (!timeStr.startsWith("ERROR:")) {
+    setTimeFromServer(timeStr);
+        
+    blinkMode = 1;
+        
+    // all OK, flash 10 millisecond per second
+    debugMsg("Normal time serve mode");
+  } else {
+    // connected, but time server not found, flash middle speed
+    blinkMode = 2;
+    debugMsg("Connected, but no time server found");
   }
+
+  // Allow the IP to be displayed on the clock
+  // sendIPAddressToI2C(WiFi.localIP());
 }
 
 // ************************************************************
@@ -2751,4 +2869,1037 @@ void debugMsgCont(String message) {
   #ifdef DEBUG
   Serial.print(message);
   #endif
+}
+
+void toggleBlueLED() {
+  blueLedState = ! blueLedState;
+  digitalWrite(blueLedPin, blueLedState);
+}
+
+void setBlueLED(boolean newState) {
+  digitalWrite(blueLedPin, newState);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// ------------------------------------------- JSON functions -----------------------------------------
+// ----------------------------------------------------------------------------------------------------
+
+bool getConfigfromSpiffs() {
+  bool loaded = false;
+  if (SPIFFS.begin()) {
+    debugMsg("mounted file system");
+    if (SPIFFS.exists("/config.json")) {
+      //file exists, reading and loading
+      debugMsg("reading config file");
+      File configFile = SPIFFS.open("/config.json", "r");
+      if (configFile) {
+        debugMsg("opened config file");
+        size_t size = configFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        configFile.readBytes(buf.get(), size);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject& json = jsonBuffer.parseObject(buf.get());
+        json.printTo(Serial);
+        debugMsg("\n");
+        
+        if (json.success()) {
+          debugMsg("parsed json");
+          char tzsTmp[256];
+          strcpy(tzsTmp, json["time_zone"]);
+          timeServerURL = String(tzsTmp);
+          debugMsg("Loaded time server URL: " + timeServerURL);
+          loaded = true;
+        } else {
+          debugMsg("failed to load json config");
+        }
+        debugMsg("Closing config file");
+        configFile.close();
+      }
+    }
+  } else {
+    debugMsg("failed to mount FS");
+  }
+
+  SPIFFS.end();
+  return loaded;
+}
+
+void saveConfigToSpiffs() {
+  if (SPIFFS.begin()) {
+    debugMsg("mounted file system");
+    debugMsg("saving config");
+    
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject& json = jsonBuffer.createObject();
+    json["time_zone"] = timeServerURL;
+
+    File configFile = SPIFFS.open("/config.json", "w");
+    if (!configFile) {
+      debugMsg("failed to open config file for writing");
+      configFile.close();
+      return;
+    }
+
+    json.printTo(Serial);
+    debugMsg("\n");
+  
+    json.printTo(configFile);
+    configFile.close();
+    debugMsg("Saved config");
+    //end save
+  } else {
+    debugMsg("failed to mount FS");
+  }
+  SPIFFS.end();
+}
+
+String formatIPAsString(IPAddress ip) {
+  return String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// ------------------------------------------- Page Handlers ------------------------------------------
+// ----------------------------------------------------------------------------------------------------
+
+/**
+   Root page for the webserver
+*/
+void rootPageHandler()
+{
+  debugMsg("Root page");
+  String response_message = getHTMLHead();
+  response_message += getNavBar();
+
+  // Status table
+  response_message += getTableHead2Col("Current Status", "Name", "Value");
+
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    IPAddress ip = WiFi.localIP();
+    response_message += getTableRow2Col("WLAN IP", formatIPAsString(ip));
+    response_message += getTableRow2Col("WLAN MAC", WiFi.macAddress());
+    response_message += getTableRow2Col("WLAN SSID", WiFi.SSID());
+    response_message += getTableRow2Col("Time server URL", timeServerURL);
+    response_message += getTableRow2Col("Time according to server", getTimeFromTimeZoneServer());
+  }
+  else
+  {
+    IPAddress softapip = WiFi.softAPIP();
+    String ipStrAP = String(softapip[0]) + '.' + String(softapip[1]) + '.' + String(softapip[2]) + '.' + String(softapip[3]);
+    response_message += getTableRow2Col("AP IP", ipStrAP);
+    response_message += getTableRow2Col("AP MAC", WiFi.softAPmacAddress());
+  }
+
+  // Make the uptime readable
+  long upSecs = millis() / 1000;
+  long upDays = upSecs / 86400;
+  long upHours = (upSecs - (upDays * 86400)) / 3600;
+  long upMins = (upSecs - (upDays * 86400) - (upHours * 3600)) / 60;
+  upSecs = upSecs - (upDays * 86400) - (upHours * 3600) - (upMins * 60);
+  String uptimeString = ""; uptimeString += upDays; uptimeString += " days, "; uptimeString += upHours, uptimeString += " hours, "; uptimeString += upMins; uptimeString += " mins, "; uptimeString += upSecs; uptimeString += " secs";
+
+  response_message += getTableRow2Col("Uptime", uptimeString);
+
+  String lastUpdateString = ""; lastUpdateString += (millis() - lastI2CUpdateTime);
+  response_message += getTableRow2Col("Time last update", lastUpdateString);
+
+  response_message += getTableRow2Col("Version", SOFTWARE_VERSION);
+  response_message += getTableRow2Col("Serial Number", serialNumber);
+
+  // Scan I2C bus
+  for (int idx = 0 ; idx < 128 ; idx++)
+  {
+    Wire.beginTransmission(idx);
+    int error = Wire.endTransmission();
+    if (error == 0) {
+      String slaveMsg = "Found I2C slave at";
+      if (idx == preferredI2CSlaveAddress) {
+        if (preferredAddressFoundBy == 1) {
+          slaveMsg += " (default)";
+        } else if (preferredAddressFoundBy == 2) {
+          slaveMsg += " (ping)";
+        }
+      }
+      response_message += getTableRow2Col(slaveMsg,idx);
+    }
+  }
+
+  response_message += getTableFoot();
+
+  float voltaje = (float)ESP.getVcc()/(float)1024;
+  voltaje -= 0.01f;  // by default reads high
+  char dtostrfbuffer[15];
+  dtostrf(voltaje,7, 2, dtostrfbuffer);
+  String vccString = String(dtostrfbuffer);
+  
+  // ESP8266 Info table
+  response_message += getTableHead2Col("ESP8266 information", "Name", "Value");
+  response_message += getTableRow2Col("Sketch size", ESP.getSketchSize());
+  response_message += getTableRow2Col("Free sketch size", ESP.getFreeSketchSpace());
+  response_message += getTableRow2Col("Free heap", ESP.getFreeHeap());
+  response_message += getTableRow2Col("Boot version", ESP.getBootVersion());
+  response_message += getTableRow2Col("CPU Freqency (MHz)", ESP.getCpuFreqMHz());
+  response_message += getTableRow2Col("SDK version", ESP.getSdkVersion());
+  response_message += getTableRow2Col("Chip ID", ESP.getChipId());
+  response_message += getTableRow2Col("Flash Chip ID", ESP.getFlashChipId());
+  response_message += getTableRow2Col("Flash size", ESP.getFlashChipRealSize());
+  response_message += getTableRow2Col("Vcc", vccString);
+  response_message += getTableFoot();
+
+  response_message += getHTMLFoot();
+
+  server.send(200, "text/html", response_message);
+}
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+/**
+   Get the local time from the time server, and modify the time server URL if needed
+*/
+void timeServerPageHandler()
+{
+  // Check if there are any GET parameters, if there are, we are configuring
+  if (server.hasArg("timeserverurl"))
+  {
+    if (strlen(server.arg("timeserverurl").c_str()) > 4) {
+      timeServerURL = server.arg("timeserverurl").c_str();
+//      storeTimeServerURLInEEPROM(timeServerURL);
+    }
+  }
+
+  String response_message = getHTMLHead();
+  response_message += getNavBar();
+
+  // form header
+  response_message += getFormHead("Select time server");
+
+  // only fill in the value we have if it looks realistic
+  if ((timeServerURL.length() < 10) || (timeServerURL.length() > 250)) {
+    debugMsg("Got a bad URL for the TZS, resetting");
+    timeServerURL = DEFAULT_TIME_SERVER_URL_1;
+  } else {
+    // save the timeserver URL
+    saveConfigToSpiffs();
+  }
+
+  response_message += getTextInputWide("URL", "timeserverurl", timeServerURL, false);
+  response_message += getSubmitButton("Set");
+
+  response_message += getFormFoot();
+  response_message += getHTMLFoot();
+
+  server.send(200, "text/html", response_message);
+}
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+/**
+   Get the local time from the time server, and send it via I2C right now
+*/
+void updateTimePageHandler()
+{
+  String timeString = getTimeFromTimeZoneServer();
+
+  String response_message = getHTMLHead();
+  response_message += getNavBar();
+
+
+  if (timeString.substring(1,6) == "ERROR:") {
+    response_message += "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">Send time to I2C right now</h3>";
+    response_message += "<div class=\"alert alert-danger fade in\"><strong>Error!</strong> Could not recover the time from time server. ";
+    response_message += timeString;
+    response_message += "</div></div>";
+  } else {
+//    boolean result = sendTimeToI2C(timeString);
+
+    response_message += "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">Send time to I2C right now</h3>";
+    // if (result) {
+      response_message += "<div class=\"alert alert-success fade in\"><strong>Success!</strong> Update sent.</div></div>";
+    // // } else {
+    //  response_message += "<div class=\"alert alert-danger fade in\"><strong>Error!</strong> Update was not sent.</div></div>";
+    //}
+  }
+
+  response_message += getHTMLFoot();
+
+  server.send(200, "text/html", response_message);
+}
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+/**
+   Reset the EEPROM and stored values
+*/
+void resetPageHandler() {
+  wifiManager.resetSettings();
+
+  String response_message = getHTMLHead();
+  response_message += getNavBar();
+
+  response_message += "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">Send time to I2C right now</h3>";
+  response_message += "<div class=\"alert alert-success fade in\"><strong>Success!</strong> Reset done.</div></div>";
+
+  response_message += getHTMLFoot();
+
+  server.send(200, "text/html", response_message);
+}
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+/**
+   Page for the clock configuration.
+*/
+void clockConfigPageHandler()
+{
+  if (server.hasArg("12h24hMode"))
+  {
+    debugMsg("Got 24h mode param: " + server.arg("12h24hMode"));
+    if ((server.arg("12h24hMode") == "24h") && (hourMode)) {
+      debugMsg("I2C --> Set 24h mode");
+      hourMode = true;
+    }
+
+    if ((server.arg("12h24hMode") == "12h")  && (!hourMode)) {
+      debugMsg("I2C --> Set 12h mode");
+      hourMode = false;
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("blankLeading"))
+  {
+    debugMsg("Got blankLeading param: " + server.arg("blankLeading"));
+    if ((server.arg("blankLeading") == "blank") && (!blankLeading)) {
+      debugMsg("I2C --> Set blank leading zero");
+      blankLeading = false;
+    }
+
+    if ((server.arg("blankLeading") == "show") && (blankLeading)) {
+      debugMsg("I2C --> Set show leading zero");
+      blankLeading = true;
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("useScrollback"))
+  {
+    debugMsg("Got useScrollback param: " + server.arg("useScrollback"));
+    if ((server.arg("useScrollback") == "on") && (!scrollback)) {
+      debugMsg("I2C --> Set scrollback on");
+      scrollback = true;
+    }
+
+    if ((server.arg("useScrollback") == "off") && (scrollback)) {
+      debugMsg("I2C --> Set scrollback off");
+      scrollback = false;
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("fade"))
+  {
+    debugMsg("Got fade param: " + server.arg("fade"));
+    if ((server.arg("fade") == "on") && (!fade)) {
+      debugMsg("I2C --> Set fade on");
+      fade = false;
+    }
+
+    if ((server.arg("fade") == "off") && (fade)) {
+      debugMsg("I2C --> Set fade off");
+      fade = true;
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("useLDR"))
+  {
+    debugMsg("Got useLDR param: " + server.arg("useLDR"));
+    if ((server.arg("useLDR") == "on") && (!useLDR)) {
+      debugMsg("I2C --> Set useLDR on");
+      useLDR = false;
+    }
+
+    if ((server.arg("useLDR") == "off") && (useLDR)) {
+      debugMsg("I2C --> Set useLDR off");
+      useLDR = true;
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("dateFormat")) {
+    debugMsg("Got dateFormat param: " + server.arg("dateFormat"));
+    byte newDateFormat = atoi(server.arg("dateFormat").c_str());
+    if (newDateFormat != dateFormat) {
+      dateFormat = newDateFormat;
+      debugMsg("I2C --> Set dateFormat: " + newDateFormat);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("dayBlanking")) {
+    debugMsg("Got dayBlanking param: " + server.arg("dayBlanking"));
+    byte newDayBlanking = atoi(server.arg("dayBlanking").c_str());
+    if (newDayBlanking != dayBlanking) {
+      dayBlanking = newDayBlanking;
+      debugMsg("I2C --> Set dayBlanking: " + newDayBlanking);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("blankHourStart")) {
+    debugMsg("Got blankHourStart param: " + server.arg("blankHourStart"));
+    byte newBlankFrom = atoi(server.arg("blankHourStart").c_str());
+    if (newBlankFrom != blankHourStart) {
+      blankHourStart = newBlankFrom;
+      debugMsg("I2C --> Set blankHourStart: " + newBlankFrom);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("blankHourEnd")) {
+    debugMsg("Got blankHourEnd param: " + server.arg("blankHourEnd"));
+    byte newBlankTo = atoi(server.arg("blankHourEnd").c_str());
+    if (newBlankTo != blankHourEnd) {
+      blankHourEnd = newBlankTo;
+      debugMsg("I2C --> Set blankHourEnd: " + newBlankTo);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("fadeSteps")) {
+    debugMsg("Got fadeSteps param: " + server.arg("fadeSteps"));
+    byte newFadeSteps = atoi(server.arg("fadeSteps").c_str());
+    if (newFadeSteps != fadeSteps) {
+      fadeSteps = newFadeSteps;
+      debugMsg("I2C --> Set fadeSteps: " + newFadeSteps);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("scrollSteps")) {
+    debugMsg("Got scrollSteps param: " + server.arg("scrollSteps"));
+    byte newScrollSteps = atoi(server.arg("scrollSteps").c_str());
+    if (newScrollSteps != scrollSteps) {
+      scrollSteps = newScrollSteps;
+      debugMsg("I2C --> Set fadeSteps: " + newScrollSteps);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("backLight")) {
+    debugMsg("Got backLight param: " + server.arg("backLight"));
+    byte newBacklight = atoi(server.arg("backLight").c_str());
+    if (newBacklight != backlightMode) {
+      backlightMode = newBacklight;
+      debugMsg("I2C --> Set backLight: " + newBacklight);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("redCnl")) {
+    debugMsg("Got redCnl param: " + server.arg("redCnl"));
+    byte newRedCnl = atoi(server.arg("redCnl").c_str());
+    if (newRedCnl != redCnl) {
+      redCnl = newRedCnl;
+      debugMsg("I2C --> Set redCnl: " + newRedCnl);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("grnCnl")) {
+    debugMsg("Got grnCnl param: " + server.arg("grnCnl"));
+    byte newGreenCnl = atoi(server.arg("grnCnl").c_str());
+    if (newGreenCnl != grnCnl) {
+      grnCnl = newGreenCnl;
+      debugMsg("I2C --> Set grnCnl: " + newGreenCnl);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("bluCnl")) {
+    debugMsg("Got bluCnl param: " + server.arg("bluCnl"));
+    byte newBlueCnl = atoi(server.arg("bluCnl").c_str());
+    if (newBlueCnl != bluCnl) {
+      bluCnl = newBlueCnl;
+      debugMsg("I2C --> Set bluCnl: " + newBlueCnl);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("cycleSpeed")) {
+    debugMsg("Got cycleSpeed param: " + server.arg("cycleSpeed"));
+    byte newCycleSpeed = atoi(server.arg("cycleSpeed").c_str());
+    if (newCycleSpeed != cycleSpeed) {
+      cycleSpeed = newCycleSpeed;
+      debugMsg("I2C --> Set cycleSpeed: " + newCycleSpeed);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("blankMode")) {
+    debugMsg("Got blankMode param: " + server.arg("blankMode"));
+    byte newBlankMode = atoi(server.arg("blankMode").c_str());
+    if (newBlankMode != blankMode) {
+      blankMode = newBlankMode;
+      debugMsg("I2C --> Set blankMode: " + newBlankMode);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("slotsMode")) {
+    debugMsg("Got slotsMode param: " + server.arg("slotsMode"));
+    byte newSlotsMode = atoi(server.arg("slotsMode").c_str());
+    if (newSlotsMode != slotsMode) {
+      slotsMode = newSlotsMode;
+      debugMsg("I2C --> Set slotsMode: " + newSlotsMode);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("minDim")) {
+    debugMsg("Got minDim param: " + server.arg("minDim"));
+    int newMinDim = atoi(server.arg("minDim").c_str());
+    if (newMinDim != minDim) {
+      minDim = newMinDim;
+      debugMsg("I2C --> Set minDim: " + newMinDim);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  // Get the options, put the result into variables called "config*"
+//  getClockOptionsFromI2C();
+
+  String response_message = getHTMLHead();
+  response_message += getNavBar();
+
+  // form header
+  response_message += getFormHead("Set Configuration");
+
+  // 12/24 mode
+  response_message += getRadioGroupHeader("12H/24H mode:");
+  if (hourMode == 0) {
+    response_message += getRadioButton("12h24hMode", " 12H", "12h", false);
+    response_message += getRadioButton("12h24hMode", " 24H", "24h", true);
+  } else {
+    response_message += getRadioButton("12h24hMode", " 12H", "12h", true);
+    response_message += getRadioButton("12h24hMode", " 24H", "24h", false);
+  }
+  response_message += getRadioGroupFooter();
+
+  // blank leading
+  response_message += getRadioGroupHeader("Blank leading zero:");
+  if (blankLeading) {
+    response_message += getRadioButton("blankLeading", "Blank", "blank", true);
+    response_message += getRadioButton("blankLeading", "Show", "show", false);
+  } else {
+    response_message += getRadioButton("blankLeading", "Blank", "blank", false);
+    response_message += getRadioButton("blankLeading", "Show", "show", true);
+  }
+  response_message += getRadioGroupFooter();
+  //response_message += getCheckBox("blankLeadingZero", "on", "Blank leading zero on hours", (configBlankLead == 1));
+
+  // Scrollback
+  response_message += getRadioGroupHeader("Scrollback effect:");
+  if (scrollback) {
+    response_message += getRadioButton("useScrollback", "On", "on", true);
+    response_message += getRadioButton("useScrollback", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("useScrollback", "On", "on", false);
+    response_message += getRadioButton("useScrollback", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
+  //response_message += getCheckBox("useScrollback", "on", "Use scrollback effect", (configScrollback == 1));
+
+  // fade
+  response_message += getRadioGroupHeader("Fade effect:");
+  if (fade) {
+    response_message += getRadioButton("fade", "On", "on", true);
+    response_message += getRadioButton("fade", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("fade", "On", "on", false);
+    response_message += getRadioButton("fade", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
+  //response_message += getCheckBox("fade", "on", "Use fade effect", (configUseFade == 1));
+
+  // LDR
+  response_message += getRadioGroupHeader("Use LDR:");
+  if (useLDR) {
+    response_message += getRadioButton("useLDR", "On", "on", true);
+    response_message += getRadioButton("useLDR", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("useLDR", "On", "on", false);
+    response_message += getRadioButton("useLDR", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
+  //response_message += getCheckBox("useLDR", "on", "Use LDR for dimming", (useLDR == 1));
+
+  // Date format
+  response_message += getDropDownHeader("Date format:", "dateFormat", false);
+  response_message += getDropDownOption("0", "YY-MM-DD", (dateFormat == 0));
+  response_message += getDropDownOption("1", "MM-DD-YY", (dateFormat == 1));
+  response_message += getDropDownOption("2", "DD-MM-YY", (dateFormat == 2));
+  response_message += getDropDownFooter();
+
+  // Day blanking
+  response_message += getDropDownHeader("Day blanking:", "dayBlanking", true);
+  response_message += getDropDownOption("0", "Never blank", (dayBlanking == 0));
+  response_message += getDropDownOption("1", "Blank all day on weekends", (dayBlanking == 1));
+  response_message += getDropDownOption("2", "Blank all day on week days", (dayBlanking == 2));
+  response_message += getDropDownOption("3", "Blank always", (dayBlanking == 3));
+  response_message += getDropDownOption("4", "Blank during selected hours every day", (dayBlanking == 4));
+  response_message += getDropDownOption("5", "Blank during selected hours on week days and all day on weekends", (dayBlanking == 5));
+  response_message += getDropDownOption("6", "Blank during selected hours on weekends and all day on week days", (dayBlanking == 6));
+  response_message += getDropDownOption("7", "Blank during selected hours on weekends only", (dayBlanking == 7));
+  response_message += getDropDownOption("8", "Blank during selected hours on week days only", (dayBlanking == 8));
+  response_message += getDropDownFooter();
+
+  // Blank Mode
+  response_message += getDropDownHeader("Blank Mode:", "blankMode", true);
+  response_message += getDropDownOption("0", "Blank tubes only", (blankMode == 0));
+  response_message += getDropDownOption("1", "Blank LEDs only", (blankMode == 1));
+  response_message += getDropDownOption("2", "Blank tubes and LEDs", (blankMode == 2));
+  response_message += getDropDownFooter();
+  
+  boolean hoursDisabled = (dayBlanking < 4);
+
+  // Blank hours from
+  response_message += getNumberInput("Blank from:", "blankHourStart", 0, 23, blankHourStart, hoursDisabled);
+
+  // Blank hours to
+  response_message += getNumberInput("Blank to:", "blankHourEnd", 0, 23, blankHourEnd, hoursDisabled);
+
+  // Fade steps
+  response_message += getNumberInput("Fade steps:", "fadeSteps", 20, 200, fadeSteps, false);
+
+  // Scroll steps
+  response_message += getNumberInput("Scroll steps:", "scrollSteps", 1, 40, scrollSteps, false);
+
+  // Back light
+  response_message += getDropDownHeader("Back light:", "backLight", true);
+  response_message += getDropDownOption("0", "Fixed RGB backlight, no dimming", (backlightMode == 0));
+  response_message += getDropDownOption("1", "Pulsing RGB backlight, no dimming", (backlightMode == 1));
+  response_message += getDropDownOption("2", "Cycling RGB backlight, no dimming", (backlightMode == 2));
+  response_message += getDropDownOption("3", "Fixed RGB backlight, dims with ambient light", (backlightMode == 3));
+  response_message += getDropDownOption("4", "Pulsing RGB backlight, dims with ambient light", (backlightMode == 4));
+  response_message += getDropDownOption("5", "Cycling RGB backlight, dims with ambient light", (backlightMode == 5));
+  response_message += getDropDownFooter();
+
+  // RGB channels
+  response_message += getNumberInput("Red intensity:", "redCnl", 0, 15, redCnl, false);
+  response_message += getNumberInput("Green intensity:", "grnCnl", 0, 15, grnCnl, false);
+  response_message += getNumberInput("Blue intensity:", "bluCnl", 0, 15, bluCnl, false);
+
+  // Cycle speed
+  response_message += getNumberInput("Backlight Cycle Speed:", "cycleSpeed", 2, 64, cycleSpeed, false);
+
+  // Slots Mode
+  response_message += getDropDownHeader("Date Slots:", "slotsMode", true);
+  response_message += getDropDownOption("0", "Don't use slots mode", (slotsMode == 0));
+  response_message += getDropDownOption("1", "Scroll In, Scramble Out", (slotsMode == 1));
+  response_message += getDropDownFooter();
+
+  // Min dim
+  response_message += getNumberInput("Min Dim:", "minDim", 100, 500, minDim, false);
+  
+  // form footer
+  response_message += getSubmitButton("Set");
+
+  response_message += "</form></div>";
+
+  // all done
+  response_message += getHTMLFoot();
+
+  server.send(200, "text/html", response_message);
+}
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+/* Called if requested page is not found */
+void handleNotFound()
+{
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+
+  for (uint8_t i = 0; i < server.args(); i++)
+  {
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+
+  server.send(404, "text/plain", message);
+}
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+/* Called if we need to have a local CSS */
+void localCSSHandler()
+{
+  String message = ".navbar,.table{margin-bottom:20px}.nav>li,.nav>li>a,article,aside,details,figcaption,figure,footer,header,hgroup,main,menu,nav,section,summary{display:block}.btn,.form-control,.navbar-toggle{background-image:none}.table,label{max-width:100%}.sub-header{padding-bottom:10px;border-bottom:1px solid #eee}.h3,h3{font-size:24px}.table{width:100%}table{background-color:transparent;border-spacing:0;border-collapse:collapse}.table-striped>tbody>tr:nth-of-type(2n+1){background-color:#f9f9f9}.table>caption+thead>tr:first-child>td,.table>caption+thead>tr:first-child>th,.table>colgroup+thead>tr:first-child>td,.table>colgroup+thead>tr:first-child>th,.table>thead:first-child>tr:first-child>td,.table>thead:first-child>tr:first-child>th{border-top:0}.table>thead>tr>th{border-bottom:2px solid #ddd}.table>tbody>tr>td,.table>tbody>tr>th,.table>tfoot>tr>td,.table>tfoot>tr>th,.table>thead>tr>td,.table>thead>tr>th{padding:8px;line-height:1.42857143;vertical-align:top;border-top:1px solid #ddd}th{text-align:left}td,th{padding:0}.navbar>.container .navbar-brand,.navbar>.container-fluid .navbar-brand{margin-left:-15px}.container,.container-fluid{padding-right:15px;padding-left:15px;margin-right:auto;margin-left:auto}.navbar-inverse .navbar-brand{color:#9d9d9d}.navbar-brand{float:left;height:50px;padding:15px;font-size:18px;line-height:20px}a{color:#337ab7;text-decoration:none;background-color:transparent}.navbar-fixed-top{border:0;top:0;border-width:0 0 1px}.navbar-inverse{background-color:#222;border-color:#080808}.navbar-fixed-bottom,.navbar-fixed-top{border-radius:0;position:fixed;right:0;left:0;z-index:1030}.nav>li,.nav>li>a,.navbar,.navbar-toggle{position:relative}.navbar{border-radius:4px;min-height:50px;border:1px solid transparent}.container{width:750px}.navbar-right{float:right!important;margin-right:-15px}.navbar-nav{float:left;margin:7.5px -15px}.nav{padding-left:0;margin-bottom:0;list-style:none}.navbar-nav>li{float:left}.navbar-inverse .navbar-nav>li>a{color:#9d9d9d}.navbar-nav>li>a{padding-top:10px;padding-bottom:10px;line-height:20px}.nav>li>a{padding:10px 15px}.navbar-inverse .navbar-toggle{border-color:#333}.navbar-toggle{display:none;float:right;padding:9px 10px;margin-top:8px;margin-right:15px;margin-bottom:8px;background-color:transparent;border:1px solid transparent;border-radius:4px}button,select{text-transform:none}button{overflow:visible}button,html input[type=button],input[type=reset],input[type=submit]{-webkit-appearance:button;cursor:pointer}.btn-primary{color:#fff;background-color:#337ab7;border-color:#2e6da4}.btn{display:inline-block;padding:6px 12px;margin-bottom:0;font-size:14px;font-weight:400;line-height:1.42857143;text-align:center;white-space:nowrap;vertical-align:middle;-ms-touch-action:manipulation;touch-action:manipulation;cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;border:1px solid transparent;border-radius:4px}button,input,select,textarea{font-family:inherit;font-size:inherit;line-height:inherit}input{line-height:normal}button,input,optgroup,select,textarea{margin:0;font:inherit;color:inherit}.form-control,body{font-size:14px;line-height:1.42857143}.form-horizontal .form-group{margin-right:-15px;margin-left:-15px}.form-group{margin-bottom:15px}.form-horizontal .control-label{padding-top:7px;margin-bottom:0;text-align:right}.form-control{display:block;width:100%;height:34px;padding:6px 12px;color:#555;background-color:#fff;border:1px solid #ccc;border-radius:4px;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075);box-shadow:inset 0 1px 1px rgba(0,0,0,.075);-webkit-transition:border-color ease-in-out .15s,-webkit-box-shadow ease-in-out .15s;-o-transition:border-color ease-in-out .15s,box-shadow ease-in-out .15s;transition:border-color ease-in-out .15s,box-shadow ease-in-out .15s}.col-xs-8{width:66.66666667%}.col-xs-3{width:25%}.col-xs-1,.col-xs-10,.col-xs-11,.col-xs-12,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9{float:left}.col-lg-1,.col-lg-10,.col-lg-11,.col-lg-12,.col-lg-2,.col-lg-3,.col-lg-4,.col-lg-5,.col-lg-6,.col-lg-7,.col-lg-8,.col-lg-9,.col-md-1,.col-md-10,.col-md-11,.col-md-12,.col-md-2,.col-md-3,.col-md-4,.col-md-5,.col-md-6,.col-md-7,.col-md-8,.col-md-9,.col-sm-1,.col-sm-10,.col-sm-11,.col-sm-12,.col-sm-2,.col-sm-3,.col-sm-4,.col-sm-5,.col-sm-6,.col-sm-7,.col-sm-8,.col-sm-9,.col-xs-1,.col-xs-10,.col-xs-11,.col-xs-12,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9{position:relative;min-height:1px;padding-right:15px;padding-left:15px}label{display:inline-block;margin-bottom:5px;font-weight:700}*{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}body{font-family:\"Helvetica Neue\",Helvetica,Arial,sans-serif;color:#333}html{font-size:10px;font-family:sans-serif;-webkit-text-size-adjust:100%}";
+
+  server.send(200, "text/css", message);
+}
+
+// ----------------------------------------------------------------------------------------------------
+// ----------------------------------------- Network handling -----------------------------------------
+// ----------------------------------------------------------------------------------------------------
+
+/**
+   Get the local time from the time zone server. Return the error description prefixed by "ERROR:" if something went wrong.
+   Uses the global variable timeServerURL.
+*/
+String getTimeFromTimeZoneServer() {
+  HTTPClient http;
+  String payload;
+
+  http.begin(timeServerURL);
+  String espId = "";espId += ESP.getChipId();
+  http.addHeader("ESP",espId);
+  http.addHeader("ClientID",serialNumber);
+
+  int httpCode = http.GET();
+
+  // file found at server
+  if (httpCode == HTTP_CODE_OK) {
+    payload = http.getString();
+  } else {
+    debugMsg("[HTTP] GET... failed, error: " + http.errorToString(httpCode));
+    if (httpCode > 0) {
+      // RFC error codes don't have a string mapping
+      payload = "ERROR: " + String(httpCode);
+    } else {
+      // ESP error codes have a string mapping
+      payload = "ERROR: " + String(httpCode) + " ("+ http.errorToString(httpCode) + ")";
+    }
+  }    
+
+  http.end();
+
+  return payload;
+}
+
+// ----------------------------------------------------------------------------------------------------
+// ------------------------------------------- HTML functions -----------------------------------------
+// ----------------------------------------------------------------------------------------------------
+
+String getHTMLHead() {
+  String header = "<!DOCTYPE html><html><head>";
+
+  if (WiFi.status() == WL_CONNECTED) {
+    header += "<link href=\"https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css\" rel=\"stylesheet\" integrity=\"sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7\" crossorigin=\"anonymous\">";
+    header += "<link href=\"http://www.open-rate.com/wl.css\" rel=\"stylesheet\" type=\"text/css\">";
+    header += "<script src=\"http://code.jquery.com/jquery-1.12.3.min.js\" integrity=\"sha256-aaODHAgvwQW1bFOGXMeX+pC4PZIPsvn2h1sArYOhgXQ=\" crossorigin=\"anonymous\"></script>";
+    header += "<script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js\" integrity=\"sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS\" crossorigin=\"anonymous\"></script>";
+  } else {
+    header += "<link href=\"local.css\" rel=\"stylesheet\">";
+  }
+  header += "<title>Arduino Nixie Clock Time Module</title></head>";
+  header += "<body>";
+  return header;
+}
+
+/**
+   Get the bootstrap top row navbar, including the Bootstrap links
+*/
+String getNavBar() {
+  String navbar = "<nav class=\"navbar navbar-inverse navbar-fixed-top\">";
+  navbar += "<div class=\"container-fluid\"><div class=\"navbar-header\"><button type=\"button\" class=\"navbar-toggle collapsed\" data-toggle=\"collapse\" data-target=\"#navbar\" aria-expanded=\"false\" aria-controls=\"navbar\">";
+  navbar += "<span class=\"sr-only\">Toggle navigation</span><span class=\"icon-bar\"></span><span class=\"icon-bar\"></span><span class=\"icon-bar\"></span></button>";
+  navbar += "<a class=\"navbar-brand\" href=\"#\">Arduino Nixie Clock Time Module</a></div><div id=\"navbar\" class=\"navbar-collapse collapse\"><ul class=\"nav navbar-nav navbar-right\">";
+  navbar += "<li><a href=\"/\">Summary</a></li><li><a href=\"/time\">Configure Time Server</a></li><li><a href=\"/clockconfig\">Configure clock settings</a></li></ul></div></div></nav>";
+  return navbar;
+} 
+
+/**
+   Get the header for a 2 column table
+*/
+String getTableHead2Col(String tableHeader, String col1Header, String col2Header) {
+  String tableHead = "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">";
+  tableHead += tableHeader;
+  tableHead += "</h3><div class=\"table-responsive\"><table class=\"table table-striped\"><thead><tr><th>";
+  tableHead += col1Header;
+  tableHead += "</th><th>";
+  tableHead += col2Header;
+  tableHead += "</th></tr></thead><tbody>";
+
+  return tableHead;
+}
+
+String getTableRow2Col(String col1Val, String col2Val) {
+  String tableRow = "<tr><td>";
+  tableRow += col1Val;
+  tableRow += "</td><td>";
+  tableRow += col2Val;
+  tableRow += "</td></tr>";
+
+  return tableRow;
+}
+
+String getTableRow2Col(String col1Val, int col2Val) {
+  String tableRow = "<tr><td>";
+  tableRow += col1Val;
+  tableRow += "</td><td>";
+  tableRow += col2Val;
+  tableRow += "</td></tr>";
+
+  return tableRow;
+}
+
+String getTableFoot() {
+  return "</tbody></table></div></div>";
+}
+
+/**
+   Get the header for an input form
+*/
+String getFormHead(String formTitle) {
+  String tableHead = "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">";
+  tableHead += formTitle;
+  tableHead += "</h3><form class=\"form-horizontal\">";
+
+  return tableHead;
+}
+
+/**
+   Get the header for an input form
+*/
+String getFormFoot() {
+  return "</form></div>";
+}
+
+String getHTMLFoot() {
+  return "</body></html>";
+}
+
+String getRadioGroupHeader(String header) {
+  String result = "<div class=\"form-group\"><label class=\"control-label col-xs-3\">";
+  result += header;
+  result += "</label>";
+  return result;
+}
+
+String getRadioButton(String group_name, String text, String value, boolean checked) {
+  String result = "<div class=\"col-xs-1\">";
+  if (checked) {
+    result += "<label class=\"radio-inline\"><input checked type=\"radio\" name=\"";
+  } else {
+    result += "<label class=\"radio-inline\"><input type=\"radio\" name=\"";
+  }
+  result += group_name;
+  result += "\" value=\"";
+  result += value;
+  result += "\"> ";
+  result += text;
+  result += "</label></div>";
+  return result;
+}
+
+String getRadioGroupFooter() {
+  String result = "</div>";
+  return result;
+}
+
+String getCheckBox(String checkbox_name, String value, String text, boolean checked) {
+  String result = "<div class=\"form-group\"><div class=\"col-xs-offset-3 col-xs-9\"><label class=\"checkbox-inline\">";
+  if (checked) {
+    result += "<input checked type=\"checkbox\" name=\"";
+  } else {
+    result += "<input type=\"checkbox\" name=\"";
+  }
+
+  result += checkbox_name;
+  result += "\" value=\"";
+  result += value;
+  result += "\"> ";
+  result += text;
+  result += "</label></div></div>";
+
+  return result;
+}
+
+String getDropDownHeader(String heading, String group_name, boolean wide) {
+  String result = "<div class=\"form-group\"><label class=\"control-label col-xs-3\">";
+  result += heading;
+  if (wide) {
+    result += "</label><div class=\"col-xs-8\"><select class=\"form-control\" name=\"";
+  } else {
+    result += "</label><div class=\"col-xs-2\"><select class=\"form-control\" name=\"";
+  }
+  result += group_name;
+  result += "\">";
+  return result;
+}
+
+String getDropDownOption (String value, String text, boolean checked) {
+  String result = "";
+  if (checked) {
+    result += "<option selected value=\"";
+  } else {
+    result += "<option value=\"";
+  }
+  result += value;
+  result += "\">";
+  result += text;
+  result += "</option>";
+  return result;
+}
+
+String getDropDownFooter() {
+  return "</select></div></div>";
+}
+
+String getNumberInput(String heading, String input_name, unsigned int minVal, unsigned int maxVal, unsigned int value, boolean disabled) {
+  String result = "<div class=\"form-group\"><label class=\"control-label col-xs-3\" for=\"";
+  result += input_name;
+  result += "\">";
+  result += heading;
+  result += "</label><div class=\"col-xs-2\"><input type=\"number\" class=\"form-control\" name=\"";
+  result += input_name;
+  result += "\" id=\"";
+  result += input_name;
+  result += "\" min=\"";
+  result += minVal;
+  result += "\" max=\"";
+  result += maxVal;
+  result += "\" value=\"";
+  result += value;
+  if (disabled) {
+    result += " disabled";
+  }
+  result += "\"></div></div>";
+
+  return result;
+}
+
+String getNumberInputWide(String heading, String input_name, byte minVal, byte maxVal, byte value, boolean disabled) {
+  String result = "<div class=\"form-group\"><label class=\"control-label col-xs-8\" for=\"";
+  result += input_name;
+  result += "\">";
+  result += heading;
+  result += "</label><div class=\"col-xs-2\"><input type=\"number\" class=\"form-control\" name=\"";
+  result += input_name;
+  result += "\" id=\"";
+  result += input_name;
+  result += "\" min=\"";
+  result += minVal;
+  result += "\" max=\"";
+  result += maxVal;
+  result += "\" value=\"";
+  result += value;
+  if (disabled) {
+    result += " disabled";
+  }
+  result += "\"></div></div>";
+
+  return result;
+}
+
+String getTextInput(String heading, String input_name, String value, boolean disabled) {
+  String result = "<div class=\"form-group\"><label class=\"control-label col-xs-3\" for=\"";
+  result += input_name;
+  result += "\">";
+  result += heading;
+  result += "</label><div class=\"col-xs-2\"><input type=\"text\" class=\"form-control\" name=\"";
+  result += input_name;
+  result += "\" id=\"";
+  result += input_name;
+  result += "\" value=\"";
+  result += value;
+  if (disabled) {
+    result += " disabled";
+  }
+  result += "\"></div></div>";
+
+  return result;
+}
+
+String getTextInputWide(String heading, String input_name, String value, boolean disabled) {
+  String result = "<div class=\"form-group\"><label class=\"control-label col-xs-3\" for=\"";
+  result += input_name;
+  result += "\">";
+  result += heading;
+  result += "</label><div class=\"col-xs-8\"><input type=\"text\" class=\"form-control\" name=\"";
+  result += input_name;
+  result += "\" id=\"";
+  result += input_name;
+  result += "\" value=\"";
+  result += value;
+  if (disabled) {
+    result += " disabled";
+  }
+  result += "\"></div></div>";
+
+  return result;
+}
+
+String getSubmitButton(String buttonText) {
+  String result = "<div class=\"form-group\"><div class=\"col-xs-offset-3 col-xs-9\"><input type=\"submit\" class=\"btn btn-primary\" value=\"";
+  result += buttonText;
+  result += "\"></div></div>";
+  return result;
+}
+
+void setTimeFromServer(String timeString) {
+  int years = getIntValue(timeString, ',', 0);
+  byte months = getIntValue(timeString, ',', 1);
+  byte days = getIntValue(timeString, ',', 2);
+  byte hours = getIntValue(timeString, ',', 3);
+  byte minutes = getIntValue(timeString, ',', 4);
+  byte seconds = getIntValue(timeString, ',', 5);
+  setTime(hours, minutes, seconds, days, months, years);
+}
+
+int getIntValue(String data, char separator, int index) {
+  String result = getValue(data, separator, index);
+  return atoi(result.c_str());
+}
+
+/**
+   Split a string based on a separator, get the element given by index
+*/
+String getValue(String data, char separator, int index)
+{
+  int found = 0;
+  int strIndex[] = {0, -1};
+  int maxIndex = data.length() - 1;
+  for (int i = 0; i <= maxIndex && found <= index; i++) {
+    if (data.charAt(i) == separator || i == maxIndex) {
+      found++;
+      strIndex[0] = strIndex[1] + 1;
+      strIndex[1] = (i == maxIndex) ? i + 1 : i;
+    }
+  }
+  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
