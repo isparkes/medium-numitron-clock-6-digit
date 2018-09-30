@@ -2897,7 +2897,7 @@ bool getConfigFromSpiffs() {
           debugMsg("Loaded ScrollBack mode: " + getBool(scrollback));
           
           fade = json["fade"].as<bool>();
-          debugMsg("Loaded Fade mode: " + String(fade));
+          debugMsg("Loaded Fade mode: " + getBool(fade));
           
           fadeSteps = json["fadeSteps"];
           debugMsg("Loaded Fade Steps mode: " + String(fadeSteps));
