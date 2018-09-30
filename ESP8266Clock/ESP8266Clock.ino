@@ -528,7 +528,7 @@ void setup()
     }
   #endif
 
-  if(!getConfigfromSpiffs()) {
+  if(!getConfigFromSpiffs()) {
     debugMsg("Setting default tzs");
     timeServerURL = DEFAULT_TIME_SERVER_URL_1;
     saveConfigToSpiffs();
@@ -601,9 +601,6 @@ void setup()
     for (int i = 0 ; i < 60 ; i++ ) {
       randomRGBFlash(20);
     }
-
-    // mark that we have done the EEPROM setup
-  //  EEPROM.write(EE_NEED_SETUP, true);
   }
 
   // If the button is held down while we are flashing, then do the test pattern
@@ -626,16 +623,13 @@ void setup()
     doTestPattern = true;
   }
 
-  // Read EEPROM values
-//  readEEPROMValues();
-
   if (doTestPattern) {
     debugMsg("Doing test sequence");
     boolean oldUseLDR = useLDR;
     byte oldBacklightMode = backlightMode;
 
     // reset the EEPROM values
-    factoryReset();
+    // factoryReset();
 
     // turn off LDR
     useLDR = false;
@@ -700,6 +694,9 @@ void setup()
   // Clear down any spurious button action
   button1.reset();
 
+  // recover saved config
+  getConfigFromSpiffs();
+  
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
   setTime(21, 36, 00, 28, 9, 2018);
@@ -2862,7 +2859,7 @@ String getValue(String data, char separator, int index)
 // ------------------------------------------- JSON functions -----------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-bool getConfigfromSpiffs() {
+bool getConfigFromSpiffs() {
   bool loaded = false;
   if (SPIFFS.begin()) {
     debugMsg("mounted file system");
@@ -2884,10 +2881,84 @@ bool getConfigfromSpiffs() {
         
         if (json.success()) {
           debugMsg("parsed json");
+
           char tzsTmp[256];
           strcpy(tzsTmp, json["time_zone"]);
           timeServerURL = String(tzsTmp);
           debugMsg("Loaded time server URL: " + timeServerURL);
+
+          hourMode = json["hourMode"].as<bool>();
+          debugMsg("Loaded 12/24H mode: " + getBool(hourMode));
+          
+          blankLeading = json["blankLeading"].as<bool>();
+          debugMsg("Loaded lead zero blanking: " + getBool(blankLeading));
+          
+          scrollback = json["scrollback"].as<bool>();
+          debugMsg("Loaded ScrollBack mode: " + getBool(scrollback));
+          
+          fade = json["fade"].as<bool>();
+          debugMsg("Loaded Fade mode: " + String(fade));
+          
+          fadeSteps = json["fadeSteps"];
+          debugMsg("Loaded Fade Steps mode: " + String(fadeSteps));
+          
+          dateFormat = json["dateFormat"];
+          debugMsg("Loaded date format: " + String(dateFormat));
+          
+          dimDark = json["dimDark"];
+          debugMsg("Loaded dimDark: " + String(dimDark));
+          
+          scrollSteps = json["scrollSteps"];
+          debugMsg("Loaded scroll steps: " + String(scrollSteps));
+          
+          dimBright = json["dimBright"];
+          debugMsg("Loaded dimBright: " + String(dimBright));
+          
+          sensorSmoothCountLDR = json["sensorSmoothCountLDR"];
+          debugMsg("Loaded sensorSmoothCountLDR: " + String(sensorSmoothCountLDR));
+          
+          backlightMode = json["backlightMode"];
+          debugMsg("Loaded backlight mode: " + String(backlightMode));
+          
+          redCnl = json["redCnl"];
+          debugMsg("Loaded redCnl: " + String(redCnl));
+          
+          grnCnl = json["grnCnl"];
+          debugMsg("Loaded grnCnl: " + String(grnCnl));
+          
+          bluCnl = json["bluCnl"];
+          debugMsg("Loaded bluCnl: " + String(bluCnl));
+          
+          blankHourStart = json["blankHourStart"];
+          debugMsg("Loaded blankHourStart: " + String(blankHourStart));
+          
+          blankHourEnd = json["blankHourEnd"];
+          debugMsg("Loaded blankHourEnd: " + String(blankHourEnd));
+          
+          cycleSpeed = json["cycleSpeed"];
+          debugMsg("Loaded cycleSpeed: " + String(cycleSpeed));
+          
+          minDim = json["minDim"];
+          debugMsg("Loaded minDim: " + String(minDim));
+          
+          antiGhost = json["antiGhost"];
+          debugMsg("Loaded antiGhost: " + String(antiGhost));
+          
+          pirTimeout = json["pirTimeout"];
+          debugMsg("Loaded pirTimeout: " + String(pirTimeout));
+          
+          useLDR = json["useLDR"];
+          debugMsg("Loaded useLDR: " + String(useLDR));
+          
+          blankMode = json["blankMode"];
+          debugMsg("Loaded blankMode: " + String(blankMode));
+          
+          slotsMode = json["slotsMode"];
+          debugMsg("Loaded slotsMode: " + String(slotsMode));
+          
+          usePIRPullup = json["usePIRPullup"];
+          debugMsg("Loaded usePIRPullup: " + String(usePIRPullup));
+          
           loaded = true;
         } else {
           debugMsg("failed to load json config");
@@ -2912,6 +2983,31 @@ void saveConfigToSpiffs() {
     DynamicJsonBuffer jsonBuffer;
     JsonObject& json = jsonBuffer.createObject();
     json["time_zone"] = timeServerURL;
+    json["hourMode"] = hourMode;
+    json["blankLeading"] = blankLeading;
+    json["scrollback"] = scrollback;
+    json["fade"] = fade;
+    json["fadeSteps"] = fadeSteps;
+    json["dateFormat"] = dateFormat;
+    json["dayBlanking"] = dayBlanking;
+    json["dimDark"] = dimDark;
+    json["scrollSteps"] = scrollSteps;
+    json["dimBright"] = dimBright;
+    json["sensorSmoothCountLDR"] = sensorSmoothCountLDR;
+    json["backlightMode"] = backlightMode;
+    json["redCnl"] = redCnl;
+    json["grnCnl"] = grnCnl;
+    json["bluCnl"] = bluCnl;
+    json["blankHourStart"] = blankHourStart;
+    json["blankHourEnd"] = blankHourEnd;
+    json["cycleSpeed"] = cycleSpeed;
+    json["minDim"] = minDim;
+    json["antiGhost"] = antiGhost;
+    json["pirTimeout"] = pirTimeout;
+    json["useLDR"] = useLDR;
+    json["blankMode"] = blankMode;
+    json["slotsMode"] = slotsMode;
+    json["usePIRPullup"] = usePIRPullup;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -2965,7 +3061,7 @@ void factoryReset() {
   slotsMode = SLOTS_MODE_DEFAULT;
   usePIRPullup = USE_PIR_PULLUP_DEFAULT;
 
-  //saveConfigToSpiffs();
+  saveConfigToSpiffs();
 }
 
 
@@ -3071,7 +3167,6 @@ void timeServerPageHandler()
   {
     if (strlen(server.arg("timeserverurl").c_str()) > 4) {
       timeServerURL = server.arg("timeserverurl").c_str();
-//      storeTimeServerURLInEEPROM(timeServerURL);
     }
   }
 
@@ -3183,12 +3278,12 @@ void clockConfigPageHandler()
     debugMsg("Got blankLeading param: " + server.arg("blankLeading"));
     if (server.arg("blankLeading") == "blank") {
       debugMsg("Set blank leading zero");
-      blankLeading = false;
+      blankLeading = true;
     }
 
     if (server.arg("blankLeading") == "show") {
       debugMsg("Set show leading zero");
-      blankLeading = true;
+      blankLeading = false;
     }
   }
 
@@ -3396,8 +3491,8 @@ void clockConfigPageHandler()
 
   // -----------------------------------------------------------------------------
 
-  // Get the options, put the result into variables called "config*"
-//  getClockOptionsFromI2C();
+  // Save the options
+  saveConfigToSpiffs();
 
   String response_message = getHTMLHead();
   response_message += getNavBar();
@@ -3874,4 +3969,12 @@ String getSubmitButton(String buttonText) {
   result += buttonText;
   result += "\"></div></div>";
   return result;
+}
+
+String getBool(bool value) {
+  if (value) {
+    return "true";
+  } else {
+    return "false"; 
+  }
 }
