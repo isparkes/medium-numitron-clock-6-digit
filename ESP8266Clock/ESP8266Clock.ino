@@ -34,16 +34,18 @@
 
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
-#include <DS3231.h>             // Wickert V1.0.2
-#include <TimeLib.h>            // Margolis V1.5.0
-#include <NeoPixelBus.h>        // Makuna V2.3.4
-#include <WiFiManager.h>          // https://github.com/tzapu/WiFiManager  (0.14.0)
-#include <ArduinoJson.h>          // https://github.com/bblanchon/ArduinoJson (5.13.2)
+#include <DS3231.h>             // https://github.com/NorthernWidget/DS3231 (Wickert V1.0.2)
+#include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis V1.5.0)
+#include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna V2.3.4)
+#include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (0.14.0)
+#include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (5.13.2)
 
 // Other parts of the code, broken out for clarity
 #include "ClockButton.h"
 #include "Transition.h"
 #include "DisplayDefs.h"
+#include "VFDDefs.h"
+#include "ClockUtils.h"
 
 // Software version shown in config menu
 #define SOFTWARE_VERSION    1
@@ -337,30 +339,8 @@ ESP8266WebServer server(80);
 //**********************************************************************************
 Transition transition(500, 1000, 3000);
 
-// ************************ Display management ************************
-#define SEG_A  B00000001
-#define SEG_B  B00000010
-#define SEG_C  B00000100
-#define SEG_D  B00001000
-#define SEG_E  B00010000
-#define SEG_F  B00100000
-#define SEG_G  B01000000
-#define SEG_DP B10000000
-
-#define DIGIT_0 SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F
-#define DIGIT_1 SEG_B | SEG_C
-#define DIGIT_2 SEG_A | SEG_B | SEG_D | SEG_D | SEG_E | SEG_G
-#define DIGIT_3 SEG_A | SEG_B | SEG_C | SEG_D | SEG_G
-#define DIGIT_4 SEG_B | SEG_C | SEG_F | SEG_G
-#define DIGIT_5 SEG_A | SEG_C | SEG_D | SEG_F | SEG_G
-#define DIGIT_6 SEG_A | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G
-#define DIGIT_7 SEG_A | SEG_B | SEG_C
-#define DIGIT_8 SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G
-#define DIGIT_9 SEG_A | SEG_B | SEG_C | SEG_D | SEG_F | SEG_G
-#define DIGIT_MINUS SEG_G
-
 byte digitData[10] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9};
-byte data1[6] = {1, 2, 4, 8, 16, 32};
+byte data1[6] = {1, 2, 4, 8, 16, 32}; // These refer to the bits we set for each grid
 
 byte NumberArray[6]    = {0, 0, 0, 0, 0, 0};
 byte currNumberArray[6] = {0, 0, 0, 0, 0, 0};
@@ -486,9 +466,6 @@ long lastUpdateFromServer = 0;
 // ********************** Input switch management **********************
 ClockButton button1(inputPin1, true);
 
-// ********************** WiFi server management ***********************
-WiFiManager wifiManager;
-
 //**********************************************************************************
 //**********************************************************************************
 //*                                    Setup                                       *
@@ -497,36 +474,42 @@ WiFiManager wifiManager;
 void setup()
 {
   setupDebug();
+  WiFiManager wifiManager;
+  #ifdef DEBUG
+  wifiManager.setDebugOutput(true);
+  #endif
 
-  wifiManager.setConfigPortalTimeout(60);
+  wifiManager.setConfigPortalTimeout(30);
 
   boolean connected = false;
-  while (!connected) {
-    #ifndef DEBUG
-      for (int i = 0 ; i < 5 ; i++) {
-      blueLedState = false;
-      setBlueLED(blueLedState);
-      delay(100);
-      blueLedState = true;
-      setBlueLED(blueLedState);
-      delay(100);
-    }
-    #endif
-    connected = wifiManager.autoConnect("VFDClock","SetMeUp!");
+  connected = wifiManager.autoConnect("VFDClock","SetMeUp!");
+//  while (!connected) {
+//    debugMsg("Attempting to connect");
+//      for (int i = 0 ; i < 5 ; i++) {
+//      blueLedState = false;
+//      setBlueLED(blueLedState);
+//      delay(100);
+//      blueLedState = true;
+//      setBlueLED(blueLedState);
+//      delay(100);
+//    }
+//    connected = wifiManager.autoConnect("VFDClock","SetMeUp!");
+//  }
+
+  if (connected) {
+    debugMsg("Connected!");
+  } else {
+    debugMsg("Could NOT Connect");
   }
 
-  #ifdef DEBUG
-    debugMsg("Connected!");
-  #else  
-    for (int i = 0 ; i < 3 ; i++) {
-      blueLedState = false;
-      setBlueLED(blueLedState);
-      delay(50);
-      blueLedState = true;
-      setBlueLED(blueLedState);
-      delay(500);
-    }
-  #endif
+  for (int i = 0 ; i < 3 ; i++) {
+    blueLedState = false;
+    setBlueLED(blueLedState);
+    delay(50);
+    blueLedState = true;
+    setBlueLED(blueLedState);
+    delay(500);
+  }
 
   if(!getConfigFromSpiffs()) {
     debugMsg("Setting default tzs");
@@ -2229,6 +2212,34 @@ void digitOff() {
 }
 
 // ************************************************************
+// Perform the parallel shift out to the registers
+// ************************************************************
+void shiftOutDual(uint8_t _loadPin,
+                  uint8_t _dataPin1,
+                  uint8_t _dataPin2,
+                  uint8_t _clockPin,
+                  uint8_t _bitOrder,
+                  uint8_t _val1,
+                  uint8_t _val2) {
+  uint8_t i;
+
+  digitalWrite(_loadPin, LOW);
+  for (i = 0; i < 8; i++) {
+    if (_bitOrder == LSBFIRST) {
+      digitalWrite(_dataPin1, !!(_val1 & (1 << i)));
+      digitalWrite(_dataPin2, !!(_val2 & (1 << i)));
+    }
+    else {
+      digitalWrite(_dataPin1, !!(_val1 & (1 << (7 - i))));
+      digitalWrite(_dataPin2, !!(_val2 & (1 << (7 - i))));
+    }
+    digitalWrite(_clockPin, HIGH);
+    digitalWrite(_clockPin, LOW);
+  }
+  digitalWrite(_loadPin, HIGH);
+}
+
+// ************************************************************
 // Display preset - apply leading zero blanking
 // ************************************************************
 void applyBlanking() {
@@ -2558,6 +2569,20 @@ void incYears() {
 }
 
 // ************************************************************
+// Set the time from the value we get back from the timer server
+// ************************************************************
+void setTimeFromServer(String timeString) {
+  int years = getIntValue(timeString, ',', 0);
+  byte months = getIntValue(timeString, ',', 1);
+  byte days = getIntValue(timeString, ',', 2);
+  byte hours = getIntValue(timeString, ',', 3);
+  byte minutes = getIntValue(timeString, ',', 4);
+  byte seconds = getIntValue(timeString, ',', 5);
+  setTime(hours, minutes, seconds, days, months, years);
+}
+
+
+// ************************************************************
 // Check the blanking
 // ************************************************************
 boolean checkBlanking() {
@@ -2635,6 +2660,9 @@ void setTubesAndLEDSBlankMode() {
   }
 }
 
+// ************************************************************
+// Random colour flash from the back lights
+// ************************************************************
 void randomRGBFlash(int delayVal) {
   if (random(3) == 0) {
     setAllLEDs(255,0,0);
@@ -2718,34 +2746,6 @@ float getRTCTemp() {
   }
 }
 
-// ************************************************************
-// Perform the parallel shift out to the registers
-// ************************************************************
-void shiftOutDual(uint8_t _loadPin,
-                  uint8_t _dataPin1,
-                  uint8_t _dataPin2,
-                  uint8_t _clockPin,
-                  uint8_t _bitOrder,
-                  uint8_t _val1,
-                  uint8_t _val2) {
-  uint8_t i;
-
-  digitalWrite(_loadPin, LOW);
-  for (i = 0; i < 8; i++) {
-    if (_bitOrder == LSBFIRST) {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << i)));
-      digitalWrite(_dataPin2, !!(_val2 & (1 << i)));
-    }
-    else {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << (7 - i))));
-      digitalWrite(_dataPin2, !!(_val2 & (1 << (7 - i))));
-    }
-    digitalWrite(_clockPin, HIGH);
-    digitalWrite(_clockPin, LOW);
-  }
-  digitalWrite(_loadPin, HIGH);
-}
-
 //**********************************************************************************
 //**********************************************************************************
 //*                          Light Dependent Resistor                              *
@@ -2793,7 +2793,6 @@ int getDimmingFromLDR() {
 void setupDebug() {
   #ifdef DEBUG
   Serial.begin(115200);
-  wifiManager.setDebugOutput(true);
   #endif
 }
 
@@ -2818,46 +2817,11 @@ void setBlueLED(boolean newState) {
   digitalWrite(BUILTIN_LED, newState);
 }
 
-String formatIPAsString(IPAddress ip) {
-  return String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
-}
-
-void setTimeFromServer(String timeString) {
-  int years = getIntValue(timeString, ',', 0);
-  byte months = getIntValue(timeString, ',', 1);
-  byte days = getIntValue(timeString, ',', 2);
-  byte hours = getIntValue(timeString, ',', 3);
-  byte minutes = getIntValue(timeString, ',', 4);
-  byte seconds = getIntValue(timeString, ',', 5);
-  setTime(hours, minutes, seconds, days, months, years);
-}
-
-int getIntValue(String data, char separator, int index) {
-  String result = getValue(data, separator, index);
-  return atoi(result.c_str());
-}
-
-/**
-   Split a string based on a separator, get the element given by index
-*/
-String getValue(String data, char separator, int index)
-{
-  int found = 0;
-  int strIndex[] = {0, -1};
-  int maxIndex = data.length() - 1;
-  for (int i = 0; i <= maxIndex && found <= index; i++) {
-    if (data.charAt(i) == separator || i == maxIndex) {
-      found++;
-      strIndex[0] = strIndex[1] + 1;
-      strIndex[1] = (i == maxIndex) ? i + 1 : i;
-    }
-  }
-  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
-}
-
-// ----------------------------------------------------------------------------------------------------
-// ------------------------------------------- JSON functions -----------------------------------------
-// ----------------------------------------------------------------------------------------------------
+//**********************************************************************************
+//**********************************************************************************
+//*                               JSON functions                                   *
+//**********************************************************************************
+//**********************************************************************************
 
 bool getConfigFromSpiffs() {
   bool loaded = false;
@@ -3065,9 +3029,11 @@ void factoryReset() {
 }
 
 
-// ----------------------------------------------------------------------------------------------------
-// ------------------------------------------- Page Handlers ------------------------------------------
-// ----------------------------------------------------------------------------------------------------
+//**********************************************************************************
+//**********************************************************************************
+//*                                Page Handlers                                   *
+//**********************************************************************************
+//**********************************************************************************
 
 /**
    Root page for the webserver
@@ -3236,6 +3202,7 @@ void updateTimePageHandler()
    Reset the EEPROM and stored values
 */
 void resetPageHandler() {
+  WiFiManager wifiManager;
   wifiManager.resetSettings();
 
   String response_message = getHTMLHead();
@@ -3608,6 +3575,8 @@ void clockConfigPageHandler()
   response_message += getDropDownOption("3", "Fixed RGB backlight, dims with ambient light", (backlightMode == 3));
   response_message += getDropDownOption("4", "Pulsing RGB backlight, dims with ambient light", (backlightMode == 4));
   response_message += getDropDownOption("5", "Cycling RGB backlight, dims with ambient light", (backlightMode == 5));
+  response_message += getDropDownOption("6", "'Colourtime' backlight", (backlightMode == 6));
+  response_message += getDropDownOption("7", "'Colourtime' backlight, dims with ambient light", (backlightMode == 7));
   response_message += getDropDownFooter();
 
   // RGB channels
@@ -3971,10 +3940,3 @@ String getSubmitButton(String buttonText) {
   return result;
 }
 
-String getBool(bool value) {
-  if (value) {
-    return "true";
-  } else {
-    return "false"; 
-  }
-}

@@ -1,0 +1,26 @@
+#ifndef VFDDefs_h
+#define VFDDefs_h
+
+// ************************ Display management ************************
+#define SEG_A  B00000001
+#define SEG_B  B00000010
+#define SEG_C  B00000100
+#define SEG_D  B00001000
+#define SEG_E  B00010000
+#define SEG_F  B00100000
+#define SEG_G  B01000000
+#define SEG_DP B10000000
+
+#define DIGIT_0 SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F
+#define DIGIT_1 SEG_B | SEG_C
+#define DIGIT_2 SEG_A | SEG_B | SEG_D | SEG_D | SEG_E | SEG_G
+#define DIGIT_3 SEG_A | SEG_B | SEG_C | SEG_D | SEG_G
+#define DIGIT_4 SEG_B | SEG_C | SEG_F | SEG_G
+#define DIGIT_5 SEG_A | SEG_C | SEG_D | SEG_F | SEG_G
+#define DIGIT_6 SEG_A | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G
+#define DIGIT_7 SEG_A | SEG_B | SEG_C
+#define DIGIT_8 SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G
+#define DIGIT_9 SEG_A | SEG_B | SEG_C | SEG_D | SEG_F | SEG_G
+#define DIGIT_MINUS SEG_G
+
+#endif
