@@ -320,13 +320,12 @@ ESP8266WebServer server(80);
 
 
 // button input
-#define inputPin1   5     // TX needs to move to 5 (D1) was 1
-
+#define inputPin1   0     // D3
 // PIR input
-#define pirPin      16    // D0 
+#define pirPin      2     // D4
 
 // PWM capable output for backlight - Neo Pixel chain
-#define LED_DOUT    2     // D4
+#define LED_DOUT    3     // RX defined by DMA output of library
 
 #define LDRPin      A0    // ADC input
 
@@ -340,7 +339,16 @@ ESP8266WebServer server(80);
 Transition transition(500, 1000, 3000);
 
 byte digitData[10] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9};
-byte data1[6] = {1, 2, 4, 8, 16, 32}; // These refer to the bits we set for each grid
+#define GRID_1    1
+#define GRID_2    2
+#define GRID_3    4
+#define GRID_4    8
+#define GRID_5    16
+#define GRID_6    32
+#define LED_1     64
+#define LED_2     128
+
+byte data1[6] = {GRID_1, GRID_2, GRID_3, GRID_4, GRID_5, GRID_6};
 
 byte NumberArray[6]    = {0, 0, 0, 0, 0, 0};
 byte currNumberArray[6] = {0, 0, 0, 0, 0, 0};
@@ -537,7 +545,7 @@ void setup()
   server.begin();
   debugMsg("HTTP server started");
   
-  pinMode(LED_DOUT, OUTPUT);
+//  pinMode(LED_DOUT, OUTPUT);
 
   if (usePIRPullup) {
     debugMsg("Setting PIR pullup");
@@ -545,7 +553,6 @@ void setup()
   } else {
     pinMode(pirPin, INPUT);
   }
-  digitalWrite(pirPin, HIGH);
   
   pinMode(LATCHPin, OUTPUT);
   pinMode(CLOCKPin, OUTPUT);
@@ -556,8 +563,8 @@ void setup()
   
   // NOTE:
   // Grounding the input pin causes it to actuate
-  // pinMode(inputPin1, INPUT_PULLUP);
-  pinMode(inputPin1, INPUT);
+  pinMode(inputPin1, INPUT_PULLUP);
+  // pinMode(inputPin1, INPUT);
 
   // The LEDS sometimes glow at startup, it annoys me, so turn them completely off
   //tlPWM = 0;
@@ -1028,9 +1035,6 @@ void setLeds()
 // ************************************************************
 boolean checkPIR(unsigned long nowMillis) {
   boolean pirvalue = (digitalRead(pirPin) == HIGH);
-
-  // testing
-  pirvalue = true;
 
   dpArray[5] = pirvalue;
   
@@ -2171,11 +2175,11 @@ void outputDisplay()
     // Main display loop - everything up to now was preparation
     for (int timer = DIGIT_DISPLAY_START ; timer < DIGIT_DISPLAY_COUNT ; timer++) {
       if (timer == digitOnTime) {
-        digitOn(i, currNumberArray[i], dpArray[i]);
+        digitOn(i, currNumberArray[i], dpArray[i], upOrDown, !upOrDown);
       }
 
       if  (timer == digitSwitchTime) {
-        digitOn(i, NumberArray[i], dpArray[i]);
+        digitOn(i, NumberArray[i], dpArray[i], upOrDown, !upOrDown);
       }
 
       if (timer == digitOffTime) {
@@ -2197,11 +2201,18 @@ void outputDisplay()
 // Assumes that all digits have previously been turned off
 // by a call to "digitOff"
 // ************************************************************
-void digitOn(byte digit, byte value, bool setDp) {
+void digitOn(byte digit, byte value, bool setDp, bool LED1, bool LED2) {
   byte dispValue = digitData[value];
   if (setDp)
     dispValue |= SEG_DP;
-  shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, data1[digit], dispValue);
+
+  byte gridValue = data1[digit];
+  if (LED1)
+    gridValue |= LED_1;
+  if (LED2)
+    gridValue |= LED_2;
+  
+  shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, gridValue, dispValue);
 }
 
 // ************************************************************
@@ -3663,6 +3674,7 @@ String getTimeFromTimeZoneServer() {
   // file found at server
   if (httpCode == HTTP_CODE_OK) {
     payload = http.getString();
+    useWiFi = 1;
   } else {
     debugMsg("[HTTP] GET... failed, error: " + http.errorToString(httpCode));
     if (httpCode > 0) {
@@ -3672,6 +3684,7 @@ String getTimeFromTimeZoneServer() {
       // ESP error codes have a string mapping
       payload = "ERROR: " + String(httpCode) + " ("+ http.errorToString(httpCode) + ")";
     }
+    useWiFi = 0;
   }    
 
   http.end();
