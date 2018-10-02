@@ -53,7 +53,7 @@
 // how often we make reference to the external time provider
 #define READ_TIME_PROVIDER_MILLIS 60000 // Update the internal time provider from the external source once every minute
 
-#define DEBUG     // DEBUG / DEBUG_OFF
+#define DEBUG_OFF     // DEBUG / DEBUG_OFF
 
 // ------------------------ Wifi ------------------------
 
@@ -204,13 +204,12 @@ ESP8266WebServer server(80);
 // Temporary display modes - accessed by a short press ( < 1S ) on the button when in MODE_TIME
 #define TEMP_MODE_MIN                   0
 #define TEMP_MODE_DATE                  0 // Display the date for 5 S
-#define TEMP_MODE_TEMP                  1 // Display the temperature for 5 S
-#define TEMP_MODE_LDR                   2 // Display the normalised LDR reading for 5S, returns a value from 100 (dark) to 999 (bright)
-#define TEMP_MODE_VERSION               3 // Display the version for 5S
-#define TEMP_IP_ADDR12                  4 // IP xxx.yyy.zzz.aaa: xxx.yyy
-#define TEMP_IP_ADDR34                  5 // IP xxx.yyy.zzz.aaa: zzz.aaa
-#define TEMP_IMPR                       6 // number of impressions per second
-#define TEMP_MODE_MAX                   6
+#define TEMP_MODE_LDR                   1 // Display the normalised LDR reading for 5S, returns a value from 100 (dark) to 999 (bright)
+#define TEMP_MODE_VERSION               2 // Display the version for 5S
+#define TEMP_IP_ADDR12                  3 // IP xxx.yyy.zzz.aaa: xxx.yyy
+#define TEMP_IP_ADDR34                  4 // IP xxx.yyy.zzz.aaa: zzz.aaa
+#define TEMP_IMPR                       5 // number of impressions per second
+#define TEMP_MODE_MAX                   5
 
 #define DATE_FORMAT_MIN                 0
 #define DATE_FORMAT_YYMMDD              0
@@ -354,7 +353,6 @@ byte NumberArray[6]    = {0, 0, 0, 0, 0, 0};
 byte currNumberArray[6] = {0, 0, 0, 0, 0, 0};
 byte displayType[6]    = {FADE, FADE, FADE, FADE, FADE, FADE};
 byte fadeState[6]      = {0, 0, 0, 0, 0, 0};
-byte ourIP[4]          = {0, 0, 0, 0}; // set by the WiFi module
 byte valueDisplayTime  = 0;
 byte valueToShow[3]    = {0, 0, 0};
 byte valueDisplayType[3] = {0x33, 0x33, 0x33}; // All normal by default
@@ -398,6 +396,8 @@ boolean blankTubes = false;
 boolean blankLEDs = false;
 
 int tlPWM = 0;
+
+IPAddress myIP;
 
 // ************************ Ambient light dimming ************************
 int dimDark = SENSOR_LOW_DEFAULT;
@@ -526,7 +526,7 @@ void setup()
   }
   
   IPAddress apIP = WiFi.softAPIP();
-  IPAddress myIP = WiFi.localIP();
+  myIP = WiFi.localIP();
   debugMsg("AP IP address: " + formatIPAsString(apIP));
   debugMsg("IP address: " + formatIPAsString(myIP));
 
@@ -1351,13 +1351,6 @@ void processCurrentMode() {
             loadNumberArrayDate();
           }
 
-          if (tempDisplayMode == TEMP_MODE_TEMP) {
-            byte timeProv = 10;
-            if (useRTC) timeProv += 1;
-            if (useWiFi > 0) timeProv += 2;
-            loadNumberArrayTemp(timeProv);
-          }
-
           if (tempDisplayMode == TEMP_MODE_LDR) {
             loadNumberArrayLDR();
           }
@@ -1368,7 +1361,7 @@ void processCurrentMode() {
 
           if (tempDisplayMode == TEMP_IP_ADDR12) {
             if (useWiFi > 0) {
-              loadNumberArrayIP(ourIP[0], ourIP[1]);
+              loadNumberArrayIP(myIP[0], myIP[1]);
             } else {
               // we can't show the IP address if we have the RTC, just skip
               tempDisplayMode++;
@@ -1377,7 +1370,7 @@ void processCurrentMode() {
 
           if (tempDisplayMode == TEMP_IP_ADDR34) {
             if (useWiFi > 0) {
-              loadNumberArrayIP(ourIP[2], ourIP[3]);
+              loadNumberArrayIP(myIP[2], myIP[3]);
             } else {
               // we can't show the IP address if we have the RTC, just skip
               tempDisplayMode++;
@@ -3674,7 +3667,7 @@ String getTimeFromTimeZoneServer() {
   // file found at server
   if (httpCode == HTTP_CODE_OK) {
     payload = http.getString();
-    useWiFi = 1;
+    useWiFi = MAX_WIFI_TIME;
   } else {
     debugMsg("[HTTP] GET... failed, error: " + http.errorToString(httpCode));
     if (httpCode > 0) {
