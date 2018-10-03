@@ -1,6 +1,28 @@
 #ifndef VFDDefs_h
 #define VFDDefs_h
 
+// output gpio run by 2 74HC595, driven by DATA1 and DATA2
+// Layout
+// DATA 1:
+//   Segment a
+//   Segment b
+//   Segment c
+//   Segment d
+//   Segment e
+//   Segment f
+//   Segment g
+//   Segment dp
+
+// DATA 2:
+//   grid Hx10
+//   grid Hx1
+//   grid Mx10
+//   grid Mx1
+//   grid Sx10
+//   grid Sx1
+//   LED 1 (between H and M)
+//   LED 2 (between M and S)
+
 // ************************ Display management ************************
 #define SEG_A  B00000001
 #define SEG_B  B00000010

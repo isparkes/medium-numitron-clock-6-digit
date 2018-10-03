@@ -1,13 +1,5 @@
 #include "ClockUtils.h"
 
-String getBool(bool value) {
-  if (value) {
-    return "true";
-  } else {
-    return "false"; 
-  }
-}
-
 String formatIPAsString(IPAddress ip) {
   return String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
 }

@@ -10,18 +10,18 @@
 //*  - Automatic dimming, using a Light Dependent Resistor                         *
 //*  - RGB back light management using individually addressable WS2812B            *
 //*  - PIR sensor to turn off display when no one is around                        *
-//*   Program with following settings (status line / IDE):
-//*
-//*    Board: Wemos D1 R2 & Mini
-//*    Crystal Frequency: 26MHz,
-//*    Flash: 80MHz, 
-//*    CPU: 160MHz, 
-//*    Flash Mode: QIO, 
-//*    Upload speed: 115200, 
-//*    Flash size: 4M (1M SPIFFS), 
-//*    Reset method: ck, Disabled, none
-//*    Erase Flash: All falsh contents,
-//*    Builtin LED: 1
+//*   Program with following settings (status line / IDE):                         *
+//*                                                                                *
+//*    Board: Wemos D1 R2 & Mini                                                   *
+//*    Crystal Frequency: 26MHz,                                                   *
+//*    Flash: 80MHz,                                                               *
+//*    CPU: 160MHz,                                                                *
+//*    Flash Mode: QIO,                                                            *
+//*    Upload speed: 115200,                                                       *
+//*    Flash size: 4M (1M SPIFFS),                                                 *
+//*    Reset method: ck, Disabled, none                                            *
+//*    Erase Flash: All falsh contents,                                            *
+//*    Builtin LED: 1                                                              *
 //*                                                                                *
 //*  nixie@protonmail.ch                                                           *
 //*                                                                                *
@@ -34,11 +34,12 @@
 
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
-#include <DS3231.h>             // https://github.com/NorthernWidget/DS3231 (Wickert V1.0.2)
-#include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis V1.5.0)
-#include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna V2.3.4)
-#include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (0.14.0)
-#include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (5.13.2)
+#include <DS3231.h>             // https://github.com/NorthernWidget/DS3231 (Wickert 1.0.2)
+#include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis 1.5.0)
+#include <Timezone.h>           // https://github.com/JChristensen/Timezone (Christensen 1.2.1)
+#include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna 2.3.4)
+#include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.14.0)
+#include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
 
 // Other parts of the code, broken out for clarity
 #include "ClockButton.h"
@@ -49,9 +50,6 @@
 
 // Software version shown in config menu
 #define SOFTWARE_VERSION    1
-
-// how often we make reference to the external time provider
-#define READ_TIME_PROVIDER_MILLIS 60000 // Update the internal time provider from the external source once every minute
 
 #define DEBUG_OFF     // DEBUG / DEBUG_OFF
 
@@ -266,9 +264,6 @@ ESP8266WebServer server(80);
 
 #define USE_LDR_DEFAULT                 true
 
-// Limit on the length of time we stay in test mode
-#define TEST_MODE_MAX_MS                60000
-
 #define SLOTS_MODE_MIN                  0
 #define SLOTS_MODE_NONE                 0   // Don't use slots effect
 #define SLOTS_MODE_1M_SCR_SCR           1   // use slots effect every minute, scroll in, scramble out
@@ -278,14 +273,12 @@ ESP8266WebServer server(80);
 // RTC address
 #define RTC_I2C_ADDRESS                 0x68
 
-#define MAX_WIFI_TIME                  5
+#define MAX_WIFI_TIME                   5   // The number of minutes to wait before we fall back to RTC
 
-#define DO_NOT_APPLY_LEAD_0_BLANK     false
-#define APPLY_LEAD_0_BLANK            true
+#define DO_NOT_APPLY_LEAD_0_BLANK       false
+#define APPLY_LEAD_0_BLANK              true
 
 #define PixelCount  6
-
-#define colorSaturation 16
 
 //**********************************************************************************
 //**********************************************************************************
@@ -294,29 +287,6 @@ ESP8266WebServer server(80);
 //**********************************************************************************
 
 // ***** Pin Defintions ****** Pin Defintions ****** Pin Defintions ******
-
-// output gpio run by 2 74HC595, driven by DATA1 and DATA2
-// Layout
-// DATA 1:
-//   Segment a
-//   Segment b
-//   Segment c
-//   Segment d
-//   Segment e
-//   Segment f
-//   Segment g
-//   Segment dp
-
-// DATA 2:
-//   grid Hx10
-//   grid Hx1
-//   grid Mx10
-//   grid Mx1
-//   grid Sx10
-//   grid Sx1
-//   LED 1 (between H and M)
-//   LED 2 (between M and S)
-
 
 // button input
 #define inputPin1   0     // D3
@@ -396,6 +366,7 @@ boolean blankTubes = false;
 boolean blankLEDs = false;
 
 int tlPWM = 0;
+bool testMode = false;
 
 IPAddress myIP;
 
@@ -482,7 +453,48 @@ ClockButton button1(inputPin1, true);
 void setup()
 {
   setupDebug();
+
+  // Set up shift registers
+  pinMode(LATCHPin, OUTPUT);
+  pinMode(CLOCKPin, OUTPUT);
+  pinMode(DATA1Pin, OUTPUT);
+  pinMode(DATA2Pin, OUTPUT);
+
+  // NOTE:
+  // Grounding the input pin causes it to actuate
+  pinMode(inputPin1, INPUT_PULLUP);
+
+  // turn off all digits
+  digitOff();
+
+  // Set up the LED output
+  leds.Begin();
+
+  setAllLEDs(255, 127, 0);
+  outputLEDBuffer();
+
+  if(!getConfigFromSpiffs()) {
+    debugMsg("No config found - resetting everything");
+    factoryReset();
+  } else {
+    // Test if the button is pressed for factory reset
+    for (int i = 0 ; i < 20 ; i++ ) {
+      button1.checkButton(nowMillis);
+    }
+
+    // User requested factory reset
+    if (button1.isButtonPressedNow()) {
+      debugMsg("Factory reset requested - resetting everything");
+      factoryReset();
+      // Flash some ramdom colours to signal that we have accepted the factory reset
+      for (int i = 0 ; i < 60 ; i++ ) {
+        randomRGBFlash(20);
+      }
+    }
+  }
+  
   WiFiManager wifiManager;
+  
   #ifdef DEBUG
   wifiManager.setDebugOutput(true);
   #endif
@@ -506,25 +518,13 @@ void setup()
 
   if (connected) {
     debugMsg("Connected!");
+    setAllLEDs(0, 255, 0);
   } else {
     debugMsg("Could NOT Connect");
+    setAllLEDs(255, 0, 0);
   }
+  outputLEDBuffer();
 
-  for (int i = 0 ; i < 3 ; i++) {
-    blueLedState = false;
-    setBlueLED(blueLedState);
-    delay(50);
-    blueLedState = true;
-    setBlueLED(blueLedState);
-    delay(500);
-  }
-
-  if(!getConfigFromSpiffs()) {
-    debugMsg("Setting default tzs");
-    timeServerURL = DEFAULT_TIME_SERVER_URL_1;
-    saveConfigToSpiffs();
-  }
-  
   IPAddress apIP = WiFi.softAPIP();
   myIP = WiFi.localIP();
   debugMsg("AP IP address: " + formatIPAsString(apIP));
@@ -545,8 +545,6 @@ void setup()
   server.begin();
   debugMsg("HTTP server started");
   
-//  pinMode(LED_DOUT, OUTPUT);
-
   if (usePIRPullup) {
     debugMsg("Setting PIR pullup");
     pinMode(pirPin, INPUT_PULLUP);
@@ -554,72 +552,18 @@ void setup()
     pinMode(pirPin, INPUT);
   }
   
-  pinMode(LATCHPin, OUTPUT);
-  pinMode(CLOCKPin, OUTPUT);
-  pinMode(DATA1Pin, OUTPUT);
-  pinMode(DATA2Pin, OUTPUT);
-
-  debugMsg("Starting");
-  
-  // NOTE:
-  // Grounding the input pin causes it to actuate
-  pinMode(inputPin1, INPUT_PULLUP);
-  // pinMode(inputPin1, INPUT);
-
-  // The LEDS sometimes glow at startup, it annoys me, so turn them completely off
-  //tlPWM = 0;
-  setAllLEDs(0,0,0);
-
   // **********************************************************************
-
-  debugMsg("Setting up LEDs");
-  
-  // Set up the LED output
-  leds.Begin();
-
-  // Set up the PRNG with something so that it looks random
-  randomSeed(analogRead(LDRPin));
-
-  // Test if the button is pressed for factory reset
-  for (int i = 0 ; i < 20 ; i++ ) {
-    button1.checkButton(nowMillis);
-  }
-
-  // User requested factory reset
-  if (button1.isButtonPressedNow()) {
-    // Flash some ramdom c0lours to signal that we have accepted the factory reset
-    for (int i = 0 ; i < 60 ; i++ ) {
-      randomRGBFlash(20);
-    }
-  }
-
-  // If the button is held down while we are flashing, then do the test pattern
-  boolean doTestPattern = false;
-
-  // Detect factory reset: button pressed on start or uninitialised EEPROM
-//  if (EEPROM.read(EE_NEED_SETUP)) {
-    doTestPattern = true;
-//  }
 
   // Clear down any spurious button action
   button1.reset();
 
-  // Test if the button is pressed for factory reset
-  for (int i = 0 ; i < 20 ; i++ ) {
-    button1.checkButton(nowMillis);
-  }
-
-  if (button1.isButtonPressedNow()) {
-    doTestPattern = true;
-  }
-
-  if (doTestPattern) {
+  if (testMode) {
     debugMsg("Doing test sequence");
     boolean oldUseLDR = useLDR;
     byte oldBacklightMode = backlightMode;
 
     // reset the EEPROM values
-    // factoryReset();
+    factoryReset();
 
     // turn off LDR
     useLDR = false;
@@ -653,9 +597,6 @@ void setup()
         secCount = secCount % 10;
       }
 
-      // turn off test mode
-      blankTubes = (nowMillis - startTestMode > TEST_MODE_MAX_MS);
-
       loadNumberArraySameValue(secCount);
       
       // debugMsg("Setting display: " + String(secCount));
@@ -684,9 +625,6 @@ void setup()
   // Clear down any spurious button action
   button1.reset();
 
-  // recover saved config
-  getConfigFromSpiffs();
-  
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
   setTime(21, 36, 00, 28, 9, 2018);
@@ -701,7 +639,8 @@ void setup()
   setTubesAndLEDSBlankMode();
 
   // mark that we have done the EEPROM setup
-  // EEPROM.write(EE_NEED_SETUP, false);
+  testMode = false;
+  saveConfigToSpiffs();
   
   debugMsg("Exit startup");
 }
@@ -713,7 +652,7 @@ void setup()
 //**********************************************************************************
 boolean millisNotSet = true;
 void loop()
-{  
+{
   server.handleClient();
   
   nowMillis = millis();
@@ -2668,6 +2607,9 @@ void setTubesAndLEDSBlankMode() {
 // Random colour flash from the back lights
 // ************************************************************
 void randomRGBFlash(int delayVal) {
+  // Set up the PRNG with something so that it looks random
+  randomSeed(analogRead(LDRPin));
+
   if (random(3) == 0) {
     setAllLEDs(255,0,0);
   }
@@ -2856,16 +2798,16 @@ bool getConfigFromSpiffs() {
           debugMsg("Loaded time server URL: " + timeServerURL);
 
           hourMode = json["hourMode"].as<bool>();
-          debugMsg("Loaded 12/24H mode: " + getBool(hourMode));
+          debugMsg("Loaded 12/24H mode: " + String(hourMode));
           
           blankLeading = json["blankLeading"].as<bool>();
-          debugMsg("Loaded lead zero blanking: " + getBool(blankLeading));
+          debugMsg("Loaded lead zero blanking: " + String(blankLeading));
           
           scrollback = json["scrollback"].as<bool>();
-          debugMsg("Loaded ScrollBack mode: " + getBool(scrollback));
+          debugMsg("Loaded ScrollBack mode: " + String(scrollback));
           
           fade = json["fade"].as<bool>();
-          debugMsg("Loaded Fade mode: " + getBool(fade));
+          debugMsg("Loaded Fade mode: " + String(fade));
           
           fadeSteps = json["fadeSteps"];
           debugMsg("Loaded Fade Steps mode: " + String(fadeSteps));
@@ -2927,6 +2869,9 @@ bool getConfigFromSpiffs() {
           usePIRPullup = json["usePIRPullup"];
           debugMsg("Loaded usePIRPullup: " + String(usePIRPullup));
           
+          usePIRPullup = json["testMode"].as<bool>();
+          debugMsg("Loaded testMode: " + String(testMode));
+          
           loaded = true;
         } else {
           debugMsg("failed to load json config");
@@ -2976,6 +2921,7 @@ void saveConfigToSpiffs() {
     json["blankMode"] = blankMode;
     json["slotsMode"] = slotsMode;
     json["usePIRPullup"] = usePIRPullup;
+    json["testMode"] = testMode;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -3028,6 +2974,7 @@ void factoryReset() {
   blankMode = BLANK_MODE_DEFAULT;
   slotsMode = SLOTS_MODE_DEFAULT;
   usePIRPullup = USE_PIR_PULLUP_DEFAULT;
+  testMode = true;
 
   saveConfigToSpiffs();
 }
