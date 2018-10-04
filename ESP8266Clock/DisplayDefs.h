@@ -1,6 +1,15 @@
 #ifndef DisplayDefs_h
 #define DisplayDefs_h
 
+// Display handling
+#define DIGIT_DISPLAY_START   0    // Inner loop start point per digit
+#define DIGIT_DISPLAY_COUNT   3000 // The number of times to traverse inner fade loop per digit
+#define DIGIT_DISPLAY_ON      100  // Switch on the digit after the "front porch" by default
+#define DIGIT_DISPLAY_OFF     2000 // Switch off the digit at the end by default
+#define DIGIT_DISPLAY_NEVER   -1   // When we don't want to switch on or off (i.e. blanking)
+#define DISPLAY_COUNT_MAX     2999 // Maximum value we can set to
+#define DISPLAY_COUNT_MIN     101  // Minimum value we can set to
+
 // Display mode, set per digit
 #define BLANKED  0
 #define DIMMED   1

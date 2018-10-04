@@ -45,4 +45,16 @@
 #define DIGIT_9 SEG_A | SEG_B | SEG_C | SEG_D | SEG_F | SEG_G
 #define DIGIT_MINUS SEG_G
 
+byte digitData[10] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9};
+#define GRID_1    1
+#define GRID_2    2
+#define GRID_3    4
+#define GRID_4    8
+#define GRID_5    16
+#define GRID_6    32
+#define LED_1     64
+#define LED_2     128
+
+byte data1[6] = {GRID_1, GRID_2, GRID_3, GRID_4, GRID_5, GRID_6};
+
 #endif
