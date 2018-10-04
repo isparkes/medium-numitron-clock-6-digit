@@ -4,7 +4,7 @@
 // Display handling
 #define DIGIT_DISPLAY_START   0    // Inner loop start point per digit
 #define DIGIT_DISPLAY_COUNT   3000 // The number of times to traverse inner fade loop per digit
-#define DIGIT_DISPLAY_ON      100  // Switch on the digit after the "front porch" by default
+#define DIGIT_DISPLAY_ON      99   // Switch on the digit after the "front porch" by default
 #define DIGIT_DISPLAY_OFF     2000 // Switch off the digit at the end by default
 #define DIGIT_DISPLAY_NEVER   -1   // When we don't want to switch on or off (i.e. blanking)
 #define DISPLAY_COUNT_MAX     2999 // Maximum value we can set to
@@ -48,5 +48,17 @@ const byte rgb_backlight_curve[] = {0, 16, 32, 48, 64, 80, 99, 112, 128, 144, 16
 const byte colourTimeR[] = { 255, 255,   0,   0,   0, 255, 255,   0,  15, 127};
 const byte colourTimeG[] = {   0, 255, 255, 255,   0,   0,  64, 255,  31, 127};
 const byte colourTimeB[] = {   0,   0,   0, 255, 255, 255,   0,  31, 255, 127};
+
+#define DIAGS_START       0
+#define DIAGS_SPIFFS      1
+#define DIAGS_WIFI        2
+#define DIAGS_TIMESERVER  3
+#define DIAGS_RTC         4
+#define DIAGS_DEBUG       5
+
+#define STATUS_RED    0
+#define STATUS_YELLOW 1
+#define STATUS_GREEN  2
+#define STATUS_BLUE   3
 
 #endif

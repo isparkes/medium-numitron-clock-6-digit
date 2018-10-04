@@ -51,7 +51,7 @@
 // Software version shown in config menu
 #define SOFTWARE_VERSION    1
 
-#define DEBUG     // DEBUG / DEBUG_OFF
+bool debugOutput = false;
 
 // ------------------------ Wifi ------------------------
 
@@ -67,10 +67,6 @@ unsigned long lastMillis = 0;
 
 byte preferredI2CSlaveAddress = 0xFF;
 byte preferredAddressFoundBy = 0; // 0 = not found, 1 = found by default, 2 = found by ping
-
-// Pin 1 on ESP-01, pin 2 on ESP-12E
-boolean blueLedState = true;
-int blinkMode = 0; // 0 = Connected, short flash, 1 = connected, update blink, 2 = connected, no time server
 
 String timeServerURL = DEFAULT_TIME_SERVER_URL_1;
 
@@ -348,6 +344,7 @@ boolean blankLEDs = false;
 
 int tlPWM = 0;
 bool testMode = false;
+byte ledMode = 0;
 
 // ************************ Ambient light dimming ************************
 int dimDark = SENSOR_LOW_DEFAULT;
@@ -428,7 +425,7 @@ ClockButton button1(inputPin1, true);
 
 void configModeCallback (WiFiManager *myWiFiManager) {
   debugMsg("*** Entered config mode");
-  setDiagnosticLED(1,3);
+  setDiagnosticLED(DIAGS_WIFI,STATUS_BLUE);
 }
 
 //**********************************************************************************
@@ -438,12 +435,16 @@ void configModeCallback (WiFiManager *myWiFiManager) {
 //**********************************************************************************
 void setup()
 {
+  if (button1.isButtonPressedNow()) {
+    debugOutput = true;    
+  }
+  
   setupDebug();
 
   // Set up the LED output
   leds.Begin();
 
-  setDiagnosticLED(0,2);
+  setDiagnosticLED(DIAGS_START,STATUS_GREEN);
 
   // Set up shift registers
   pinMode(LATCHPin, OUTPUT);
@@ -451,8 +452,7 @@ void setup()
   pinMode(DATA1Pin, OUTPUT);
   pinMode(DATA2Pin, OUTPUT);
 
-  // NOTE:
-  // Grounding the input pin causes it to actuate
+  // NOTE: Grounding the input pin causes it to actuate
   pinMode(inputPin1, INPUT_PULLUP);
 
   // turn off all digits
@@ -461,65 +461,43 @@ void setup()
   if(!getConfigFromSpiffs()) {
     debugMsg("No config found - resetting everything");
     factoryReset();
+    setDiagnosticLED(DIAGS_SPIFFS,STATUS_BLUE);
   } else {
-    // Test if the button is pressed for factory reset
-    for (int i = 0 ; i < 20 ; i++ ) {
-      button1.checkButton(nowMillis);
-    }
-
-    // User requested factory reset
-    if (button1.isButtonPressedNow()) {
-      debugMsg("Factory reset requested - resetting everything");
-      factoryReset();
-      // Flash some ramdom colours to signal that we have accepted the factory reset
-      for (int i = 0 ; i < 60 ; i++ ) {
-        randomRGBFlash(20);
-      }
-    }
+    setDiagnosticLED(DIAGS_SPIFFS,STATUS_GREEN);
   }
-  
+
   WiFiManager wifiManager;
-  
-  #ifdef DEBUG
-  wifiManager.setDebugOutput(true);
-  #endif
+
+  if (debugOutput) wifiManager.setDebugOutput(true);
 
   wifiManager.setConfigPortalTimeout(30);
   wifiManager.setAPCallback(configModeCallback);
   
-  setDiagnosticLED(1,1);
+  setDiagnosticLED(DIAGS_WIFI,STATUS_YELLOW);
+  
   boolean connected = false;
   connected = wifiManager.autoConnect("VFDClock","SetMeUp!");
-//  while (!connected) {
-//    debugMsg("Attempting to connect");
-//      for (int i = 0 ; i < 5 ; i++) {
-//      blueLedState = false;
-//      delay(100);
-//      blueLedState = true;
-//      delay(100);
-//    }
-//    connected = wifiManager.autoConnect("VFDClock","SetMeUp!");
-//  }
 
   if (connected) {
     debugMsg("Connected!");
-    setDiagnosticLED(1,2);
+    setDiagnosticLED(DIAGS_WIFI,STATUS_GREEN);
   } else {
     debugMsg("Could NOT Connect");
-    setDiagnosticLED(1,0);
-  }
-
-  lastTimeFromServer = getTimeFromTimeZoneServer();
-  if (!lastTimeFromServer.startsWith("ERROR:")) {
-    setDiagnosticLED(2,0);
-  } else {
-    setDiagnosticLED(2,2);
+    setDiagnosticLED(DIAGS_WIFI,STATUS_RED);
   }
 
   IPAddress apIP = WiFi.softAPIP();
   IPAddress myIP = WiFi.localIP();
   debugMsg("AP IP address: " + formatIPAsString(apIP));
   debugMsg("IP address: " + formatIPAsString(myIP));
+
+  lastTimeFromServer = getTimeFromTimeZoneServer();
+  if (!lastTimeFromServer.startsWith("ERROR:")) {
+    debugMsg(lastTimeFromServer);
+    setDiagnosticLED(DIAGS_TIMESERVER,STATUS_RED);
+  } else {
+    setDiagnosticLED(DIAGS_TIMESERVER,STATUS_GREEN);
+  }
 
   Wire.begin(0, 2); // SDA = 0, SCL = 2
   debugMsg("I2C master started");
@@ -534,7 +512,6 @@ void setup()
 
   server.begin();
   debugMsg("HTTP server started");
-  setDiagnosticLED(3,2);
   
   if (usePIRPullup) {
     debugMsg("Setting PIR pullup");
@@ -603,6 +580,8 @@ void setup()
       button1.checkButton(nowMillis);
       if (button1.isButtonPressedNow() && (secCount == 8)) {
         inLoop = false;
+        testMode = false;
+        saveConfigToSpiffs();
       }
     }
 
@@ -615,12 +594,12 @@ void setup()
 
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
-  setTime(21, 36, 00, 28, 9, 2018);
+  setTime(12, 34, 56, 1, 10, 2018);
   getRTCTime();
   if (useRTC) {
-    setDiagnosticLED(4,2);
+    setDiagnosticLED(DIAGS_RTC,STATUS_GREEN);
   } else {
-    setDiagnosticLED(4,0);
+    setDiagnosticLED(DIAGS_RTC,STATUS_RED);
   }
 
   // Show the version for 1 s
@@ -634,8 +613,13 @@ void setup()
   // mark that we have done the EEPROM setup
   testMode = false;
   saveConfigToSpiffs();
+
+  if (debugOutput) {
+    setDiagnosticLED(DIAGS_DEBUG,STATUS_BLUE);
+  } else {
+    setDiagnosticLED(DIAGS_DEBUG,STATUS_GREEN);
+  }
   
-  setDiagnosticLED(5,2);
   debugMsg("Exit startup in 1 second");
   delay(1000);
 }
@@ -741,6 +725,14 @@ void loop()
   setLeds();
 
   outputDisplay();
+
+//  // ******************* Blue LED pulse *******************
+//  if ((nowMillis - lastMillis) > blinkTopTime) {
+//    lastMillis = nowMillis;
+//    setBlueLED(false);
+//  } else if ((nowMillis - lastMillis) > blinkOnTime) {
+//    setBlueLED(true);
+//  }
 }
 
 // ************************************************************
@@ -830,20 +822,18 @@ void performOncePerMinuteProcessing() {
   // Try to recover the current time
   lastTimeFromServer = getTimeFromTimeZoneServer();
 
-  // Send the time to the I2C client, but only if there was no error
-  if (lastTimeFromServer.startsWith("ERROR:")) {
+  if (!lastTimeFromServer.startsWith("ERROR:")) {
     setTimeFromServer(lastTimeFromServer);
         
-    blinkMode = 1;
+    setBlinkMode(1);
         
     // all OK, flash 10 millisecond per second
-    debugMsg("Normal time serve mode");
+    debugMsg("Update from time server OK");
 
     lastUpdateFromServer = nowMillis;
   } else {
-    // connected, but time server not found, flash middle speed
-    blinkMode = 2;
-    debugMsg("Connected, but no time server found");
+    setBlinkMode(2);
+    debugMsg("No time server update");
   }
 }
 
@@ -2734,26 +2724,15 @@ int getDimmingFromLDR() {
 }
 
 void setupDebug() {
-  #ifdef DEBUG
-  Serial.begin(115200);
-  #endif
+  if (debugOutput) Serial.begin(115200);
 }
 
 void debugMsg(String message) {
-  #ifdef DEBUG
-  Serial.println(message);
-  #endif
+  if (debugOutput) Serial.println(message);
 }
 
 void debugMsgCont(String message) {
-  #ifdef DEBUG
-  Serial.print(message);
-  #endif
-}
-
-void toggleBlueLED() {
-  blueLedState = ! blueLedState;
-  digitalWrite(BUILTIN_LED_PIN, blueLedState);
+  if (debugOutput) Serial.print(message);
 }
 
 void setBlueLED(boolean newState) {
@@ -2869,6 +2848,9 @@ bool getConfigFromSpiffs() {
           usePIRPullup = json["testMode"].as<bool>();
           debugMsg("Loaded testMode: " + String(testMode));
           
+          debugOutput = json["debugOutput"].as<bool>();
+          debugMsg("Loaded debugOutput: " + String(debugOutput));
+          
           loaded = true;
         } else {
           debugMsg("failed to load json config");
@@ -2919,6 +2901,7 @@ void saveConfigToSpiffs() {
     json["slotsMode"] = slotsMode;
     json["usePIRPullup"] = usePIRPullup;
     json["testMode"] = testMode;
+    json["debugOutput"] = debugOutput;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -2972,6 +2955,7 @@ void factoryReset() {
   slotsMode = SLOTS_MODE_DEFAULT;
   usePIRPullup = USE_PIR_PULLUP_DEFAULT;
   testMode = true;
+  debugOutput = false;
 
   saveConfigToSpiffs();
 }
@@ -3130,9 +3114,10 @@ void timeServerPageHandler() {
 void resetPageHandler() {
   debugMsg("Reset page in");
   setBlueLED(true);
-  
+
   WiFiManager wifiManager;
   wifiManager.resetSettings();
+  factoryReset();
 
   String response_message = getHTMLHead();
   response_message += getNavBar();
@@ -3146,6 +3131,10 @@ void resetPageHandler() {
 
   setBlueLED(false);
   debugMsg("Reset page out");
+
+  // do the restart
+  ESP.restart();
+  
 }
 
 // ===================================================================================================================
@@ -3381,6 +3370,33 @@ void clockConfigPageHandler() {
 
   // -----------------------------------------------------------------------------
 
+  if (server.hasArg("pirTimeout")) {
+    debugMsg("Got pirTimeout param: " + server.arg("pirTimeout"));
+    int newPirTimeOut = atoi(server.arg("pirTimeout").c_str());
+    if (newPirTimeOut != pirTimeout) {
+      pirTimeout = newPirTimeOut;
+      debugMsg("I2C --> Set pirTimeout: " + newPirTimeOut);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  
+  if (server.hasArg("usePirPullup"))
+  {
+    debugMsg("Got usePirPullup param: " + server.arg("usePirPullup"));
+    if (server.arg("usePirPullup") == "on") {
+      debugMsg("Set usePirPullup on");
+      usePIRPullup = true;
+    }
+
+    if (server.arg("usePirPullup") == "off") {
+      debugMsg("Set usePirPullup off");
+      usePIRPullup = false;
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+
   if (server.hasArg("minDim")) {
     debugMsg("Got minDim param: " + server.arg("minDim"));
     int newMinDim = atoi(server.arg("minDim").c_str());
@@ -3388,6 +3404,23 @@ void clockConfigPageHandler() {
       minDim = newMinDim;
       debugMsg("I2C --> Set minDim: " + newMinDim);
     }
+  }
+
+  // -----------------------------------------------------------------------------
+
+  if (server.hasArg("debugOutput"))
+  {
+    debugMsg("Got debugOutput param: " + server.arg("debugOutput"));
+    if (server.arg("debugOutput") == "on") {
+      debugMsg("Set debugOutput on");
+      debugOutput = true;
+    }
+
+    if (server.arg("debugOutput") == "off") {
+      debugMsg("Set debugOutput off");
+      debugOutput = false;
+    }
+    setupDebug();
   }
 
   // -----------------------------------------------------------------------------
@@ -3458,7 +3491,6 @@ void clockConfigPageHandler() {
     response_message += getRadioButton("useLDR", "Off", "off", true);
   }
   response_message += getRadioGroupFooter();
-  //response_message += getCheckBox("useLDR", "on", "Use LDR for dimming", (useLDR == 1));
 
   // Date format
   response_message += getDropDownHeader("Date format:", "dateFormat", false);
@@ -3527,9 +3559,42 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("1", "Scroll In, Scramble Out", (slotsMode == 1));
   response_message += getDropDownFooter();
 
+  // LED mode
+  response_message += getDropDownHeader("LED Mode:", "ledMode", true);
+  response_message += getDropDownOption("0", "RailRoad", (ledMode == 0));
+  response_message += getDropDownOption("1", "Slow flash", (ledMode == 1));
+  response_message += getDropDownOption("1", "Fast flash", (ledMode == 2));
+  response_message += getDropDownOption("1", "Double flash", (ledMode == 3));
+  response_message += getDropDownFooter();
+  
+  // PIR timeout
+  response_message += getNumberInput("PIR timeout:", "pirTimeout", 60, 3600, pirTimeout, false);
+
+  // PIR pullup
+  response_message += getRadioGroupHeader("Use PIR pullup:");
+  if (usePIRPullup) {
+    response_message += getRadioButton("usePirPullup", "On", "on", true);
+    response_message += getRadioButton("usePirPullup", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("usePirPullup", "On", "on", false);
+    response_message += getRadioButton("usePirPullup", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
+
   // Min dim
   response_message += getNumberInput("Min Dim:", "minDim", 100, 500, minDim, false);
   
+  // debugOutput
+  response_message += getRadioGroupHeader("Debug to serial:");
+  if (debugOutput) {
+    response_message += getRadioButton("debugOutput", "On", "on", true);
+    response_message += getRadioButton("debugOutput", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("debugOutput", "On", "on", false);
+    response_message += getRadioButton("debugOutput", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
+
   // form footer
   response_message += getSubmitButton("Set");
 
@@ -3900,19 +3965,19 @@ void setDiagnosticLED(byte stepNumber, byte state) {
     if(i > stepNumber) {
       ledR[i] = ledG[i] = ledB[i] = 0;
     } else if (i == stepNumber) {
-      if (state == 0) {
+      if (state == STATUS_RED) {
         ledR[i] = 0xff;
         ledG[i] = 0;
         ledB[i] = 0;
-      } else if (state == 1) {
+      } else if (state == STATUS_YELLOW) {
         ledR[i] = 0xff;
         ledG[i] = 0x7f;
-        ledB[i] = 0;
-      } else if (state == 2) {
+        ledB[i] = 0x0f;
+      } else if (state == STATUS_GREEN) {
         ledR[i] = 0;
         ledG[i] = 0xff;
         ledB[i] = 0;
-      } else if (state == 3) {
+      } else if (state == STATUS_BLUE) {
         ledR[i] = 0;
         ledG[i] = 0;
         ledB[i] = 0xff;
@@ -3920,5 +3985,38 @@ void setDiagnosticLED(byte stepNumber, byte state) {
     }
   }
   outputLEDBuffer();
+
+  // A little pause for effect
+  delay(500);
+}
+
+// 0 = Connected, short flash, 1 = connected, update blink, 2 = connected, no time server
+void setBlinkMode(byte newMode) {
+  switch (newMode) {
+    case 0:
+      {
+        blinkOnTime = 5;
+        blinkTopTime = 1000;
+        break;
+      }
+    case 1:
+      {
+        blinkOnTime = 250;
+        blinkTopTime = 1000;
+        break;
+      }
+    case 2:
+      {
+        blinkOnTime = 250;
+        blinkTopTime = 500;
+        break;
+      }
+    case 3:
+      {
+        blinkOnTime = 100;
+        blinkTopTime = 200;
+        break;
+      }
+  }
 }
 
