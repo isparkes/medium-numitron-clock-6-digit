@@ -65,9 +65,6 @@ int blinkOnTime = 1000;
 int blinkTopTime = 2000;
 unsigned long lastMillis = 0;
 
-byte preferredI2CSlaveAddress = 0xFF;
-byte preferredAddressFoundBy = 0; // 0 = not found, 1 = found by default, 2 = found by ping
-
 String timeServerURL = DEFAULT_TIME_SERVER_URL_1;
 
 ESP8266WebServer server(80);
@@ -277,14 +274,9 @@ ESP8266WebServer server(80);
 
 // ***** Pin Defintions ****** Pin Defintions ****** Pin Defintions ******
 
-// button input
 #define inputPin1   0     // D3
-// PIR input
 #define pirPin      2     // D4
-
-// PWM capable output for backlight - Neo Pixel chain
 #define LED_DOUT    3     // RX defined by DMA output of library
-
 #define LDRPin      A0    // ADC input
 
 // Shift register
@@ -303,7 +295,7 @@ byte fadeState[6]      = {0, 0, 0, 0, 0, 0};
 byte valueDisplayTime  = 0;
 byte valueToShow[3]    = {0, 0, 0};
 byte valueDisplayType[3] = {0x33, 0x33, 0x33}; // All normal by default
-
+ 
 // Decimal point indicators
 boolean dpArray[6]         = {false, false, false, false, false, false};
 
@@ -342,9 +334,7 @@ byte blankMode = 0;
 boolean blankTubes = false;
 boolean blankLEDs = false;
 
-int tlPWM = 0;
 bool testMode = false;
-byte ledMode = 0;
 
 // ************************ Ambient light dimming ************************
 int dimDark = SENSOR_LOW_DEFAULT;
@@ -385,6 +375,10 @@ byte useWiFi = 0; // the number of minutes ago we recevied information from the 
 
 // **************************** LED management ***************************
 boolean upOrDown;
+
+int tlPWM = 0;
+byte ledMode = 0;       // Separator LED mode
+byte ledValue = 0;      // Current separator LED grid control value
 
 // Blinking colons led in settings modes
 int ledBlinkCtr = 0;
@@ -435,10 +429,6 @@ void configModeCallback (WiFiManager *myWiFiManager) {
 //**********************************************************************************
 void setup()
 {
-  if (button1.isButtonPressedNow()) {
-    debugOutput = true;    
-  }
-  
   setupDebug();
 
   // Set up the LED output
@@ -492,7 +482,7 @@ void setup()
   debugMsg("IP address: " + formatIPAsString(myIP));
 
   lastTimeFromServer = getTimeFromTimeZoneServer();
-  if (!lastTimeFromServer.startsWith("ERROR:")) {
+  if (lastTimeFromServer.startsWith("ERROR:")) {
     debugMsg(lastTimeFromServer);
     setDiagnosticLED(DIAGS_TIMESERVER,STATUS_RED);
   } else {
@@ -859,6 +849,27 @@ void setLeds()
     secsDelta = (nowMillis - lastCheckMillis);
   } else {
     secsDelta = 1000 - (nowMillis - lastCheckMillis);
+  }
+
+  switch (ledMode) {
+    case LED_RAILROAD:
+    {
+      if (upOrDown) {
+        ledValue = LED_1;
+      } else {
+        ledValue = LED_2;
+      }
+      break;
+    }
+    case LED_BLINK_SLOW:
+    {
+      if (upOrDown) {
+        ledValue = LED_1 | LED_2;
+      } else {
+        ledValue = 0;
+      }
+      break;
+    }
   }
 
   // calculate the PWM factor, goes between minDim% and 100%
@@ -2126,10 +2137,7 @@ void digitOn(byte digit, byte value, bool setDp, bool LED1, bool LED2) {
     dispValue |= SEG_DP;
 
   byte gridValue = data1[digit];
-  if (LED1)
-    gridValue |= LED_1;
-  if (LED2)
-    gridValue |= LED_2;
+  gridValue |= ledValue;
   
   shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, gridValue, dispValue);
 }
@@ -3021,13 +3029,6 @@ void rootPageHandler() {
     int error = Wire.endTransmission();
     if (error == 0) {
       String slaveMsg = "Found I2C slave at";
-      if (idx == preferredI2CSlaveAddress) {
-        if (preferredAddressFoundBy == 1) {
-          slaveMsg += " (default)";
-        } else if (preferredAddressFoundBy == 2) {
-          slaveMsg += " (ping)";
-        }
-      }
       response_message += getTableRow2Col(slaveMsg,idx);
     }
   }
@@ -3146,17 +3147,21 @@ void resetPageHandler() {
 void clockConfigPageHandler() {
   debugMsg("Config page in");
   setBlueLED(true);
+
+  bool changed = false;
   
   if (server.hasArg("12h24hMode"))
   {
     debugMsg("Got 24h mode param: " + server.arg("12h24hMode"));
-    if (server.arg("12h24hMode") == "24h") {
+    if ((server.arg("12h24hMode") == "24h") && (hourMode)) {
       debugMsg("Set 24h mode");
+      changed = true;
       hourMode = false;
     }
 
-    if (server.arg("12h24hMode") == "12h") {
+    if ((server.arg("12h24hMode") == "12h") && (!hourMode)) {
       debugMsg("Set 12h mode");
+      changed = true;
       hourMode = true;
     }
   }
@@ -3166,13 +3171,15 @@ void clockConfigPageHandler() {
   if (server.hasArg("blankLeading"))
   {
     debugMsg("Got blankLeading param: " + server.arg("blankLeading"));
-    if (server.arg("blankLeading") == "blank") {
+    if ((server.arg("blankLeading") == "blank") && (!blankLeading)) {
       debugMsg("Set blank leading zero");
+      changed = true;
       blankLeading = true;
     }
 
-    if (server.arg("blankLeading") == "show") {
+    if ((server.arg("blankLeading") == "show") && (blankLeading)) {
       debugMsg("Set show leading zero");
+      changed = true;
       blankLeading = false;
     }
   }
@@ -3182,13 +3189,15 @@ void clockConfigPageHandler() {
   if (server.hasArg("useScrollback"))
   {
     debugMsg("Got useScrollback param: " + server.arg("useScrollback"));
-    if (server.arg("useScrollback") == "on") {
+    if ((server.arg("useScrollback") == "on") && (!scrollback)) {
       debugMsg("Set scrollback on");
+      changed = true;
       scrollback = true;
     }
 
-    if (server.arg("useScrollback") == "off") {
+    if ((server.arg("useScrollback") == "off") && (scrollback)) {
       debugMsg("Set scrollback off");
+      changed = true;
       scrollback = false;
     }
   }
@@ -3198,13 +3207,15 @@ void clockConfigPageHandler() {
   if (server.hasArg("fade"))
   {
     debugMsg("Got fade param: " + server.arg("fade"));
-    if (server.arg("fade") == "on") {
+    if ((server.arg("fade") == "on") && (!fade)) {
       debugMsg("Set fade on");
+      changed = true;
       fade = true;
     }
 
-    if (server.arg("fade") == "off") {
+    if ((server.arg("fade") == "off") && (fade)) {
       debugMsg("Set fade off");
+      changed = true;
       fade = false;
     }
   }
@@ -3214,13 +3225,15 @@ void clockConfigPageHandler() {
   if (server.hasArg("useLDR"))
   {
     debugMsg("Got useLDR param: " + server.arg("useLDR"));
-    if (server.arg("useLDR") == "on") {
+    if ((server.arg("useLDR") == "on") && (!useLDR)) {
       debugMsg("Set useLDR on");
+      changed = true;
       useLDR = true;
     }
 
-    if (server.arg("useLDR") == "off") {
+    if ((server.arg("useLDR") == "off") && (useLDR)) {
       debugMsg("Set useLDR off");
+      changed = true;
       useLDR = false;
     }
   }
@@ -3231,8 +3244,9 @@ void clockConfigPageHandler() {
     debugMsg("Got dateFormat param: " + server.arg("dateFormat"));
     byte newDateFormat = atoi(server.arg("dateFormat").c_str());
     if (newDateFormat != dateFormat) {
+      changed = true;
       dateFormat = newDateFormat;
-      debugMsg("I2C --> Set dateFormat: " + newDateFormat);
+      debugMsg("Set dateFormat: " + newDateFormat);
     }
   }
 
@@ -3242,8 +3256,9 @@ void clockConfigPageHandler() {
     debugMsg("Got dayBlanking param: " + server.arg("dayBlanking"));
     byte newDayBlanking = atoi(server.arg("dayBlanking").c_str());
     if (newDayBlanking != dayBlanking) {
+      changed = true;
       dayBlanking = newDayBlanking;
-      debugMsg("I2C --> Set dayBlanking: " + newDayBlanking);
+      debugMsg("Set dayBlanking: " + newDayBlanking);
     }
   }
 
@@ -3253,8 +3268,9 @@ void clockConfigPageHandler() {
     debugMsg("Got blankHourStart param: " + server.arg("blankHourStart"));
     byte newBlankFrom = atoi(server.arg("blankHourStart").c_str());
     if (newBlankFrom != blankHourStart) {
+      changed = true;
       blankHourStart = newBlankFrom;
-      debugMsg("I2C --> Set blankHourStart: " + newBlankFrom);
+      debugMsg("Set blankHourStart: " + newBlankFrom);
     }
   }
 
@@ -3264,8 +3280,9 @@ void clockConfigPageHandler() {
     debugMsg("Got blankHourEnd param: " + server.arg("blankHourEnd"));
     byte newBlankTo = atoi(server.arg("blankHourEnd").c_str());
     if (newBlankTo != blankHourEnd) {
+      changed = true;
       blankHourEnd = newBlankTo;
-      debugMsg("I2C --> Set blankHourEnd: " + newBlankTo);
+      debugMsg("Set blankHourEnd: " + newBlankTo);
     }
   }
 
@@ -3275,8 +3292,9 @@ void clockConfigPageHandler() {
     debugMsg("Got fadeSteps param: " + server.arg("fadeSteps"));
     byte newFadeSteps = atoi(server.arg("fadeSteps").c_str());
     if (newFadeSteps != fadeSteps) {
+      changed = true;
       fadeSteps = newFadeSteps;
-      debugMsg("I2C --> Set fadeSteps: " + newFadeSteps);
+      debugMsg("Set fadeSteps: " + newFadeSteps);
     }
   }
 
@@ -3286,8 +3304,9 @@ void clockConfigPageHandler() {
     debugMsg("Got scrollSteps param: " + server.arg("scrollSteps"));
     byte newScrollSteps = atoi(server.arg("scrollSteps").c_str());
     if (newScrollSteps != scrollSteps) {
+      changed = true;
       scrollSteps = newScrollSteps;
-      debugMsg("I2C --> Set fadeSteps: " + newScrollSteps);
+      debugMsg("Set fadeSteps: " + newScrollSteps);
     }
   }
 
@@ -3297,8 +3316,9 @@ void clockConfigPageHandler() {
     debugMsg("Got backLight param: " + server.arg("backLight"));
     byte newBacklight = atoi(server.arg("backLight").c_str());
     if (newBacklight != backlightMode) {
+      changed = true;
       backlightMode = newBacklight;
-      debugMsg("I2C --> Set backLight: " + newBacklight);
+      debugMsg("Set backLight: " + newBacklight);
     }
   }
 
@@ -3308,8 +3328,9 @@ void clockConfigPageHandler() {
     debugMsg("Got redCnl param: " + server.arg("redCnl"));
     byte newRedCnl = atoi(server.arg("redCnl").c_str());
     if (newRedCnl != redCnl) {
+      changed = true;
       redCnl = newRedCnl;
-      debugMsg("I2C --> Set redCnl: " + newRedCnl);
+      debugMsg("Set redCnl: " + newRedCnl);
     }
   }
 
@@ -3319,8 +3340,9 @@ void clockConfigPageHandler() {
     debugMsg("Got grnCnl param: " + server.arg("grnCnl"));
     byte newGreenCnl = atoi(server.arg("grnCnl").c_str());
     if (newGreenCnl != grnCnl) {
+      changed = true;
       grnCnl = newGreenCnl;
-      debugMsg("I2C --> Set grnCnl: " + newGreenCnl);
+      debugMsg("Set grnCnl: " + newGreenCnl);
     }
   }
 
@@ -3330,8 +3352,9 @@ void clockConfigPageHandler() {
     debugMsg("Got bluCnl param: " + server.arg("bluCnl"));
     byte newBlueCnl = atoi(server.arg("bluCnl").c_str());
     if (newBlueCnl != bluCnl) {
+      changed = true;
       bluCnl = newBlueCnl;
-      debugMsg("I2C --> Set bluCnl: " + newBlueCnl);
+      debugMsg("Set bluCnl: " + newBlueCnl);
     }
   }
 
@@ -3341,8 +3364,9 @@ void clockConfigPageHandler() {
     debugMsg("Got cycleSpeed param: " + server.arg("cycleSpeed"));
     byte newCycleSpeed = atoi(server.arg("cycleSpeed").c_str());
     if (newCycleSpeed != cycleSpeed) {
+      changed = true;
       cycleSpeed = newCycleSpeed;
-      debugMsg("I2C --> Set cycleSpeed: " + newCycleSpeed);
+      debugMsg("Set cycleSpeed: " + newCycleSpeed);
     }
   }
 
@@ -3352,8 +3376,9 @@ void clockConfigPageHandler() {
     debugMsg("Got blankMode param: " + server.arg("blankMode"));
     byte newBlankMode = atoi(server.arg("blankMode").c_str());
     if (newBlankMode != blankMode) {
+      changed = true;
       blankMode = newBlankMode;
-      debugMsg("I2C --> Set blankMode: " + newBlankMode);
+      debugMsg("Set blankMode: " + newBlankMode);
     }
   }
 
@@ -3363,8 +3388,9 @@ void clockConfigPageHandler() {
     debugMsg("Got slotsMode param: " + server.arg("slotsMode"));
     byte newSlotsMode = atoi(server.arg("slotsMode").c_str());
     if (newSlotsMode != slotsMode) {
+      changed = true;
       slotsMode = newSlotsMode;
-      debugMsg("I2C --> Set slotsMode: " + newSlotsMode);
+      debugMsg("Set slotsMode: " + newSlotsMode);
     }
   }
 
@@ -3374,8 +3400,9 @@ void clockConfigPageHandler() {
     debugMsg("Got pirTimeout param: " + server.arg("pirTimeout"));
     int newPirTimeOut = atoi(server.arg("pirTimeout").c_str());
     if (newPirTimeOut != pirTimeout) {
+      changed = true;
       pirTimeout = newPirTimeOut;
-      debugMsg("I2C --> Set pirTimeout: " + newPirTimeOut);
+      debugMsg("Set pirTimeout: " + newPirTimeOut);
     }
   }
 
@@ -3384,12 +3411,14 @@ void clockConfigPageHandler() {
   if (server.hasArg("usePirPullup"))
   {
     debugMsg("Got usePirPullup param: " + server.arg("usePirPullup"));
-    if (server.arg("usePirPullup") == "on") {
+    if ((server.arg("usePirPullup") == "on") && (!usePIRPullup)) {
+      changed = true;
       debugMsg("Set usePirPullup on");
       usePIRPullup = true;
     }
 
-    if (server.arg("usePirPullup") == "off") {
+    if ((server.arg("usePirPullup") == "off") && (usePIRPullup)) {
+      changed = true;
       debugMsg("Set usePirPullup off");
       usePIRPullup = false;
     }
@@ -3401,8 +3430,9 @@ void clockConfigPageHandler() {
     debugMsg("Got minDim param: " + server.arg("minDim"));
     int newMinDim = atoi(server.arg("minDim").c_str());
     if (newMinDim != minDim) {
+      changed = true;
       minDim = newMinDim;
-      debugMsg("I2C --> Set minDim: " + newMinDim);
+      debugMsg("Set minDim: " + newMinDim);
     }
   }
 
@@ -3411,22 +3441,37 @@ void clockConfigPageHandler() {
   if (server.hasArg("debugOutput"))
   {
     debugMsg("Got debugOutput param: " + server.arg("debugOutput"));
-    if (server.arg("debugOutput") == "on") {
+    if ((server.arg("debugOutput") == "on") && (!debugOutput)) {
+      changed = true;
       debugMsg("Set debugOutput on");
       debugOutput = true;
     }
 
-    if (server.arg("debugOutput") == "off") {
+    if ((server.arg("debugOutput") == "off") && (debugOutput)) {
+      changed = true;
       debugMsg("Set debugOutput off");
       debugOutput = false;
     }
-    setupDebug();
   }
 
   // -----------------------------------------------------------------------------
 
+  if (server.hasArg("ledMode")) {
+    debugMsg("Got ledMode param: " + server.arg("ledMode"));
+    byte newLedMode = atoi(server.arg("ledMode").c_str());
+    if (newLedMode != ledMode) {
+      changed = true;
+      ledMode = newLedMode;
+      debugMsg("Set ledMode: " + newLedMode);
+    }
+  }
+  // -----------------------------------------------------------------------------
+
   // Save the options
-  saveConfigToSpiffs();
+  if (changed) {
+    debugMsg("Config options changed, saving them");
+    saveConfigToSpiffs();
+  }
 
   String response_message = getHTMLHead();
   response_message += getNavBar();
@@ -3561,10 +3606,10 @@ void clockConfigPageHandler() {
 
   // LED mode
   response_message += getDropDownHeader("LED Mode:", "ledMode", true);
-  response_message += getDropDownOption("0", "RailRoad", (ledMode == 0));
-  response_message += getDropDownOption("1", "Slow flash", (ledMode == 1));
-  response_message += getDropDownOption("1", "Fast flash", (ledMode == 2));
-  response_message += getDropDownOption("1", "Double flash", (ledMode == 3));
+  response_message += getDropDownOption("0", "RailRoad", (ledMode == LED_RAILROAD));
+  response_message += getDropDownOption("1", "Slow flash", (ledMode == LED_BLINK_SLOW));
+  response_message += getDropDownOption("1", "Fast flash", (ledMode == LED_BLINK_FAST));
+  response_message += getDropDownOption("1", "Double flash", (ledMode == LED_BLINK_DBL));
   response_message += getDropDownFooter();
   
   // PIR timeout
