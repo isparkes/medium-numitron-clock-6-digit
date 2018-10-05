@@ -47,11 +47,21 @@
 #include "DisplayDefs.h"
 #include "VFDDefs.h"
 #include "ClockUtils.h"
+#include "ClockDefs.h"
 
 // Software version shown in config menu
 #define SOFTWARE_VERSION    1
 
-#define DEBUG
+#define DEBUG_OFF
+
+#ifdef DEBUG
+ #define debugMsg(x)  Serial.println (x)
+ #define debugMsg(x)  Serial.print (x)
+ #define setupDebug()  Serial.begin(115200)
+#else
+ #define debugMsg(x)
+ #define setupDebug()
+#endif
 
 // ------------------------ Wifi ------------------------
 
@@ -68,203 +78,6 @@ unsigned long lastMillis = 0;
 String timeServerURL = DEFAULT_TIME_SERVER_URL_1;
 
 ESP8266WebServer server(80);
-
-// ------------------------ Wifi ------------------------
-
-#define MIN_DIM_DEFAULT       100  // The default minimum dim count
-#define MIN_DIM_MIN           100  // The minimum dim count
-#define MIN_DIM_MAX           500  // The maximum dim count
-
-#define SENSOR_LOW_MIN        0
-#define SENSOR_LOW_MAX        900
-#define SENSOR_LOW_DEFAULT    100  // Dark
-#define SENSOR_HIGH_MIN       0
-#define SENSOR_HIGH_MAX       900
-#define SENSOR_HIGH_DEFAULT   700 // Bright
-
-#define SENSOR_SMOOTH_READINGS_MIN     1
-#define SENSOR_SMOOTH_READINGS_MAX     255
-#define SENSOR_SMOOTH_READINGS_DEFAULT 100  // Speed at which the brighness adapts to changes
-
-#define BLINK_COUNT_MAX                25   // The number of impressions between blink state toggle
-
-// How quickly the scroll works
-#define SCROLL_STEPS_DEFAULT 4
-#define SCROLL_STEPS_MIN     1
-#define SCROLL_STEPS_MAX     40
-
-// The number of dispay impessions we need to fade by default
-// 100 is about 1 second
-#define FADE_STEPS_DEFAULT 50
-#define FADE_STEPS_MAX     200
-#define FADE_STEPS_MIN     20
-
-#define SECS_MAX  60
-#define MINS_MAX  60
-#define HOURS_MAX 24
-
-#define COLOUR_CNL_MAX                  15
-#define COLOUR_RED_CNL_DEFAULT          15
-#define COLOUR_GRN_CNL_DEFAULT          0
-#define COLOUR_BLU_CNL_DEFAULT          0
-#define COLOUR_CNL_MIN                  0
-
-// Clock modes - normal running is MODE_TIME, other modes accessed by a middle length ( 1S < press < 2S ) button press
-#define MODE_MIN                        0
-#define MODE_TIME                       0
-
-// Time setting, need all six digits, so no flashing mode indicator
-#define MODE_HOURS_SET                  1
-#define MODE_MINS_SET                   2
-#define MODE_SECS_SET                   3
-#define MODE_DAYS_SET                   4
-#define MODE_MONTHS_SET                 5
-#define MODE_YEARS_SET                  6
-
-// Basic settings
-#define MODE_12_24                      7  // Mode "00" 0 = 24, 1 = 12
-#define HOUR_MODE_DEFAULT               false
-#define MODE_LEAD_BLANK                 8  // Mode "01" 1 = blanked
-#define LEAD_BLANK_DEFAULT              false
-#define MODE_SCROLLBACK                 9  // Mode "02" 1 = use scrollback
-#define SCROLLBACK_DEFAULT              false
-#define MODE_FADE                       10 // Mode "03" 1 = use fade
-#define FADE_DEFAULT                    false
-#define MODE_DATE_FORMAT                11 // Mode "04"
-#define MODE_DAY_BLANKING               12 // Mode "05"
-#define MODE_HR_BLNK_START              13 // Mode "06" - skipped if not using hour blanking
-#define MODE_HR_BLNK_END                14 // Mode "07" - skipped if not using hour blanking
-
-#define MODE_USE_LDR                    16 // Mode "09" 1 = use LDR, 0 = don't (and have 100% brightness)
-#define MODE_USE_LDR_DEFAULT            true
-
-#define MODE_BLANK_MODE                 17 // Mode "10" 
-#define MODE_BLANK_MODE_DEFAULT         BLANK_MODE_BOTH
-
-// Display tricks
-#define MODE_FADE_STEPS_UP              18 // Mode "11"
-#define MODE_FADE_STEPS_DOWN            19 // Mode "12"
-#define MODE_DISPLAY_SCROLL_STEPS_UP    20 // Mode "13"
-#define MODE_DISPLAY_SCROLL_STEPS_DOWN  21 // Mode "14"
-
-#define MODE_SLOTS_MODE                 22 // Mode "15"
-
-// PIR
-#define MODE_PIR_TIMEOUT_UP             23 // Mode "16"
-#define MODE_PIR_TIMEOUT_DOWN           24 // Mode "17"
-
-// Back light
-#define MODE_BACKLIGHT_MODE             25 // Mode "18"
-#define MODE_RED_CNL                    26 // Mode "19"
-#define MODE_GRN_CNL                    27 // Mode "20"
-#define MODE_BLU_CNL                    28 // Mode "21"
-#define MODE_CYCLE_SPEED                29 // Mode "22"
-
-// Minimum dimming value for old tubes
-#define MODE_MIN_DIM_UP                 34 // Mode "27"
-#define MODE_MIN_DIM_DOWN               35 // Mode "28"
-
-// Anti-ghosting for old tubes - Not Available over I2C
-#define MODE_ANTI_GHOST_UP              36 // Mode "29"
-#define MODE_ANTI_GHOST_DOWN            37 // Mode "30"
-
-// Use the PIR pin pullup resistor - Not Available over I2C
-#define MODE_USE_PIR_PULLUP             38 // Mode "31" 1 = use Pullup
-#define USE_PIR_PULLUP_DEFAULT          true
-
-// Temperature
-#define MODE_TEMP                       39 // Mode "32"
-
-// Software Version
-#define MODE_VERSION                    40 // Mode "33"
-
-// Tube test - all six digits, so no flashing mode indicator
-#define MODE_TUBE_TEST                  41
-
-#define MODE_MAX                        41
-
-// Temporary display modes - accessed by a short press ( < 1S ) on the button when in MODE_TIME
-#define TEMP_MODE_MIN                   0
-#define TEMP_MODE_DATE                  0 // Display the date for 5 S
-#define TEMP_MODE_LDR                   1 // Display the normalised LDR reading for 5S, returns a value from 100 (dark) to 999 (bright)
-#define TEMP_MODE_VERSION               2 // Display the version for 5S
-#define TEMP_IP_ADDR12                  3 // IP xxx.yyy.zzz.aaa: xxx.yyy
-#define TEMP_IP_ADDR34                  4 // IP xxx.yyy.zzz.aaa: zzz.aaa
-#define TEMP_IMPR                       5 // number of impressions per second
-#define TEMP_MODE_MAX                   5
-
-#define DATE_FORMAT_MIN                 0
-#define DATE_FORMAT_YYMMDD              0
-#define DATE_FORMAT_MMDDYY              1
-#define DATE_FORMAT_DDMMYY              2
-#define DATE_FORMAT_MAX                 2
-#define DATE_FORMAT_DEFAULT             2
-
-#define DAY_BLANKING_MIN                0
-#define DAY_BLANKING_NEVER              0  // Don't blank ever (default)
-#define DAY_BLANKING_WEEKEND            1  // Blank during the weekend
-#define DAY_BLANKING_WEEKDAY            2  // Blank during weekdays
-#define DAY_BLANKING_ALWAYS             3  // Always blank
-#define DAY_BLANKING_HOURS              4  // Blank between start and end hour every day
-#define DAY_BLANKING_WEEKEND_OR_HOURS   5  // Blank between start and end hour during the week AND all day on the weekend
-#define DAY_BLANKING_WEEKDAY_OR_HOURS   6  // Blank between start and end hour during the weekends AND all day on week days
-#define DAY_BLANKING_WEEKEND_AND_HOURS  7  // Blank between start and end hour during the weekend
-#define DAY_BLANKING_WEEKDAY_AND_HOURS  8  // Blank between start and end hour during week days
-#define DAY_BLANKING_MAX                8
-#define DAY_BLANKING_DEFAULT            0
-
-#define BLANK_MODE_MIN                  0
-#define BLANK_MODE_TUBES                0  // Use blanking for tubes only 
-#define BLANK_MODE_LEDS                 1  // Use blanking for LEDs only
-#define BLANK_MODE_BOTH                 2  // Use blanking for tubes and LEDs
-#define BLANK_MODE_MAX                  2
-#define BLANK_MODE_DEFAULT              2
-
-#define BACKLIGHT_MIN                   0
-#define BACKLIGHT_FIXED                 0   // Just define a colour and stick to it
-#define BACKLIGHT_PULSE                 1   // pulse the defined colour
-#define BACKLIGHT_CYCLE                 2   // cycle through random colours
-#define BACKLIGHT_FIXED_DIM             3   // A defined colour, but dims with bulb dimming
-#define BACKLIGHT_PULSE_DIM             4   // pulse the defined colour, dims with bulb dimming
-#define BACKLIGHT_CYCLE_DIM             5   // cycle through random colours, dims with bulb dimming
-#define BACKLIGHT_COLOUR_TIME           6   // use "ColourTime" - different colours for each digit value
-#define BACKLIGHT_COLOUR_TIME_DIM       7   // use "ColourTime" - dims with bulb dimming
-#define BACKLIGHT_MAX                   7
-#define BACKLIGHT_DEFAULT               4
-
-#define CYCLE_SPEED_MIN                 4
-#define CYCLE_SPEED_MAX                 64
-#define CYCLE_SPEED_DEFAULT             10
-
-#define ANTI_GHOST_MIN                  0
-#define ANTI_GHOST_MAX                  50
-#define ANTI_GHOST_DEFAULT              0
-
-#define PIR_TIMEOUT_MIN                 60    // 1 minute in seconds
-#define PIR_TIMEOUT_MAX                 3600  // 1 hour in seconds
-#define PIR_TIMEOUT_DEFAULT             300   // 5 minutes in seconds
-
-#define TEMP_DISPLAY_MODE_DUR_MS        5000
-
-#define USE_LDR_DEFAULT                 true
-
-#define SLOTS_MODE_MIN                  0
-#define SLOTS_MODE_NONE                 0   // Don't use slots effect
-#define SLOTS_MODE_1M_SCR_SCR           1   // use slots effect every minute, scroll in, scramble out
-#define SLOTS_MODE_MAX                  1
-#define SLOTS_MODE_DEFAULT              1
-
-// RTC address
-#define RTC_I2C_ADDRESS                 0x68
-
-#define MAX_WIFI_TIME                   5   // The number of minutes to wait before we fall back to RTC
-
-#define DO_NOT_APPLY_LEAD_0_BLANK       false
-#define APPLY_LEAD_0_BLANK              true
-
-#define PixelCount                      6
-
-#define BUILTIN_LED_PIN                 1
 
 //**********************************************************************************
 //**********************************************************************************
@@ -2078,12 +1891,14 @@ void outputDisplay()
       tmpDispType = SCROLL;
     }
 
+    // --------------------- Scroll ---------------------
+    
     // manage fading, each impression we show 1 fade step less of the old
     // digit and 1 fade step more of the new
     // manage fading, each impression we show 1 fade step less of the old
     // digit and 1 fade step more of the new
     if (tmpDispType == SCROLL) {
-      digitSwitchTime = DIGIT_DISPLAY_OFF;
+      digitSwitchTime = digitOffTime;
       if (NumberArray[i] != currNumberArray[i]) {
         if (fadeState[i] == 0) {
           // Start the fade
@@ -2099,7 +1914,11 @@ void outputDisplay()
           fadeState[i] = fadeState[i] - 1;
         }
       }
-    } else if (tmpDispType == FADE) {
+    } else 
+    
+    // --------------------- Fade ---------------------
+    
+    if (tmpDispType == FADE) {
       if (NumberArray[i] != currNumberArray[i]) {
         if (fadeState[i] == 0) {
           // Start the fade
@@ -2112,17 +1931,22 @@ void outputDisplay()
         // finish the fade
         fadeState[i] = 0;
         currNumberArray[i] = NumberArray[i];
-        digitSwitchTime = DIGIT_DISPLAY_COUNT;
+        digitSwitchTime = digitOffTime;
       } else if (fadeState[i] > 1) {
         // Continue the fade
         fadeState[i] = fadeState[i] - 1;
         digitSwitchTime = (int) fadeState[i] * fadeStep;
       }
-    } else {
+    } else 
+    
+    // --------------------- Normal ---------------------
+    
+    {
       digitSwitchTime = DIGIT_DISPLAY_COUNT;
       currNumberArray[i] = NumberArray[i];
     }
 
+    
     // Main display loop - everything up to now was preparation
     for (int timer = DIGIT_DISPLAY_START ; timer < DIGIT_DISPLAY_COUNT ; timer++) {
       if (timer < digitOnTime) {
@@ -2749,24 +2573,6 @@ int getDimmingFromLDR() {
   } else {
     return DIGIT_DISPLAY_OFF;  
   }
-}
-
-void setupDebug() {
-  #ifdef DEBUG
-  Serial.begin(115200);
-  #endif
-}
-
-void debugMsg(String message) {
-  #ifdef DEBUG
-  Serial.println(message);
-  #endif
-}
-
-void debugMsgCont(String message) {
-  #ifdef DEBUG
-  Serial.print(message);
-  #endif
 }
 
 //**********************************************************************************
@@ -3511,7 +3317,9 @@ void clockConfigPageHandler() {
     response_message += getRadioButton("useScrollback", "Off", "off", true);
   }
   response_message += getRadioGroupFooter();
-  //response_message += getCheckBox("useScrollback", "on", "Use scrollback effect", (configScrollback == 1));
+
+  // Scroll steps
+  response_message += getNumberInput("Scroll steps:", "scrollSteps", SCROLL_STEPS_MIN, SCROLL_STEPS_MAX, scrollSteps, false);
 
   // fade
   response_message += getRadioGroupHeader("Fade effect:");
@@ -3523,7 +3331,9 @@ void clockConfigPageHandler() {
     response_message += getRadioButton("fade", "Off", "off", true);
   }
   response_message += getRadioGroupFooter();
-  //response_message += getCheckBox("fade", "on", "Use fade effect", (configUseFade == 1));
+
+  // Fade steps
+  response_message += getNumberInput("Fade steps:", "fadeSteps", FADE_STEPS_MIN, FADE_STEPS_MAX, fadeSteps, false);
 
   // LDR
   response_message += getRadioGroupHeader("Use LDR:");
@@ -3571,12 +3381,6 @@ void clockConfigPageHandler() {
   // Blank hours to
   response_message += getNumberInput("Blank to:", "blankHourEnd", 0, 23, blankHourEnd, hoursDisabled);
 
-  // Fade steps
-  response_message += getNumberInput("Fade steps:", "fadeSteps", 20, 200, fadeSteps, false);
-
-  // Scroll steps
-  response_message += getNumberInput("Scroll steps:", "scrollSteps", 1, 40, scrollSteps, false);
-
   // Back light
   response_message += getDropDownHeader("Back light:", "backLight", true);
   response_message += getDropDownOption("0", "Fixed RGB backlight, no dimming", (backlightMode == 0));
@@ -3595,7 +3399,7 @@ void clockConfigPageHandler() {
   response_message += getNumberInput("Blue intensity:", "bluCnl", 0, 15, bluCnl, false);
 
   // Cycle speed
-  response_message += getNumberInput("Backlight Cycle Speed:", "cycleSpeed", 2, 64, cycleSpeed, false);
+  response_message += getNumberInput("Backlight Cycle Speed:", "cycleSpeed", CYCLE_SPEED_MIN, CYCLE_SPEED_MAX, cycleSpeed, false);
 
   // Slots Mode
   response_message += getDropDownHeader("Date Slots:", "slotsMode", true);
@@ -3612,7 +3416,7 @@ void clockConfigPageHandler() {
   response_message += getDropDownFooter();
   
   // PIR timeout
-  response_message += getNumberInput("PIR timeout:", "pirTimeout", 60, 3600, pirTimeout, false);
+  response_message += getNumberInput("PIR timeout:", "pirTimeout", PIR_TIMEOUT_MIN, PIR_TIMEOUT_MAX, pirTimeout, false);
 
   // PIR pullup
   response_message += getRadioGroupHeader("Use PIR pullup:");
@@ -3626,7 +3430,7 @@ void clockConfigPageHandler() {
   response_message += getRadioGroupFooter();
 
   // Min dim
-  response_message += getNumberInput("Min Dim:", "minDim", 100, 500, minDim, false);
+  response_message += getNumberInput("Min Dim:", "minDim", MIN_DIM_MIN, MIN_DIM_MAX, minDim, false);
 
   // form footer
   response_message += getSubmitButton("Set");

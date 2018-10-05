@@ -46,6 +46,7 @@
 #define DIGIT_MINUS SEG_G
 
 byte digitData[10] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9};
+
 #define GRID_1    1
 #define GRID_2    2
 #define GRID_3    4
