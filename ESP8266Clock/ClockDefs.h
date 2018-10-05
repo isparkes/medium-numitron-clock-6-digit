@@ -198,4 +198,5 @@
 
 #define BUILTIN_LED_PIN                 1
 
+#define CONFIG_PORTAL_TIMEOUT           60
 #endif

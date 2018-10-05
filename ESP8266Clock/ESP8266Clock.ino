@@ -274,7 +274,7 @@ void setup()
   #ifdef DEBUG
   wifiManager.setDebugOutput(true);
   #endif
-  wifiManager.setConfigPortalTimeout(30);
+  wifiManager.setConfigPortalTimeout(CONFIG_PORTAL_TIMEOUT);
   wifiManager.setAPCallback(configModeCallback);
   
   setDiagnosticLED(DIAGS_WIFI,STATUS_YELLOW);
@@ -718,77 +718,53 @@ void setLeds()
                       getLEDAdjusted(0, 1, 1));
   } else {
     // RGB Backlight PWM led output
-    if (currentMode == MODE_TIME) {
-      switch (backlightMode) {
-        case BACKLIGHT_FIXED:
-          setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], 1, 1), 
-                      getLEDAdjusted(rgb_backlight_curve[grnCnl], 1, 1), 
-                      getLEDAdjusted(rgb_backlight_curve[bluCnl], 1, 1));
-          break;
-        case BACKLIGHT_PULSE:
-          setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], pwmFactor, 1),
-                      getLEDAdjusted(rgb_backlight_curve[grnCnl], pwmFactor, 1),
-                      getLEDAdjusted(rgb_backlight_curve[bluCnl], pwmFactor, 1));
-          break;
-        case BACKLIGHT_CYCLE:
-          cycleColours3(colors);
-          setAllLEDs( getLEDAdjusted(colors[0], 1, 1),
-                      getLEDAdjusted(colors[1], 1, 1),
-                      getLEDAdjusted(colors[2], 1, 1));
-          break;
-        case BACKLIGHT_FIXED_DIM:
-          setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], 1, dimFactor), 
-                      getLEDAdjusted(rgb_backlight_curve[grnCnl], 1, dimFactor), 
-                      getLEDAdjusted(rgb_backlight_curve[bluCnl], 1, dimFactor));
-          break;
-        case BACKLIGHT_PULSE_DIM:
-          setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], pwmFactor, dimFactor),
-                      getLEDAdjusted(rgb_backlight_curve[grnCnl], pwmFactor, dimFactor),
-                      getLEDAdjusted(rgb_backlight_curve[bluCnl], pwmFactor, dimFactor));
-          break;
-        case BACKLIGHT_CYCLE_DIM:
-          cycleColours3(colors);
-          setAllLEDs( getLEDAdjusted(colors[0], 1, dimFactor),
-                      getLEDAdjusted(colors[1], 1, dimFactor),
-                      getLEDAdjusted(colors[2], 1, dimFactor));
-          break;
-        case BACKLIGHT_COLOUR_TIME:
-            for (int i = 0 ; i < 6 ; i++) {
-              ledR[5-i] = getLEDAdjusted(colourTimeR[NumberArray[i]],1,1);
-              ledG[5-i] = getLEDAdjusted(colourTimeG[NumberArray[i]],1,1);
-              ledB[5-i] = getLEDAdjusted(colourTimeB[NumberArray[i]],1,1);
-            }
-            outputLEDBuffer();
-          break;
-        case BACKLIGHT_COLOUR_TIME_DIM:
-            for (int i = 0 ; i < 6 ; i++) {
-              ledR[5-i] = getLEDAdjusted(colourTimeR[NumberArray[i]],1,dimFactor);
-              ledG[5-i] = getLEDAdjusted(colourTimeG[NumberArray[i]],1,dimFactor);
-              ledB[5-i] = getLEDAdjusted(colourTimeB[NumberArray[i]],1,dimFactor);
-            }
-            outputLEDBuffer();
-          break;
-      }
-    } else {
-      // Settings modes
-      ledBlinkCtr++;
-      if (ledBlinkCtr > 40) {
-        ledBlinkCtr = 0;
-
-        ledBlinkNumber++;
-        if (ledBlinkNumber > nextMode) {
-          // Make a pause
-          ledBlinkNumber = -2;
-        }
-      }
-
-      if ((ledBlinkNumber <= nextMode) && (ledBlinkNumber > 0)) {
-        if (ledBlinkCtr < 3) {
-          setAllLEDs(255,255,255);
-        } else {
-          setAllLEDs(0,0,0);
-        }
-      }
+    switch (backlightMode) {
+      case BACKLIGHT_FIXED:
+        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], 1, 1), 
+                    getLEDAdjusted(rgb_backlight_curve[grnCnl], 1, 1), 
+                    getLEDAdjusted(rgb_backlight_curve[bluCnl], 1, 1));
+        break;
+      case BACKLIGHT_PULSE:
+        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], pwmFactor, 1),
+                    getLEDAdjusted(rgb_backlight_curve[grnCnl], pwmFactor, 1),
+                    getLEDAdjusted(rgb_backlight_curve[bluCnl], pwmFactor, 1));
+        break;
+      case BACKLIGHT_CYCLE:
+        cycleColours3(colors);
+        setAllLEDs( getLEDAdjusted(colors[0], 1, 1),
+                    getLEDAdjusted(colors[1], 1, 1),
+                    getLEDAdjusted(colors[2], 1, 1));
+        break;
+      case BACKLIGHT_FIXED_DIM:
+        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], 1, dimFactor), 
+                    getLEDAdjusted(rgb_backlight_curve[grnCnl], 1, dimFactor), 
+                    getLEDAdjusted(rgb_backlight_curve[bluCnl], 1, dimFactor));
+        break;
+      case BACKLIGHT_PULSE_DIM:
+        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], pwmFactor, dimFactor),
+                    getLEDAdjusted(rgb_backlight_curve[grnCnl], pwmFactor, dimFactor),
+                    getLEDAdjusted(rgb_backlight_curve[bluCnl], pwmFactor, dimFactor));
+        break;
+      case BACKLIGHT_CYCLE_DIM:
+        cycleColours3(colors);
+        setAllLEDs( getLEDAdjusted(colors[0], 1, dimFactor),
+                    getLEDAdjusted(colors[1], 1, dimFactor),
+                    getLEDAdjusted(colors[2], 1, dimFactor));
+        break;
+      case BACKLIGHT_COLOUR_TIME:
+          for (int i = 0 ; i < 6 ; i++) {
+            ledR[5-i] = getLEDAdjusted(colourTimeR[NumberArray[i]],1,1);
+            ledG[5-i] = getLEDAdjusted(colourTimeG[NumberArray[i]],1,1);
+            ledB[5-i] = getLEDAdjusted(colourTimeB[NumberArray[i]],1,1);
+          }
+        break;
+      case BACKLIGHT_COLOUR_TIME_DIM:
+          for (int i = 0 ; i < 6 ; i++) {
+            ledR[5-i] = getLEDAdjusted(colourTimeR[NumberArray[i]],1,dimFactor);
+            ledG[5-i] = getLEDAdjusted(colourTimeG[NumberArray[i]],1,dimFactor);
+            ledB[5-i] = getLEDAdjusted(colourTimeB[NumberArray[i]],1,dimFactor);
+          }
+        break;
     }
   }
 }
