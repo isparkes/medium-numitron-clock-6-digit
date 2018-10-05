@@ -51,7 +51,7 @@
 // Software version shown in config menu
 #define SOFTWARE_VERSION    1
 
-bool debugOutput = false;
+#define DEBUG
 
 // ------------------------ Wifi ------------------------
 
@@ -334,7 +334,7 @@ byte blankMode = 0;
 boolean blankTubes = false;
 boolean blankLEDs = false;
 
-bool testMode = false;
+boolean testMode = false;
 
 // ************************ Ambient light dimming ************************
 int dimDark = SENSOR_LOW_DEFAULT;
@@ -458,8 +458,9 @@ void setup()
 
   WiFiManager wifiManager;
 
-  if (debugOutput) wifiManager.setDebugOutput(true);
-
+  #ifdef DEBUG
+  wifiManager.setDebugOutput(true);
+  #endif
   wifiManager.setConfigPortalTimeout(30);
   wifiManager.setAPCallback(configModeCallback);
   
@@ -604,11 +605,11 @@ void setup()
   testMode = false;
   saveConfigToSpiffs();
 
-  if (debugOutput) {
+  #ifdef DEBUG
     setDiagnosticLED(DIAGS_DEBUG,STATUS_BLUE);
-  } else {
+  #else
     setDiagnosticLED(DIAGS_DEBUG,STATUS_GREEN);
-  }
+  #endif
   
   debugMsg("Exit startup in 1 second");
   delay(1000);
@@ -719,9 +720,9 @@ void loop()
 //  // ******************* Blue LED pulse *******************
 //  if ((nowMillis - lastMillis) > blinkTopTime) {
 //    lastMillis = nowMillis;
-//    setBlueLED(false);
+//    digitalWrite(BUILTIN_LED_PIN, false);
 //  } else if ((nowMillis - lastMillis) > blinkOnTime) {
-//    setBlueLED(true);
+//    digitalWrite(BUILTIN_LED_PIN, true);
 //  }
 }
 
@@ -2131,7 +2132,7 @@ void outputDisplay()
 // Assumes that all digits have previously been turned off
 // by a call to "digitOff"
 // ************************************************************
-void digitOn(byte digit, byte value, bool setDp, bool LED1, bool LED2) {
+void digitOn(byte digit, byte value, boolean setDp, boolean LED1, boolean LED2) {
   byte dispValue = digitData[value];
   if (setDp)
     dispValue |= SEG_DP;
@@ -2732,19 +2733,21 @@ int getDimmingFromLDR() {
 }
 
 void setupDebug() {
-  if (debugOutput) Serial.begin(115200);
+  #ifdef DEBUG
+  Serial.begin(115200);
+  #endif
 }
 
 void debugMsg(String message) {
-  if (debugOutput) Serial.println(message);
+  #ifdef DEBUG
+  Serial.println(message);
+  #endif
 }
 
 void debugMsgCont(String message) {
-  if (debugOutput) Serial.print(message);
-}
-
-void setBlueLED(boolean newState) {
-  digitalWrite(BUILTIN_LED_PIN, newState);
+  #ifdef DEBUG
+  Serial.print(message);
+  #endif
 }
 
 //**********************************************************************************
@@ -2753,8 +2756,8 @@ void setBlueLED(boolean newState) {
 //**********************************************************************************
 //**********************************************************************************
 
-bool getConfigFromSpiffs() {
-  bool loaded = false;
+boolean getConfigFromSpiffs() {
+  boolean loaded = false;
   if (SPIFFS.begin()) {
     debugMsg("mounted file system");
     if (SPIFFS.exists("/config.json")) {
@@ -2853,11 +2856,8 @@ bool getConfigFromSpiffs() {
           usePIRPullup = json["usePIRPullup"];
           debugMsg("Loaded usePIRPullup: " + String(usePIRPullup));
           
-          usePIRPullup = json["testMode"].as<bool>();
+          testMode = json["testMode"].as<bool>();
           debugMsg("Loaded testMode: " + String(testMode));
-          
-          debugOutput = json["debugOutput"].as<bool>();
-          debugMsg("Loaded debugOutput: " + String(debugOutput));
           
           loaded = true;
         } else {
@@ -2909,7 +2909,6 @@ void saveConfigToSpiffs() {
     json["slotsMode"] = slotsMode;
     json["usePIRPullup"] = usePIRPullup;
     json["testMode"] = testMode;
-    json["debugOutput"] = debugOutput;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -2963,7 +2962,6 @@ void factoryReset() {
   slotsMode = SLOTS_MODE_DEFAULT;
   usePIRPullup = USE_PIR_PULLUP_DEFAULT;
   testMode = true;
-  debugOutput = false;
 
   saveConfigToSpiffs();
 }
@@ -2980,7 +2978,7 @@ void factoryReset() {
 */
 void rootPageHandler() {
   debugMsg("Root page in");
-  setBlueLED(true);
+  digitalWrite(BUILTIN_LED_PIN, true);
   
   String response_message = getHTMLHead();
   response_message += getNavBar();
@@ -3054,7 +3052,7 @@ void rootPageHandler() {
 
   server.send(200, "text/html", response_message);
   
-  setBlueLED(false);
+  digitalWrite(BUILTIN_LED_PIN, false);
   debugMsg("Root page out");
 }
 
@@ -3066,7 +3064,7 @@ void rootPageHandler() {
 */
 void timeServerPageHandler() {
   debugMsg("Time page in");
-  setBlueLED(true);
+  digitalWrite(BUILTIN_LED_PIN, true);
   
   // Check if there are any GET parameters, if there are, we are configuring
   if (server.hasArg("timeserverurl"))
@@ -3099,7 +3097,7 @@ void timeServerPageHandler() {
 
   server.send(200, "text/html", response_message);
   
-  setBlueLED(false);
+  digitalWrite(BUILTIN_LED_PIN, false);
   debugMsg("Time page out");
 }
 
@@ -3114,7 +3112,7 @@ void timeServerPageHandler() {
 */
 void resetPageHandler() {
   debugMsg("Reset page in");
-  setBlueLED(true);
+  digitalWrite(BUILTIN_LED_PIN, true);
 
   WiFiManager wifiManager;
   wifiManager.resetSettings();
@@ -3130,7 +3128,7 @@ void resetPageHandler() {
 
   server.send(200, "text/html", response_message);
 
-  setBlueLED(false);
+  digitalWrite(BUILTIN_LED_PIN, false);
   debugMsg("Reset page out");
 
   // do the restart
@@ -3146,9 +3144,9 @@ void resetPageHandler() {
 */
 void clockConfigPageHandler() {
   debugMsg("Config page in");
-  setBlueLED(true);
+  digitalWrite(BUILTIN_LED_PIN, true);
 
-  bool changed = false;
+  boolean changed = false;
   
   if (server.hasArg("12h24hMode"))
   {
@@ -3438,24 +3436,6 @@ void clockConfigPageHandler() {
 
   // -----------------------------------------------------------------------------
 
-  if (server.hasArg("debugOutput"))
-  {
-    debugMsg("Got debugOutput param: " + server.arg("debugOutput"));
-    if ((server.arg("debugOutput") == "on") && (!debugOutput)) {
-      changed = true;
-      debugMsg("Set debugOutput on");
-      debugOutput = true;
-    }
-
-    if ((server.arg("debugOutput") == "off") && (debugOutput)) {
-      changed = true;
-      debugMsg("Set debugOutput off");
-      debugOutput = false;
-    }
-  }
-
-  // -----------------------------------------------------------------------------
-
   if (server.hasArg("ledMode")) {
     debugMsg("Got ledMode param: " + server.arg("ledMode"));
     byte newLedMode = atoi(server.arg("ledMode").c_str());
@@ -3628,17 +3608,6 @@ void clockConfigPageHandler() {
 
   // Min dim
   response_message += getNumberInput("Min Dim:", "minDim", 100, 500, minDim, false);
-  
-  // debugOutput
-  response_message += getRadioGroupHeader("Debug to serial:");
-  if (debugOutput) {
-    response_message += getRadioButton("debugOutput", "On", "on", true);
-    response_message += getRadioButton("debugOutput", "Off", "off", false);
-  } else {
-    response_message += getRadioButton("debugOutput", "On", "on", false);
-    response_message += getRadioButton("debugOutput", "Off", "off", true);
-  }
-  response_message += getRadioGroupFooter();
 
   // form footer
   response_message += getSubmitButton("Set");
@@ -3650,7 +3619,7 @@ void clockConfigPageHandler() {
 
   server.send(200, "text/html", response_message);
   
-  setBlueLED(false);
+  digitalWrite(BUILTIN_LED_PIN, false);
   debugMsg("Config page out");
 }
 
@@ -3660,7 +3629,7 @@ void clockConfigPageHandler() {
 /* Called if requested page is not found */
 void handleNotFound() {
   debugMsg("404 page in");
-  setBlueLED(true);
+  digitalWrite(BUILTIN_LED_PIN, true);
   
   String message = "File Not Found\n\n";
   message += "URI: ";
@@ -3678,7 +3647,7 @@ void handleNotFound() {
 
   server.send(404, "text/plain", message);
   
-  setBlueLED(false);
+  digitalWrite(BUILTIN_LED_PIN, false);
   debugMsg("404 page out");
 }
 
@@ -3703,7 +3672,7 @@ void localCSSHandler()
 */
 String getTimeFromTimeZoneServer() {
   debugMsg("Get Time in");
-  setBlueLED(true);
+  digitalWrite(BUILTIN_LED_PIN, true);
   
   HTTPClient http;
   String payload;
@@ -3733,7 +3702,7 @@ String getTimeFromTimeZoneServer() {
 
   http.end();
 
-  setBlueLED(false);
+  digitalWrite(BUILTIN_LED_PIN, false);
   debugMsg("Get Time out");
   
   return payload;
