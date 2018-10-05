@@ -846,6 +846,7 @@ void performOncePerDayProcessing() {
 void setLeds()
 {
   int secsDelta;
+  int secsDeltaAbs = (nowMillis - lastCheckMillis);
   if (upOrDown) {
     secsDelta = (nowMillis - lastCheckMillis);
   } else {
@@ -865,6 +866,24 @@ void setLeds()
     case LED_BLINK_SLOW:
     {
       if (upOrDown) {
+        ledValue = LED_1 | LED_2;
+      } else {
+        ledValue = 0;
+      }
+      break;
+    }
+    case LED_BLINK_FAST:
+    {
+      if (secsDeltaAbs < 500) {
+        ledValue = LED_1 | LED_2;
+      } else {
+        ledValue = 0;
+      }
+      break;
+    }
+    case LED_BLINK_DBL:
+    {
+      if ((secsDeltaAbs < 100) || ((secsDeltaAbs > 200) && (secsDeltaAbs < 300))) {
         ledValue = LED_1 | LED_2;
       } else {
         ledValue = 0;
@@ -3588,8 +3607,8 @@ void clockConfigPageHandler() {
   response_message += getDropDownHeader("LED Mode:", "ledMode", true);
   response_message += getDropDownOption("0", "RailRoad", (ledMode == LED_RAILROAD));
   response_message += getDropDownOption("1", "Slow flash", (ledMode == LED_BLINK_SLOW));
-  response_message += getDropDownOption("1", "Fast flash", (ledMode == LED_BLINK_FAST));
-  response_message += getDropDownOption("1", "Double flash", (ledMode == LED_BLINK_DBL));
+  response_message += getDropDownOption("2", "Fast flash", (ledMode == LED_BLINK_FAST));
+  response_message += getDropDownOption("3", "Double flash", (ledMode == LED_BLINK_DBL));
   response_message += getDropDownFooter();
   
   // PIR timeout
