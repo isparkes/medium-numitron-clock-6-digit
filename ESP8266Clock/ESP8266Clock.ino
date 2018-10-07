@@ -36,7 +36,7 @@
 // using the ZIP files in the "libraries" directory
 #include <DS3231.h>             // https://github.com/NorthernWidget/DS3231 (Wickert 1.0.2)
 #include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis 1.5.0)
-#include <Timezone.h>           // https://github.com/JChristensen/Timezone (Christensen 1.2.1)
+// #include <Timezone.h>           // https://github.com/JChristensen/Timezone (Christensen 1.2.1)
 #include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna 2.3.4)
 #include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.14.0)
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
@@ -56,7 +56,7 @@
 
 #ifdef DEBUG
  #define debugMsg(x)  Serial.println (x)
- #define debugMsg(x)  Serial.print (x)
+ #define debugMsgCont(x)  Serial.print (x)
  #define setupDebug()  Serial.begin(115200)
 #else
  #define debugMsg(x)
@@ -303,7 +303,7 @@ void setup()
     setDiagnosticLED(DIAGS_TIMESERVER,STATUS_GREEN);
   }
 
-  Wire.begin(0, 2); // SDA = 0, SCL = 2
+  Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
   debugMsg("I2C master started");
   
   /* Set page handler functions */
@@ -610,7 +610,8 @@ void performOncePerMinuteProcessing() {
   if (useWiFi > 0) {
     if (useWiFi == MAX_WIFI_TIME) {
       // We recently got an update, send to the RTC (if installed)
-      setRTC();      
+      setRTC();
+      debugMsg("Set RTC time to Net time");
     }
     useWiFi--;
   } else {
