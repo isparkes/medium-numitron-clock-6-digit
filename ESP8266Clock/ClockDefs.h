@@ -1,12 +1,12 @@
 #ifndef ClockDefs_h
 #define ClockDefs_h
 
-
-
+// -------------------------------------------------------------------------------
 #define MIN_DIM_DEFAULT       100  // The default minimum dim count
 #define MIN_DIM_MIN           100  // The minimum dim count
 #define MIN_DIM_MAX           500  // The maximum dim count
 
+// -------------------------------------------------------------------------------
 #define SENSOR_LOW_MIN        0
 #define SENSOR_LOW_MAX        900
 #define SENSOR_LOW_DEFAULT    100  // Dark
@@ -18,13 +18,16 @@
 #define SENSOR_SMOOTH_READINGS_MAX     255
 #define SENSOR_SMOOTH_READINGS_DEFAULT 100  // Speed at which the brighness adapts to changes
 
-#define BLINK_COUNT_MAX                25   // The number of impressions between blink state toggle
+// -------------------------------------------------------------------------------
+#define BLINK_COUNT_MAX       40   // The number of impressions between blink state toggle
 
+// -------------------------------------------------------------------------------
 // How quickly the scroll works
 #define SCROLL_STEPS_DEFAULT 8
 #define SCROLL_STEPS_MIN     1
 #define SCROLL_STEPS_MAX     80
 
+// -------------------------------------------------------------------------------
 // The number of dispay impessions we need to fade by default
 // 100 is about 1 second
 #define FADE_STEPS_DEFAULT 50
@@ -35,16 +38,19 @@
 #define MINS_MAX  60
 #define HOURS_MAX 24
 
+// -------------------------------------------------------------------------------
 #define COLOUR_CNL_MAX                  15
 #define COLOUR_RED_CNL_DEFAULT          15
 #define COLOUR_GRN_CNL_DEFAULT          0
 #define COLOUR_BLU_CNL_DEFAULT          0
 #define COLOUR_CNL_MIN                  0
 
+// -------------------------------------------------------------------------------
 // Clock modes - normal running is MODE_TIME, other modes accessed by a middle length ( 1S < press < 2S ) button press
 #define MODE_MIN                        0
 #define MODE_TIME                       0
 
+// -------------------------------------------------------------------------------
 // Time setting, need all six digits, so no flashing mode indicator
 #define MODE_HOURS_SET                  1
 #define MODE_MINS_SET                   2
@@ -104,17 +110,15 @@
 #define MODE_USE_PIR_PULLUP             38 // Mode "31" 1 = use Pullup
 #define USE_PIR_PULLUP_DEFAULT          true
 
-// Temperature
-#define MODE_TEMP                       39 // Mode "32"
-
 // Software Version
-#define MODE_VERSION                    40 // Mode "33"
+#define MODE_VERSION                    39 // Mode "33"
 
 // Tube test - all six digits, so no flashing mode indicator
-#define MODE_TUBE_TEST                  41
+#define MODE_TUBE_TEST                  40
 
-#define MODE_MAX                        41
+#define MODE_MAX                        40
 
+// -------------------------------------------------------------------------------
 // Temporary display modes - accessed by a short press ( < 1S ) on the button when in MODE_TIME
 #define TEMP_MODE_MIN                   0
 #define TEMP_MODE_DATE                  0 // Display the date for 5 S
@@ -125,6 +129,9 @@
 #define TEMP_IMPR                       5 // number of impressions per second
 #define TEMP_MODE_MAX                   5
 
+#define TEMP_DISPLAY_MODE_DUR_MS        5000
+
+// -------------------------------------------------------------------------------
 #define DATE_FORMAT_MIN                 0
 #define DATE_FORMAT_YYMMDD              0
 #define DATE_FORMAT_MMDDYY              1
@@ -132,6 +139,7 @@
 #define DATE_FORMAT_MAX                 2
 #define DATE_FORMAT_DEFAULT             2
 
+// -------------------------------------------------------------------------------
 #define DAY_BLANKING_MIN                0
 #define DAY_BLANKING_NEVER              0  // Don't blank ever (default)
 #define DAY_BLANKING_WEEKEND            1  // Blank during the weekend
@@ -145,6 +153,7 @@
 #define DAY_BLANKING_MAX                8
 #define DAY_BLANKING_DEFAULT            0
 
+// -------------------------------------------------------------------------------
 #define BLANK_MODE_MIN                  0
 #define BLANK_MODE_TUBES                0  // Use blanking for tubes only 
 #define BLANK_MODE_LEDS                 1  // Use blanking for LEDs only
@@ -152,6 +161,7 @@
 #define BLANK_MODE_MAX                  2
 #define BLANK_MODE_DEFAULT              2
 
+// -------------------------------------------------------------------------------
 #define BACKLIGHT_MIN                   0
 #define BACKLIGHT_FIXED                 0   // Just define a colour and stick to it
 #define BACKLIGHT_PULSE                 1   // pulse the defined colour
@@ -164,39 +174,50 @@
 #define BACKLIGHT_MAX                   7
 #define BACKLIGHT_DEFAULT               4
 
+// -------------------------------------------------------------------------------
 #define CYCLE_SPEED_MIN                 4
 #define CYCLE_SPEED_MAX                 64
 #define CYCLE_SPEED_DEFAULT             10
 
+// -------------------------------------------------------------------------------
 #define ANTI_GHOST_MIN                  0
 #define ANTI_GHOST_MAX                  50
 #define ANTI_GHOST_DEFAULT              0
 
+// -------------------------------------------------------------------------------
 #define PIR_TIMEOUT_MIN                 60    // 1 minute in seconds
 #define PIR_TIMEOUT_MAX                 3600  // 1 hour in seconds
 #define PIR_TIMEOUT_DEFAULT             300   // 5 minutes in seconds
 
-#define TEMP_DISPLAY_MODE_DUR_MS        5000
-
+// -------------------------------------------------------------------------------
 #define USE_LDR_DEFAULT                 true
 
+// -------------------------------------------------------------------------------
 #define SLOTS_MODE_MIN                  0
 #define SLOTS_MODE_NONE                 0   // Don't use slots effect
 #define SLOTS_MODE_1M_SCR_SCR           1   // use slots effect every minute, scroll in, scramble out
 #define SLOTS_MODE_MAX                  1
 #define SLOTS_MODE_DEFAULT              1
 
+// -------------------------------------------------------------------------------
 // RTC address
 #define RTC_I2C_ADDRESS                 0x68
 
+// -------------------------------------------------------------------------------
 #define MAX_WIFI_TIME                   5   // The number of minutes to wait before we fall back to RTC
 
+// -------------------------------------------------------------------------------
 #define DO_NOT_APPLY_LEAD_0_BLANK       false
 #define APPLY_LEAD_0_BLANK              true
 
+// -------------------------------------------------------------------------------
 #define PixelCount                      6
 
+// -------------------------------------------------------------------------------
 #define BUILTIN_LED_PIN                 1
 
+// -------------------------------------------------------------------------------
 #define CONFIG_PORTAL_TIMEOUT           60
 #endif
+
+#define DIAGS_DELAY_TIME                500

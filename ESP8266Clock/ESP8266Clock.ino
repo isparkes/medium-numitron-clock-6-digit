@@ -36,7 +36,7 @@
 // using the ZIP files in the "libraries" directory
 #include <DS3231.h>             // https://github.com/NorthernWidget/DS3231 (Wickert 1.0.2)
 #include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis 1.5.0)
-// #include <Timezone.h>           // https://github.com/JChristensen/Timezone (Christensen 1.2.1)
+// #include <Timezone.h>           // https://github.com/JChristensen/Timezone (Christensen 1.2.1) for NTP time management
 #include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna 2.3.4)
 #include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.14.0)
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
@@ -52,7 +52,7 @@
 // Software version shown in config menu
 #define SOFTWARE_VERSION    1
 
-#define DEBUG_OFF
+#define DEBUG
 
 #ifdef DEBUG
  #define debugMsg(x)  Serial.println (x)
@@ -60,7 +60,7 @@
  #define setupDebug()  Serial.begin(115200)
 #else
  #define debugMsg(x)
- #define setupDebug()
+ #define setupDebug() 
 #endif
 
 // ------------------------ Wifi ------------------------
@@ -185,6 +185,7 @@ boolean triggeredThisSec = false;
 
 byte useRTC = false;  // true if we detect an RTC
 byte useWiFi = 0; // the number of minutes ago we recevied information from the WiFi module, 0 = don't use WiFi
+boolean onceHadAnRTC = false;
 
 // **************************** LED management ***************************
 boolean upOrDown;
@@ -303,9 +304,15 @@ void setup()
     setDiagnosticLED(DIAGS_TIMESERVER,STATUS_GREEN);
   }
 
+  // Set up that we should auto reconnect
+  WiFi.setAutoReconnect(true);
+
   Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
   debugMsg("I2C master started");
-  
+
+  // Make sure that the RTC has the osc running on battery mode
+  setupRTCTimeProvider();
+
   /* Set page handler functions */
   server.on("/",            rootPageHandler);
   server.on("/time",        timeServerPageHandler);
@@ -406,6 +413,9 @@ void setup()
     setDiagnosticLED(DIAGS_RTC,STATUS_RED);
   }
 
+  // Note that we had an RTC to allow the indicator DP to have meaning
+  onceHadAnRTC = useRTC;
+  
   // Show the version for 1 s
   tempDisplayMode = TEMP_MODE_VERSION;
   tempDisplayModeDuration = TEMP_DISPLAY_MODE_DUR_MS;
@@ -451,13 +461,10 @@ void loop()
         if (hour() == 0) {
           performOncePerDayProcessing();
         }
-        
         performOncePerHourProcessing();
       }
-      
       performOncePerMinuteProcessing();
     }
-
     performOncePerSecondProcessing();
 
     // Make sure we don't call multiple times
@@ -491,8 +498,9 @@ void loop()
   if (button1.isButtonPressedReleased2S()) {
     currentMode = MODE_MIN;
 
-    // Store the EEPROM if we exit the config mode
-//    saveEEPROMValues();
+
+    // Store the latest config if we exit the config mode
+    saveConfigToSpiffs();
 
     // Preset the display
     allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
@@ -504,8 +512,8 @@ void loop()
     if (currentMode > MODE_MAX) {
       currentMode = MODE_MIN;
 
-      // Store the EEPROM if we exit the config mode
-//      saveEEPROMValues();
+      // Store the latest config if we exit the config mode
+      saveConfigToSpiffs();
 
       // Preset the display
       allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
@@ -607,23 +615,6 @@ void performOncePerSecondProcessing() {
 // Called once per minute
 // ************************************************************
 void performOncePerMinuteProcessing() {
-  if (useWiFi > 0) {
-    if (useWiFi == MAX_WIFI_TIME) {
-      // We recently got an update, send to the RTC (if installed)
-      setRTC();
-      debugMsg("Set RTC time to Net time");
-    }
-    useWiFi--;
-  } else {
-    // get the time from the external RTC provider - (if installed)
-    getRTCTime();
-  }
-
-  // AM/PM indicator
-  if (hourMode) {
-    dpArray[1] = (hour() > 12);
-  }
-
   // Try to recover the current time
   lastTimeFromServer = getTimeFromTimeZoneServer();
 
@@ -640,6 +631,36 @@ void performOncePerMinuteProcessing() {
     setBlinkMode(2);
     debugMsg("No time server update");
   }
+  
+  if (useWiFi > 0) {
+    if (useWiFi == MAX_WIFI_TIME) {
+      // We recently got an update, send to the RTC (if installed)
+      setRTCTime();
+      debugMsg("Set RTC time to Net time");
+    } else {
+      debugMsg("Net time is not right up to date");
+    }
+    useWiFi--;
+  } else {
+    getRTCTime();
+  }
+
+  if (useRTC) {
+    debugMsg("RTC OK"); 
+  } else {
+    debugMsg("RTC not found"); 
+  }
+  
+  // AM/PM indicator
+  if (hourMode) {
+    dpArray[1] = (hour() > 12);
+  }
+
+  // RTC - light up only if we have lost our RTC
+  dpArray[2] = onceHadAnRTC && !useRTC;
+  
+  // WiFi
+  dpArray[3] = (useWiFi < 1);
 }
 
 // ************************************************************
@@ -710,7 +731,7 @@ void setLeds()
   float dimFactor = (float) digitOffCount / (float) DIGIT_DISPLAY_OFF;
   float pwmFactor = (float) secsDelta / (float) 1000.0;
 
-  // Tick led output
+  // Tick led output PWM factor
   tlPWM = getLEDAdjusted(255, pwmFactor, dimFactor);
 
   if (blankLEDs) {
@@ -1023,11 +1044,6 @@ void setNextMode() {
       }
     case MODE_USE_PIR_PULLUP: {
         loadNumberArrayConfBool(usePIRPullup, nextMode - MODE_12_24);
-        displayConfig();
-        break;
-      }
-    case MODE_TEMP: {
-        loadNumberArrayTemp(nextMode - MODE_12_24);
         displayConfig();
         break;
       }
@@ -1538,11 +1554,6 @@ void processCurrentMode() {
         displayConfig();
         break;
       }
-    case MODE_TEMP: {
-        loadNumberArrayTemp(currentMode - MODE_12_24);
-        displayConfig();
-        break;
-      }
     case MODE_VERSION: {
         loadNumberArrayConfInt(SOFTWARE_VERSION, currentMode - MODE_12_24);
         displayConfig();
@@ -1704,23 +1715,6 @@ void loadNumberArrayDate() {
       NumberArray[0] = day() / 10;
       break;
   }
-}
-
-// ************************************************************
-// Break the temperature into displayable digits
-// ************************************************************
-void loadNumberArrayTemp(int confNum) {
-  NumberArray[5] = (confNum) % 10;
-  NumberArray[4] = (confNum / 10) % 10;
-  float temp = getRTCTemp();
-  int wholeDegrees = int(temp);
-  temp = (temp - float(wholeDegrees)) * 100.0;
-  int fractDegrees = int(temp);
-
-  NumberArray[3] = fractDegrees % 10;
-  NumberArray[2] =  fractDegrees / 10;
-  NumberArray[1] =  wholeDegrees % 10;
-  NumberArray[0] = wholeDegrees / 10;
 }
 
 // ************************************************************
@@ -2219,7 +2213,7 @@ void loadDisplayConfigValue() {
 void resetSecond() {
   byte tmpSecs = 0;
   setTime(hour(), minute(), tmpSecs, day(), month(), year());
-  setRTC();
+  setRTCTime();
 }
 
 // ************************************************************
@@ -2232,7 +2226,7 @@ void incSecond() {
     tmpSecs = 0;
   }
   setTime(hour(), minute(), tmpSecs, day(), month(), year());
-  setRTC();
+  setRTCTime();
 }
 
 // ************************************************************
@@ -2245,7 +2239,7 @@ void incMins() {
     tmpMins = 0;
   }
   setTime(hour(), tmpMins, 0, day(), month(), year());
-  setRTC();
+  setRTCTime();
 }
 
 // ************************************************************
@@ -2259,7 +2253,7 @@ void incHours() {
     tmpHours = 0;
   }
   setTime(tmpHours, minute(), second(), day(), month(), year());
-  setRTC();
+  setRTCTime();
 }
 
 // ************************************************************
@@ -2296,7 +2290,7 @@ void incDays() {
     tmpDays = 1;
   }
   setTime(hour(), minute(), second(), tmpDays, month(), year());
-  setRTC();
+  setRTCTime();
 }
 
 // ************************************************************
@@ -2310,7 +2304,7 @@ void incMonths() {
     tmpMonths = 1;
   }
   setTime(hour(), minute(), second(), day(), tmpMonths, year());
-  setRTC();
+  setRTCTime();
 }
 
 // ************************************************************
@@ -2324,7 +2318,7 @@ void incYears() {
     tmpYears = 15;
   }
   setTime(hour(), minute(), second(), day(), month(), 2000 + tmpYears);
-  setRTC();
+  setRTCTime();
 }
 
 // ************************************************************
@@ -2451,27 +2445,42 @@ void randomRGBFlash(int delayVal) {
 // Get the time from the RTC
 // ************************************************************
 void getRTCTime() {
-  // Set up the time provider
-  // first try to find the RTC, if not available, go into slave mode
-  Wire.beginTransmission(RTC_I2C_ADDRESS);
-  useRTC = (Wire.endTransmission() == 0);
+  testRTCTimeProvider();
   if (useRTC) {
     bool PM;
     bool twentyFourHourClock;
     bool century = false;
 
+    // Get the information from the DS3231, a bit at a time
     byte years = Clock.getYear() + 2000;
     byte months = Clock.getMonth(century);
     byte days = Clock.getDate();
     byte hours = Clock.getHour(twentyFourHourClock, PM);
     byte mins = Clock.getMinute();
     byte secs = Clock.getSecond();
-    setTime(hours, mins, secs, days, months, years);
 
+    // Set the internal time provider to the value we got
+    setTime(hours, mins, secs, days, months, years);
+  }
+}
+
+// ************************************************************
+// Check that we still have access to the time from the RTC
+// ************************************************************
+void testRTCTimeProvider() {
+  // Set up the time provider
+  // first try to find the RTC, if not available, go into slave mode
+  Wire.beginTransmission(RTC_I2C_ADDRESS);
+  useRTC = (Wire.endTransmission() == 0);
+}
+
+// ************************************************************
+// set up the RTC time provider
+// ************************************************************
+void setupRTCTimeProvider() {
     // Make sure the clock keeps running even on battery
     if (!Clock.oscillatorCheck())
       Clock.enableOscillator(true, true, 0);
-  }
 }
 
 // ************************************************************
@@ -2479,7 +2488,8 @@ void getRTCTime() {
 // Always hold the time in 24 format, we convert to 12 in the
 // display.
 // ************************************************************
-void setRTC() {
+void setRTCTime() {
+  testRTCTimeProvider();
   if (useRTC) {
     // Set up the time provider
     // first try to find the RTC, if not available, go into slave mode
@@ -3497,7 +3507,6 @@ String getTimeFromTimeZoneServer() {
       // ESP error codes have a string mapping
       payload = "ERROR: " + String(httpCode) + " ("+ http.errorToString(httpCode) + ")";
     }
-    useWiFi = 0;
   }    
 
   http.end();
