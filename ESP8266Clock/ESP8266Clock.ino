@@ -277,9 +277,9 @@ void setup()
   #endif
   wifiManager.setConfigPortalTimeout(CONFIG_PORTAL_TIMEOUT);
   wifiManager.setAPCallback(configModeCallback);
-  
+
   setDiagnosticLED(DIAGS_WIFI,STATUS_YELLOW);
-  
+
   boolean connected = false;
   connected = wifiManager.autoConnect("VFDClock","SetMeUp!");
 
@@ -318,19 +318,20 @@ void setup()
   server.on("/time",        timeServerPageHandler);
   server.on("/reset",       resetPageHandler);
   server.on("/clockconfig", clockConfigPageHandler);
+  server.on("/setvalue",    setDisplayValuePageHandler);
   server.on("/local.css",   localCSSHandler);
   server.onNotFound(handleNotFound);
 
   server.begin();
   debugMsg("HTTP server started");
-  
+
   if (usePIRPullup) {
     debugMsg("Setting PIR pullup");
     pinMode(pirPin, INPUT_PULLUP);
   } else {
     pinMode(pirPin, INPUT);
   }
-  
+
   // **********************************************************************
 
   // Clear down any spurious button action
@@ -377,7 +378,7 @@ void setup()
       }
 
       loadNumberArraySameValue(secCount);
-      
+
       // debugMsg("Setting display: " + String(secCount));
       outputDisplay();
 
@@ -386,7 +387,7 @@ void setup()
         setLeds();
         lastSecCount = secCount;
       }
-      
+
       // debugMsg("Checing test mode exit condition");
       button1.checkButton(nowMillis);
       if (button1.isButtonPressedNow() && (secCount == 8)) {
@@ -415,7 +416,7 @@ void setup()
 
   // Note that we had an RTC to allow the indicator DP to have meaning
   onceHadAnRTC = useRTC;
-  
+
   // Show the version for 1 s
   tempDisplayMode = TEMP_MODE_VERSION;
   tempDisplayModeDuration = TEMP_DISPLAY_MODE_DUR_MS;
@@ -433,7 +434,7 @@ void setup()
   #else
     setDiagnosticLED(DIAGS_DEBUG,STATUS_GREEN);
   #endif
-  
+
   debugMsg("Exit startup in 1 second");
   delay(1000);
 }
@@ -447,14 +448,14 @@ boolean millisNotSet = true;
 void loop()
 {
   server.handleClient();
-  
+
   nowMillis = millis();
 
   // shows us how fast the inner loop is running
   impressionsPerSec++;
 
   // -------------------------------------------------------------------------------
-  
+
   if (abs(nowMillis - lastCheckMillis) >= 1000) {
     if ((second() == 0) && (!triggeredThisSec)) {
       if ((minute() == 0)) {
@@ -469,14 +470,14 @@ void loop()
 
     // Make sure we don't call multiple times
     triggeredThisSec = true;
-    
+
     if ((second() > 0) && triggeredThisSec) {
       triggeredThisSec = false;
     }
 
     lastCheckMillis = nowMillis;
   }
-  
+
   // Check button, we evaluate below
   button1.checkButton(nowMillis);
 
@@ -615,14 +616,24 @@ void performOncePerSecondProcessing() {
 // Called once per minute
 // ************************************************************
 void performOncePerMinuteProcessing() {
+  // Try to reconnect if we are  not connected
+   if (WiFi.status() != WL_CONNECTED) {
+      debugMsg("Attepting to reconnect dropped connection WiFi connection to " + WiFi.SSID());
+      ETS_UART_INTR_DISABLE();
+      wifi_station_disconnect();
+      ETS_UART_INTR_ENABLE();
+
+      WiFi.begin();
+   }
+
   // Try to recover the current time
   lastTimeFromServer = getTimeFromTimeZoneServer();
 
   if (!lastTimeFromServer.startsWith("ERROR:")) {
     setTimeFromServer(lastTimeFromServer);
-        
+
     setBlinkMode(1);
-        
+
     // all OK, flash 10 millisecond per second
     debugMsg("Update from time server OK");
 
@@ -631,7 +642,7 @@ void performOncePerMinuteProcessing() {
     setBlinkMode(2);
     debugMsg("No time server update");
   }
-  
+
   if (useWiFi > 0) {
     if (useWiFi == MAX_WIFI_TIME) {
       // We recently got an update, send to the RTC (if installed)
@@ -650,7 +661,7 @@ void performOncePerMinuteProcessing() {
   } else {
     debugMsg("RTC not found"); 
   }
-  
+
   // AM/PM indicator
   if (hourMode) {
     dpArray[1] = (hour() > 12);
@@ -658,7 +669,7 @@ void performOncePerMinuteProcessing() {
 
   // RTC - light up only if we have lost our RTC
   dpArray[2] = onceHadAnRTC && !useRTC;
-  
+
   // WiFi
   dpArray[3] = (useWiFi < 1);
 }
@@ -1169,7 +1180,7 @@ void processCurrentMode() {
                 break;
               }
             }
-              
+
             // Continue slots
             if (msgDisplaying) {
               transition.updateRegularDisplaySeconds(second());
@@ -3431,6 +3442,80 @@ void clockConfigPageHandler() {
   
   digitalWrite(BUILTIN_LED_PIN, false);
   debugMsg("Config page out");
+}
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+/**
+   Send a value to the clock for display
+*/
+void setDisplayValuePageHandler() {
+  String resultMessage;
+  byte timeValue = 0xff;
+  if (server.hasArg("time"))
+  {
+    debugMsg("Got time");
+    debugMsg(server.arg("time"));
+    unsigned int timeToSend = atoi(server.arg("time").c_str());
+    if (timeToSend > 255) 
+    {
+      valueDisplayTime = 0xff;
+    } else {
+      valueDisplayTime = timeToSend;
+    }
+  };
+  
+  if (server.hasArg("value"))
+  {
+    debugMsg("Got server arg value: " + server.arg("value"));
+    long valueToSend = atol(server.arg("value").c_str());
+    byte val2 = hex2bcd(valueToSend % 100);
+    valueToSend = valueToSend / 100;
+    byte val1 = hex2bcd(valueToSend % 100);
+    valueToSend = valueToSend / 100;
+    byte val0 = hex2bcd(valueToSend % 100);
+
+    valueToShow[0] = val0;
+    valueToShow[1] = val1;
+    valueToShow[2] = val2;
+  }
+  
+  if (server.hasArg("format"))
+  {
+    debugMsg("Got format");
+    debugMsg(server.arg("format"));
+
+    long formatToSend = atol(server.arg("format").c_str());
+    byte val2 = hex2bcd(formatToSend % 100);
+    formatToSend = formatToSend / 100;
+    byte val1 = hex2bcd(formatToSend % 100);
+    formatToSend = formatToSend / 100;
+    byte val0 = hex2bcd(formatToSend % 100);
+    valueDisplayType[0] = val0;
+    valueDisplayType[1] = val1;
+    valueDisplayType[2] = val2;
+  };
+  
+  String response_message = getHTMLHead();
+  response_message += getNavBar();
+
+  response_message += "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">Send value to I2C</h3>";
+  response_message += "<div class=\"alert alert-success fade in\"><strong>";
+  response_message += resultMessage;
+  response_message += "</strong></div></div>";
+
+  response_message += getHTMLFoot();
+
+  server.send(200, "text/html", response_message);
+}
+
+unsigned char hex2bcd (unsigned char x)
+{
+    unsigned char y;
+    y = (x / 10) << 4;
+    y = y | (x % 10);
+    return (y);
 }
 
 // ===================================================================================================================
