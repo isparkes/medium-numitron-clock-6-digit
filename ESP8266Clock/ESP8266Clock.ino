@@ -2212,7 +2212,7 @@ void allBlanked() {
 void loadDisplayConfigValue() {
   displayType[5] = valueDisplayType[2] & 0xf;
   displayType[4] = valueDisplayType[2] >> 4;
-  displayType[5] = valueDisplayType[1] & 0xf;
+  displayType[3] = valueDisplayType[1] & 0xf;
   displayType[2] = valueDisplayType[1] >> 4;
   displayType[1] = valueDisplayType[0] & 0xf;
   displayType[0] = valueDisplayType[0] >> 4;
@@ -3453,18 +3453,7 @@ void clockConfigPageHandler() {
 void setDisplayValuePageHandler() {
   String resultMessage;
   byte timeValue = 0xff;
-  if (server.hasArg("time"))
-  {
-    debugMsg("Got time");
-    debugMsg(server.arg("time"));
-    unsigned int timeToSend = atoi(server.arg("time").c_str());
-    if (timeToSend > 255) 
-    {
-      valueDisplayTime = 0xff;
-    } else {
-      valueDisplayTime = timeToSend;
-    }
-  };
+  boolean argsValid = false;
   
   if (server.hasArg("value"))
   {
@@ -3479,7 +3468,24 @@ void setDisplayValuePageHandler() {
     valueToShow[0] = val0;
     valueToShow[1] = val1;
     valueToShow[2] = val2;
+
+    resultMessage += "Set Value  ";
+    argsValid = true;
   }
+  
+  if (server.hasArg("time"))
+  {
+    debugMsg("Got time");
+    debugMsg(server.arg("time"));
+    unsigned int timeToSend = atoi(server.arg("time").c_str());
+    if (timeToSend > 255) 
+    {
+      valueDisplayTime = 0xff;
+    } else {
+      valueDisplayTime = timeToSend;
+      resultMessage += "Set Time  ";
+    }
+  };
   
   if (server.hasArg("format"))
   {
@@ -3495,15 +3501,24 @@ void setDisplayValuePageHandler() {
     valueDisplayType[0] = val0;
     valueDisplayType[1] = val1;
     valueDisplayType[2] = val2;
+    
+    resultMessage += "Set Format  ";
   };
   
   String response_message = getHTMLHead();
   response_message += getNavBar();
 
-  response_message += "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">Send value to I2C</h3>";
-  response_message += "<div class=\"alert alert-success fade in\"><strong>";
-  response_message += resultMessage;
-  response_message += "</strong></div></div>";
+  response_message += "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">Show a value on the clock</h3>";
+
+  if (argsValid) {
+    response_message += "<div class=\"alert alert-success fade in\"><strong>";
+    response_message += resultMessage;
+    response_message += "</strong></div></div>";
+  } else {
+    response_message += "<div class=\"alert alert-error fade in\"><strong>";
+    response_message += "You need to set at least the \"Time\" parameter! A valid command line is http://<clock.ip.addres>/setvalue?value=123456&time=60&format=333333";
+    response_message += "</strong></div></div>";
+  }
 
   response_message += getHTMLFoot();
 
