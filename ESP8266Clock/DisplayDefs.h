@@ -61,9 +61,11 @@ const byte colourTimeB[] = {   0,   0,   0, 255, 255, 255,   0,  31, 255, 127};
 #define STATUS_GREEN  2
 #define STATUS_BLUE   3
 
-#define LED_RAILROAD      0
-#define LED_BLINK_SLOW    1
-#define LED_BLINK_FAST    2
-#define LED_BLINK_DBL     3
+#define LED_RAILROAD        0
+#define LED_BLINK_SLOW      1
+#define LED_BLINK_FAST      2
+#define LED_BLINK_DBL       3
+#define LED_BLINK_DEFAULT   LED_RAILROAD
+
 
 #endif

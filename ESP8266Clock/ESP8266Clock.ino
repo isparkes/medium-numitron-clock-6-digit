@@ -2682,6 +2682,9 @@ boolean getConfigFromSpiffs() {
           testMode = json["testMode"].as<bool>();
           debugMsg("Loaded testMode: " + String(testMode));
           
+          ledMode = json["ledMode"];
+          debugMsg("Loaded ledMode: " + String(ledMode));
+          
           loaded = true;
         } else {
           debugMsg("failed to load json config");
@@ -2732,6 +2735,7 @@ void saveConfigToSpiffs() {
     json["slotsMode"] = slotsMode;
     json["usePIRPullup"] = usePIRPullup;
     json["testMode"] = testMode;
+    json["ledMode"] = ledMode;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -2784,6 +2788,7 @@ void factoryReset() {
   blankMode = BLANK_MODE_DEFAULT;
   slotsMode = SLOTS_MODE_DEFAULT;
   usePIRPullup = USE_PIR_PULLUP_DEFAULT;
+  ledMode = LED_BLINK_DEFAULT;
   testMode = true;
 
   saveConfigToSpiffs();
