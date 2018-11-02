@@ -68,8 +68,6 @@
 #define DEFAULT_TIME_SERVER_URL_1 "http://its.internet-box.ch/getTime/Europe/Zurich"
 #define DEFAULT_TIME_SERVER_URL_2 "http://time-zone-server.scapp.io/getTime/Europe/Zurich"
 
-const char *serialNumber = "0x0x0x";  // this is to be customized at burn time
-
 // used for flashing the blue LED
 int blinkOnTime = 1000;
 int blinkTopTime = 2000;
@@ -2846,7 +2844,6 @@ void rootPageHandler() {
   response_message += getTableRow2Col("Time since last update", lastUpdateString);
 
   response_message += getTableRow2Col("Version", SOFTWARE_VERSION);
-  response_message += getTableRow2Col("Serial Number", serialNumber);
 
   // Scan I2C bus
   for (int idx = 0 ; idx < 128 ; idx++)
@@ -3595,7 +3592,6 @@ String getTimeFromTimeZoneServer() {
   http.begin(timeServerURL);
   String espId = "";espId += ESP.getChipId();
   http.addHeader("ESP",espId);
-  http.addHeader("ClientID",serialNumber);
 
   int httpCode = http.GET();
 
