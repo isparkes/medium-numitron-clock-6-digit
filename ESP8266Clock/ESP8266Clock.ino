@@ -788,6 +788,7 @@ void setLeds()
             ledG[5-i] = getLEDAdjusted(colourTimeG[NumberArray[i]],1,1);
             ledB[5-i] = getLEDAdjusted(colourTimeB[NumberArray[i]],1,1);
           }
+          outputLEDBuffer();
         break;
       case BACKLIGHT_COLOUR_TIME_DIM:
           for (int i = 0 ; i < 6 ; i++) {
@@ -795,6 +796,7 @@ void setLeds()
             ledG[5-i] = getLEDAdjusted(colourTimeG[NumberArray[i]],1,dimFactor);
             ledB[5-i] = getLEDAdjusted(colourTimeB[NumberArray[i]],1,dimFactor);
           }
+          outputLEDBuffer();
         break;
     }
   }
