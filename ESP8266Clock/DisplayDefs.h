@@ -45,9 +45,9 @@ const byte rgb_backlight_curve[] = {0, 16, 32, 48, 64, 80, 99, 112, 128, 144, 16
 
 // Used to define "colourTime" colours
 //                             0    1    2    3    4    5    6    7    8    9
-const byte colourTimeR[] = { 255, 255,   0,   0,   0, 255, 255,   0,  15, 127};
-const byte colourTimeG[] = {   0, 255, 255, 255,   0,   0,  64, 255,  31, 127};
-const byte colourTimeB[] = {   0,   0,   0, 255, 255, 255,   0,  31, 255, 127};
+const byte colourTimeR[] = { 255, 255, 255, 96,   0,   0,   0,   0, 180,  255};
+const byte colourTimeG[] = {   0, 164, 255, 255, 255, 255, 128,   0,   0,   0};
+const byte colourTimeB[] = {   0,   0,   0,   0,  32, 190, 255, 255, 255, 255};
 
 #define DIAGS_START       0
 #define DIAGS_SPIFFS      1
