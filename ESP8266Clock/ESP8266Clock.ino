@@ -645,7 +645,7 @@ void performOncePerMinuteProcessing() {
     if (useWiFi == MAX_WIFI_TIME) {
       // We recently got an update, send to the RTC (if installed)
       setRTCTime();
-      debugMsg("Set RTC time to Net time");
+      debugMsg("-> Set RTC time to Net time");
     } else {
       debugMsg("Net time is not right up to date");
     }
@@ -1053,6 +1053,11 @@ void setNextMode() {
       }
     case MODE_USE_PIR_PULLUP: {
         loadNumberArrayConfBool(usePIRPullup, nextMode - MODE_12_24);
+        displayConfig();
+        break;
+      }
+    case MODE_LED_BLINK: {
+        loadNumberArrayConfInt(ledMode, nextMode - MODE_12_24);
         displayConfig();
         break;
       }
@@ -1560,6 +1565,17 @@ void processCurrentMode() {
         }
         loadNumberArrayConfBool(usePIRPullup, currentMode - MODE_12_24);
         digitalWrite(pirPin, usePIRPullup);
+        displayConfig();
+        break;
+      }
+    case MODE_LED_BLINK: {
+        if (button1.isButtonPressedAndReleased()) {
+          ledMode += 1;
+          if (ledMode > LED_MODE_MAX) {
+            ledMode = LED_MODE_MIN;
+          }
+        }
+        loadNumberArrayConfInt(ledMode, currentMode - MODE_12_24);
         displayConfig();
         break;
       }
@@ -2977,13 +2993,13 @@ void clockConfigPageHandler() {
   {
     debugMsg("Got 24h mode param: " + server.arg("12h24hMode"));
     if ((server.arg("12h24hMode") == "24h") && (hourMode)) {
-      debugMsg("Set 24h mode");
+      debugMsg("-> Set 24h mode");
       changed = true;
       hourMode = false;
     }
 
     if ((server.arg("12h24hMode") == "12h") && (!hourMode)) {
-      debugMsg("Set 12h mode");
+      debugMsg("-> Set 12h mode");
       changed = true;
       hourMode = true;
     }
@@ -2995,13 +3011,13 @@ void clockConfigPageHandler() {
   {
     debugMsg("Got blankLeading param: " + server.arg("blankLeading"));
     if ((server.arg("blankLeading") == "blank") && (!blankLeading)) {
-      debugMsg("Set blank leading zero");
+      debugMsg("-> Set blank leading zero");
       changed = true;
       blankLeading = true;
     }
 
     if ((server.arg("blankLeading") == "show") && (blankLeading)) {
-      debugMsg("Set show leading zero");
+      debugMsg("-> Set show leading zero");
       changed = true;
       blankLeading = false;
     }
@@ -3013,13 +3029,13 @@ void clockConfigPageHandler() {
   {
     debugMsg("Got useScrollback param: " + server.arg("useScrollback"));
     if ((server.arg("useScrollback") == "on") && (!scrollback)) {
-      debugMsg("Set scrollback on");
+      debugMsg("-> Set scrollback on");
       changed = true;
       scrollback = true;
     }
 
     if ((server.arg("useScrollback") == "off") && (scrollback)) {
-      debugMsg("Set scrollback off");
+      debugMsg("-> Set scrollback off");
       changed = true;
       scrollback = false;
     }
@@ -3031,13 +3047,13 @@ void clockConfigPageHandler() {
   {
     debugMsg("Got fade param: " + server.arg("fade"));
     if ((server.arg("fade") == "on") && (!fade)) {
-      debugMsg("Set fade on");
+      debugMsg("-> Set fade on");
       changed = true;
       fade = true;
     }
 
     if ((server.arg("fade") == "off") && (fade)) {
-      debugMsg("Set fade off");
+      debugMsg("-> Set fade off");
       changed = true;
       fade = false;
     }
@@ -3049,13 +3065,13 @@ void clockConfigPageHandler() {
   {
     debugMsg("Got useLDR param: " + server.arg("useLDR"));
     if ((server.arg("useLDR") == "on") && (!useLDR)) {
-      debugMsg("Set useLDR on");
+      debugMsg("-> Set useLDR on");
       changed = true;
       useLDR = true;
     }
 
     if ((server.arg("useLDR") == "off") && (useLDR)) {
-      debugMsg("Set useLDR off");
+      debugMsg("-> Set useLDR off");
       changed = true;
       useLDR = false;
     }
@@ -3069,7 +3085,7 @@ void clockConfigPageHandler() {
     if (newDateFormat != dateFormat) {
       changed = true;
       dateFormat = newDateFormat;
-      debugMsg("Set dateFormat: " + newDateFormat);
+      debugMsg("-> Set dateFormat: " + String(newDateFormat));
     }
   }
 
@@ -3081,7 +3097,7 @@ void clockConfigPageHandler() {
     if (newDayBlanking != dayBlanking) {
       changed = true;
       dayBlanking = newDayBlanking;
-      debugMsg("Set dayBlanking: " + newDayBlanking);
+      debugMsg("-> Set dayBlanking: " + String(newDayBlanking));
     }
   }
 
@@ -3093,7 +3109,7 @@ void clockConfigPageHandler() {
     if (newBlankFrom != blankHourStart) {
       changed = true;
       blankHourStart = newBlankFrom;
-      debugMsg("Set blankHourStart: " + newBlankFrom);
+      debugMsg("-> Set blankHourStart: " + String(newBlankFrom));
     }
   }
 
@@ -3105,7 +3121,7 @@ void clockConfigPageHandler() {
     if (newBlankTo != blankHourEnd) {
       changed = true;
       blankHourEnd = newBlankTo;
-      debugMsg("Set blankHourEnd: " + newBlankTo);
+      debugMsg("-> Set blankHourEnd: " + String(newBlankTo));
     }
   }
 
@@ -3117,7 +3133,7 @@ void clockConfigPageHandler() {
     if (newFadeSteps != fadeSteps) {
       changed = true;
       fadeSteps = newFadeSteps;
-      debugMsg("Set fadeSteps: " + newFadeSteps);
+      debugMsg("-> Set fadeSteps: " + String(newFadeSteps));
     }
   }
 
@@ -3129,7 +3145,7 @@ void clockConfigPageHandler() {
     if (newScrollSteps != scrollSteps) {
       changed = true;
       scrollSteps = newScrollSteps;
-      debugMsg("Set fadeSteps: " + newScrollSteps);
+      debugMsg("-> Set fadeSteps: " + String(newScrollSteps));
     }
   }
 
@@ -3141,7 +3157,7 @@ void clockConfigPageHandler() {
     if (newBacklight != backlightMode) {
       changed = true;
       backlightMode = newBacklight;
-      debugMsg("Set backLight: " + newBacklight);
+      debugMsg("-> Set backLight: " + String(newBacklight));
     }
   }
 
@@ -3153,7 +3169,7 @@ void clockConfigPageHandler() {
     if (newRedCnl != redCnl) {
       changed = true;
       redCnl = newRedCnl;
-      debugMsg("Set redCnl: " + newRedCnl);
+      debugMsg("-> Set redCnl: " + String(newRedCnl));
     }
   }
 
@@ -3165,7 +3181,7 @@ void clockConfigPageHandler() {
     if (newGreenCnl != grnCnl) {
       changed = true;
       grnCnl = newGreenCnl;
-      debugMsg("Set grnCnl: " + newGreenCnl);
+      debugMsg("-> Set grnCnl: " + String(newGreenCnl));
     }
   }
 
@@ -3177,7 +3193,7 @@ void clockConfigPageHandler() {
     if (newBlueCnl != bluCnl) {
       changed = true;
       bluCnl = newBlueCnl;
-      debugMsg("Set bluCnl: " + newBlueCnl);
+      debugMsg("-> Set bluCnl: " + String(newBlueCnl));
     }
   }
 
@@ -3189,7 +3205,7 @@ void clockConfigPageHandler() {
     if (newCycleSpeed != cycleSpeed) {
       changed = true;
       cycleSpeed = newCycleSpeed;
-      debugMsg("Set cycleSpeed: " + newCycleSpeed);
+      debugMsg("-> Set cycleSpeed: " + String(newCycleSpeed));
     }
   }
 
@@ -3201,7 +3217,7 @@ void clockConfigPageHandler() {
     if (newBlankMode != blankMode) {
       changed = true;
       blankMode = newBlankMode;
-      debugMsg("Set blankMode: " + newBlankMode);
+      debugMsg("-> Set blankMode: " + String(newBlankMode));
     }
   }
 
@@ -3213,7 +3229,7 @@ void clockConfigPageHandler() {
     if (newSlotsMode != slotsMode) {
       changed = true;
       slotsMode = newSlotsMode;
-      debugMsg("Set slotsMode: " + newSlotsMode);
+      debugMsg("-> Set slotsMode: " + String(newSlotsMode));
     }
   }
 
@@ -3225,7 +3241,7 @@ void clockConfigPageHandler() {
     if (newPirTimeOut != pirTimeout) {
       changed = true;
       pirTimeout = newPirTimeOut;
-      debugMsg("Set pirTimeout: " + newPirTimeOut);
+      debugMsg("-> Set pirTimeout: " + String(newPirTimeOut));
     }
   }
 
@@ -3236,13 +3252,13 @@ void clockConfigPageHandler() {
     debugMsg("Got usePirPullup param: " + server.arg("usePirPullup"));
     if ((server.arg("usePirPullup") == "on") && (!usePIRPullup)) {
       changed = true;
-      debugMsg("Set usePirPullup on");
+      debugMsg("-> Set usePirPullup on");
       usePIRPullup = true;
     }
 
     if ((server.arg("usePirPullup") == "off") && (usePIRPullup)) {
       changed = true;
-      debugMsg("Set usePirPullup off");
+      debugMsg("-> Set usePirPullup off");
       usePIRPullup = false;
     }
   }
@@ -3255,7 +3271,7 @@ void clockConfigPageHandler() {
     if (newMinDim != minDim) {
       changed = true;
       minDim = newMinDim;
-      debugMsg("Set minDim: " + newMinDim);
+      debugMsg("-> Set minDim: " + String(newMinDim));
     }
   }
 
@@ -3267,7 +3283,7 @@ void clockConfigPageHandler() {
     if (newLedMode != ledMode) {
       changed = true;
       ledMode = newLedMode;
-      debugMsg("Set ledMode: " + newLedMode);
+      debugMsg("-> Set ledMode: " + String(newLedMode));
     }
   }
   // -----------------------------------------------------------------------------

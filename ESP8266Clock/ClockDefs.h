@@ -99,24 +99,27 @@
 #define MODE_CYCLE_SPEED                29 // Mode "22"
 
 // Minimum dimming value for old tubes
-#define MODE_MIN_DIM_UP                 34 // Mode "27"
-#define MODE_MIN_DIM_DOWN               35 // Mode "28"
+#define MODE_MIN_DIM_UP                 34 // Mode "23"
+#define MODE_MIN_DIM_DOWN               35 // Mode "24"
 
-// Anti-ghosting for old tubes - Not Available over I2C
-#define MODE_ANTI_GHOST_UP              36 // Mode "29"
-#define MODE_ANTI_GHOST_DOWN            37 // Mode "30"
+// Anti-ghosting for old tubes
+#define MODE_ANTI_GHOST_UP              36 // Mode "25"
+#define MODE_ANTI_GHOST_DOWN            37 // Mode "26"
 
-// Use the PIR pin pullup resistor - Not Available over I2C
+// Use the PIR pin pullup resistor
 #define MODE_USE_PIR_PULLUP             38 // Mode "31" 1 = use Pullup
 #define USE_PIR_PULLUP_DEFAULT          true
 
+// Separator LED mode
+#define MODE_LED_BLINK                  39 // Mode "32"
+
 // Software Version
-#define MODE_VERSION                    39 // Mode "33"
+#define MODE_VERSION                    40 // Mode "33"
 
 // Tube test - all six digits, so no flashing mode indicator
-#define MODE_TUBE_TEST                  40
+#define MODE_TUBE_TEST                  41
 
-#define MODE_MAX                        40
+#define MODE_MAX                        41
 
 // -------------------------------------------------------------------------------
 // Temporary display modes - accessed by a short press ( < 1S ) on the button when in MODE_TIME
