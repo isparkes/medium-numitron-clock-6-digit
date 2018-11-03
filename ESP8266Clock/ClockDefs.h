@@ -73,19 +73,22 @@
 #define MODE_HR_BLNK_START              13 // Mode "06" - skipped if not using hour blanking
 #define MODE_HR_BLNK_END                14 // Mode "07" - skipped if not using hour blanking
 
-#define MODE_USE_LDR                    16 // Mode "09" 1 = use LDR, 0 = don't (and have 100% brightness)
+#define MODE_USE_LDR                    15 // Mode "08" 1 = use LDR, 0 = don't (and have 100% brightness)
 #define MODE_USE_LDR_DEFAULT            true
 
-#define MODE_BLANK_MODE                 17 // Mode "10" 
+#define MODE_BLANK_MODE                 16 // Mode "09" 
 #define MODE_BLANK_MODE_DEFAULT         BLANK_MODE_BOTH
 
 // Display tricks
-#define MODE_FADE_STEPS_UP              18 // Mode "11"
-#define MODE_FADE_STEPS_DOWN            19 // Mode "12"
-#define MODE_DISPLAY_SCROLL_STEPS_UP    20 // Mode "13"
-#define MODE_DISPLAY_SCROLL_STEPS_DOWN  21 // Mode "14"
+#define MODE_FADE_STEPS_UP              17 // Mode "10"
+#define MODE_FADE_STEPS_DOWN            18 // Mode "11"
+#define MODE_DISPLAY_SCROLL_STEPS_UP    19 // Mode "12"
+#define MODE_DISPLAY_SCROLL_STEPS_DOWN  20 // Mode "13"
 
-#define MODE_SLOTS_MODE                 22 // Mode "15"
+#define MODE_SLOTS_MODE                 21 // Mode "14"
+
+// Separator LED mode
+#define MODE_LED_BLINK                  22 // Mode "15"
 
 // PIR
 #define MODE_PIR_TIMEOUT_UP             23 // Mode "16"
@@ -99,27 +102,24 @@
 #define MODE_CYCLE_SPEED                29 // Mode "22"
 
 // Minimum dimming value for old tubes
-#define MODE_MIN_DIM_UP                 34 // Mode "23"
-#define MODE_MIN_DIM_DOWN               35 // Mode "24"
+#define MODE_MIN_DIM_UP                 30 // Mode "23"
+#define MODE_MIN_DIM_DOWN               31 // Mode "24"
 
 // Anti-ghosting for old tubes
-#define MODE_ANTI_GHOST_UP              36 // Mode "25"
-#define MODE_ANTI_GHOST_DOWN            37 // Mode "26"
+#define MODE_ANTI_GHOST_UP              32 // Mode "25"
+#define MODE_ANTI_GHOST_DOWN            33 // Mode "26"
 
 // Use the PIR pin pullup resistor
-#define MODE_USE_PIR_PULLUP             38 // Mode "31" 1 = use Pullup
+#define MODE_USE_PIR_PULLUP             34 // Mode "27" 1 = use Pullup
 #define USE_PIR_PULLUP_DEFAULT          true
 
-// Separator LED mode
-#define MODE_LED_BLINK                  39 // Mode "32"
-
 // Software Version
-#define MODE_VERSION                    40 // Mode "33"
+#define MODE_VERSION                    35 // Mode "28"
 
 // Tube test - all six digits, so no flashing mode indicator
-#define MODE_TUBE_TEST                  41
+#define MODE_TUBE_TEST                  36
 
-#define MODE_MAX                        41
+#define MODE_MAX                        36
 
 // -------------------------------------------------------------------------------
 // Temporary display modes - accessed by a short press ( < 1S ) on the button when in MODE_TIME

@@ -1761,12 +1761,12 @@ void loadNumberArrayLDR() {
 // Test digits
 // ************************************************************
 void loadNumberArrayTestDigits() {
-  NumberArray[5] =  second() % 10;
-  NumberArray[4] = (second() + 1) % 10;
-  NumberArray[3] = (second() + 2) % 10;
-  NumberArray[2] = (second() + 3) % 10;
-  NumberArray[1] = (second() + 4) % 10;
-  NumberArray[0] = (second() + 5) % 10;
+  NumberArray[5] = second() % 10;
+  NumberArray[4] = second() % 10;
+  NumberArray[3] = second() % 10;
+  NumberArray[2] = second() % 10;
+  NumberArray[1] = second() % 10;
+  NumberArray[0] = second() % 10;
 }
 
 // ************************************************************
