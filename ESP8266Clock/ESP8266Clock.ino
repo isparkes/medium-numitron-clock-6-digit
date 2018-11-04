@@ -1858,6 +1858,7 @@ void outputDisplay()
         }
       case FADE:
       case NORMAL:
+      case SCROLL:
         {
           digitOnTime = DIGIT_DISPLAY_ON;
           digitOffTime = digitOffCount;
@@ -1874,12 +1875,6 @@ void outputDisplay()
           }
           break;
         }
-      case SCROLL:
-        {
-          digitOnTime = DIGIT_DISPLAY_ON;
-          digitOffTime = digitOffCount;
-          break;
-        }
     }
 
     // Do scrollback when we are going to 0
@@ -1890,7 +1885,7 @@ void outputDisplay()
     }
 
     // --------------------- Scroll ---------------------
-    
+
     // manage fading, each impression we show 1 fade step less of the old
     // digit and 1 fade step more of the new
     // manage fading, each impression we show 1 fade step less of the old
@@ -1913,15 +1908,18 @@ void outputDisplay()
         }
       }
     } else 
-    
+
     // --------------------- Fade ---------------------
-    
+
     if (tmpDispType == FADE) {
+      float countsPerStep = (digitOffTime - digitOnTime) / fadeSteps;
+
       if (NumberArray[i] != currNumberArray[i]) {
+        // Start the fade
         if (fadeState[i] == 0) {
           // Start the fade
           fadeState[i] = fadeSteps;
-          digitSwitchTime = (int) fadeState[i] * fadeStep;
+          digitSwitchTime = digitOnTime + (fadeState[i] * countsPerStep);
         }
       }
 
@@ -1933,18 +1931,17 @@ void outputDisplay()
       } else if (fadeState[i] > 1) {
         // Continue the fade
         fadeState[i] = fadeState[i] - 1;
-        digitSwitchTime = (int) fadeState[i] * fadeStep;
+        digitSwitchTime = digitOnTime + (fadeState[i] * countsPerStep);
       }
     } else 
-    
+
     // --------------------- Normal ---------------------
-    
+
     {
       digitSwitchTime = DIGIT_DISPLAY_COUNT;
       currNumberArray[i] = NumberArray[i];
     }
 
-    
     // Main display loop - everything up to now was preparation
     for (int timer = DIGIT_DISPLAY_START ; timer < DIGIT_DISPLAY_COUNT ; timer++) {
       if (timer < digitOnTime) {
@@ -1952,10 +1949,10 @@ void outputDisplay()
         yield();
       } else if (timer == digitOffTime) {
         digitOff();
-      } else if (timer == digitSwitchTime) {
-        digitOn(i, NumberArray[i], dpArray[i], upOrDown, !upOrDown);
       } else if (timer == digitOnTime) {
         digitOn(i, currNumberArray[i], dpArray[i], upOrDown, !upOrDown);
+      } else if (timer == digitSwitchTime) {
+        digitOn(i, NumberArray[i], dpArray[i], upOrDown, !upOrDown);
       }
     }
   }
