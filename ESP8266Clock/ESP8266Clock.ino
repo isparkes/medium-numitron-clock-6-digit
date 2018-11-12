@@ -20,7 +20,7 @@
 //*    Upload speed: 115200,                                                       *
 //*    Flash size: 4M (1M SPIFFS),                                                 *
 //*    Reset method: ck, Disabled, none                                            *
-//*    Erase Flash: All falsh contents,                                            *
+//*    Erase Flash: All flash contents,                                            *
 //*    Builtin LED: 1                                                              *
 //*                                                                                *
 //*  nixie@protonmail.ch                                                           *
@@ -2483,6 +2483,8 @@ void getRTCTime() {
     byte mins = Clock.getMinute();
     byte secs = Clock.getSecond();
 
+    debugMsg("Got RTC time to Net time: " + String(years) + ":" + String(months) + ":" + String(days) + " " + String(hours) + ":" + String(mins) + ":" + String(secs));
+
     // Set the internal time provider to the value we got
     setTime(hours, mins, secs, days, months, years);
   }
@@ -2528,6 +2530,8 @@ void setRTCTime() {
     Clock.setSecond(second());
 
     Wire.endTransmission();
+
+    debugMsg("Set RTC time to Net time: " + String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
   }
 }
 
