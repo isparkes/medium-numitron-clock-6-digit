@@ -34,7 +34,6 @@
 
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
-#include <DS3231.h>             // https://github.com/NorthernWidget/DS3231 (Wickert 1.0.2)
 #include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis 1.5.0)
 // #include <Timezone.h>           // https://github.com/JChristensen/Timezone (Christensen 1.2.1) for NTP time management
 #include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna 2.3.4)
@@ -48,6 +47,7 @@
 #include "VFDDefs.h"
 #include "ClockUtils.h"
 #include "ClockDefs.h"
+#include "ESP_DS1307.h"
 
 // Software version shown in config menu
 #define SOFTWARE_VERSION    1
@@ -158,7 +158,7 @@ boolean useLDR = true;
 
 // ************************ Clock variables ************************
 // RTC, uses Analogue pins A4 (SDA) and A5 (SCL)
-DS3231 Clock;
+DS1307 Clock;
 
 // State variables for detecting changes
 byte lastSec;
@@ -302,14 +302,11 @@ void setup()
     setDiagnosticLED(DIAGS_TIMESERVER,STATUS_GREEN);
   }
 
-  // Set up that we should auto reconnect
+  // If we lose the connection, we try to recover it
   WiFi.setAutoReconnect(true);
 
   Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
   debugMsg("I2C master started");
-
-  // Make sure that the RTC has the osc running on battery mode
-  setupRTCTimeProvider();
 
   /* Set page handler functions */
   server.on("/",            rootPageHandler);
@@ -405,8 +402,10 @@ void setup()
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
   setTime(12, 34, 56, 1, 10, 2018);
-  getRTCTime();
+
+  testRTCTimeProvider();
   if (useRTC) {
+    getRTCTime();
     setDiagnosticLED(DIAGS_RTC,STATUS_GREEN);
   } else {
     setDiagnosticLED(DIAGS_RTC,STATUS_RED);
@@ -646,8 +645,9 @@ void performOncePerMinuteProcessing() {
       // We recently got an update, send to the RTC (if installed)
       setRTCTime();
       debugMsg("-> Set RTC time to Net time");
+      getRTCTime();
     } else {
-      debugMsg("Net time is not right up to date");
+      debugMsg("Net time is not right up to date: " + String(MAX_WIFI_TIME - useWiFi));
     }
     useWiFi--;
   } else {
@@ -2471,19 +2471,15 @@ void randomRGBFlash(int delayVal) {
 void getRTCTime() {
   testRTCTimeProvider();
   if (useRTC) {
-    bool PM;
-    bool twentyFourHourClock;
-    bool century = false;
+    Clock.getTime();
+    int years = Clock.year + 2000;
+    byte months = Clock.month;
+    byte days = Clock.dayOfMonth;
+    byte hours = Clock.hour;
+    byte mins = Clock.minute;
+    byte secs = Clock.second;
 
-    // Get the information from the DS3231, a bit at a time
-    byte years = Clock.getYear() + 2000;
-    byte months = Clock.getMonth(century);
-    byte days = Clock.getDate();
-    byte hours = Clock.getHour(twentyFourHourClock, PM);
-    byte mins = Clock.getMinute();
-    byte secs = Clock.getSecond();
-
-    debugMsg("Got RTC time to Net time: " + String(years) + ":" + String(months) + ":" + String(days) + " " + String(hours) + ":" + String(mins) + ":" + String(secs));
+    debugMsg("Got RTC time: " + String(years) + ":" + String(months) + ":" + String(days) + " " + String(hours) + ":" + String(mins) + ":" + String(secs));
 
     // Set the internal time provider to the value we got
     setTime(hours, mins, secs, days, months, years);
@@ -2501,15 +2497,6 @@ void testRTCTimeProvider() {
 }
 
 // ************************************************************
-// set up the RTC time provider
-// ************************************************************
-void setupRTCTimeProvider() {
-    // Make sure the clock keeps running even on battery
-    if (!Clock.oscillatorCheck())
-      Clock.enableOscillator(true, true, 0);
-}
-
-// ************************************************************
 // Set the date/time in the RTC from the internal time
 // Always hold the time in 24 format, we convert to 12 in the
 // display.
@@ -2517,32 +2504,11 @@ void setupRTCTimeProvider() {
 void setRTCTime() {
   testRTCTimeProvider();
   if (useRTC) {
-    // Set up the time provider
-    // first try to find the RTC, if not available, go into slave mode
-    Wire.beginTransmission(RTC_I2C_ADDRESS);
-    Clock.setClockMode(false); // false = 24h
-    Clock.setYear(year() % 100);
-    Clock.setMonth(month());
-    Clock.setDate(day());
-    Clock.setDoW(weekday());
-    Clock.setHour(hour());
-    Clock.setMinute(minute());
-    Clock.setSecond(second());
-
-    Wire.endTransmission();
+    Clock.fillByYMD(year()%100,month(),day());
+    Clock.fillByHMS(hour(),minute(),second());
+    Clock.setTime();
 
     debugMsg("Set RTC time to Net time: " + String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
-  }
-}
-
-// ************************************************************
-// Get the temperature from the RTC
-// ************************************************************
-float getRTCTemp() {
-  if (useRTC) {
-    return Clock.getTemperature();
-  } else {
-    return 0.0;
   }
 }
 
