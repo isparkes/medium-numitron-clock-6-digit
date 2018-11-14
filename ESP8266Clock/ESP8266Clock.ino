@@ -228,11 +228,12 @@ String lastTimeFromServer = "";
 // ********************** Input switch management **********************
 ClockButton button1(inputPin1, true);
 
+// **************************** Usage stats ****************************
 
-void configModeCallback (WiFiManager *myWiFiManager) {
-  debugMsg("*** Entered config mode");
-  setDiagnosticLED(DIAGS_WIFI,STATUS_BLUE);
-}
+unsigned long uptimeMins = 0;
+unsigned long tubeOnTimeMins = 0;
+
+//**********************************************************************************
 
 //**********************************************************************************
 //**********************************************************************************
@@ -433,6 +434,7 @@ void setup()
   #endif
 
   debugMsg("Exit startup in 1 second");
+  getStatsFromSpiffs();
   delay(1000);
 }
 
@@ -670,6 +672,13 @@ void performOncePerMinuteProcessing() {
 
   // WiFi
   dpArray[3] = (useWiFi < 1);
+
+  // Usage stats
+  uptimeMins++;
+
+  if (!blankTubes) {
+    tubeOnTimeMins++;
+  }
 }
 
 // ************************************************************
@@ -682,6 +691,7 @@ void performOncePerHourProcessing() {
 // Called once per day
 // ************************************************************
 void performOncePerDayProcessing() {
+  saveStatsToSpiffs();
 }
 
 // ************************************************************
@@ -2507,7 +2517,7 @@ void setRTCTime() {
     Clock.fillByYMD(year()%100,month(),day());
     Clock.fillByHMS(hour(),minute(),second());
     Clock.setTime();
-
+    
     debugMsg("Set RTC time to Net time: " + String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
   }
 }
@@ -2740,6 +2750,81 @@ void saveConfigToSpiffs() {
   SPIFFS.end();
 }
 
+boolean getStatsFromSpiffs() {
+  boolean loaded = false;
+  if (SPIFFS.begin()) {
+    debugMsg("mounted file system");
+    if (SPIFFS.exists("/stats.json")) {
+      //file exists, reading and loading
+      debugMsg("reading stats file");
+      File statsFile = SPIFFS.open("/stats.json", "r");
+      if (statsFile) {
+        debugMsg("opened stats file");
+        size_t size = statsFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        statsFile.readBytes(buf.get(), size);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject& json = jsonBuffer.parseObject(buf.get());
+        json.printTo(Serial);
+        debugMsg("\n");
+
+        if (json.success()) {
+          debugMsg("parsed stats json");
+
+          uptimeMins = json.get<unsigned long>("uptime");
+          debugMsg("Loaded uptime: " + String(uptimeMins));
+
+          tubeOnTimeMins = json.get<unsigned long>("tubeontime");
+          debugMsg("Loaded tubeontime: " + String(tubeOnTimeMins));
+
+          loaded = true;
+        } else {
+          debugMsg("failed to load json config");
+        }
+        debugMsg("Closing stats file");
+        statsFile.close();
+      }
+    }
+  } else {
+    debugMsg("failed to mount FS");
+  }
+
+  SPIFFS.end();
+  return loaded;
+}
+
+void saveStatsToSpiffs() {
+  if (SPIFFS.begin()) {
+    debugMsg("mounted file system");
+    debugMsg("saving stats");
+    
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject& json = jsonBuffer.createObject();
+    json.set("uptime", uptimeMins);
+    json.set("tubeontime", tubeOnTimeMins);
+
+    File statsFile = SPIFFS.open("/stats.json", "w");
+    if (!statsFile) {
+      debugMsg("failed to open stats file for writing");
+      statsFile.close();
+      return;
+    }
+
+    json.printTo(Serial);
+    debugMsg("\n");
+  
+    json.printTo(statsFile);
+    statsFile.close();
+    debugMsg("Saved stats");
+    //end save
+  } else {
+    debugMsg("failed to mount FS");
+  }
+  SPIFFS.end();
+}
+
 // ************************************************************
 // Reset configuration values back to what they once were
 // ************************************************************
@@ -2844,6 +2929,8 @@ void rootPageHandler() {
   response_message += getTableFoot();
 
   // ESP8266 Info table
+  double onTimeHrs = uptimeMins/60.0;
+  double tubeOnTimeHrs = tubeOnTimeMins/60.0;
   response_message += getTableHead2Col("ESP8266 information", "Name", "Value");
   response_message += getTableRow2Col("Sketch size", ESP.getSketchSize());
   response_message += getTableRow2Col("Free sketch size", ESP.getFreeSketchSpace());
@@ -2856,6 +2943,8 @@ void rootPageHandler() {
   response_message += getTableRow2Col("Flash size", ESP.getFlashChipRealSize());
   response_message += getTableRow2Col("LDR Value", sensorLDRSmoothed);
   response_message += getTableRow2Col("Impressions/Sec", lastImpressionsPerSec);
+  response_message += getTableRow2Col("Total Clock On Hrs", String(onTimeHrs,2));
+  response_message += getTableRow2Col("Total Tube On Hrs", String(tubeOnTimeHrs,2));
   response_message += getTableFoot();
 
   response_message += getHTMLFoot();
@@ -3927,5 +4016,10 @@ void setBlinkMode(byte newMode) {
         break;
       }
   }
+}
+
+void configModeCallback (WiFiManager *myWiFiManager) {
+  debugMsg("*** Entered config mode");
+  setDiagnosticLED(DIAGS_WIFI,STATUS_BLUE);
 }
 
