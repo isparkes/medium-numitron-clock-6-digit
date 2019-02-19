@@ -58,6 +58,8 @@ boolean Transition::scrollMsg(unsigned long now)
       loadRegularValues();
       // Scroll 0 -> -5
       scroll(((msCount - _holdDuration) % _effectOutDuration) * 6 / _effectOutDuration - 5);
+    } else {
+      _end = 0;
     }
      return true;  // we are still running
   }
@@ -83,6 +85,8 @@ boolean Transition::scrambleMsg(unsigned long now)
     } else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration * 2) {
       loadRegularValues();
       scramble(msCount, ((msCount - _holdDuration) % _effectOutDuration) * 6 / _effectOutDuration + 1, 6);
+    } else {
+      _end = 0;
     }
     return true;  // we are still running
   }
@@ -108,6 +112,8 @@ boolean Transition::scrollInScrambleOut(unsigned long now)
     } else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration * 2) {
       loadRegularValues();
       scramble(msCount, ((msCount - _holdDuration) % _effectOutDuration) * 6 / _effectOutDuration + 1, 6);
+    } else {
+      _end = 0;
     }
     return true;  // we are still running
   }
@@ -188,4 +194,3 @@ void Transition::restoreCurrentDisplayType() {
 unsigned long Transition::getEnd() {
   return _started + _effectInDuration * 2 + _holdDuration + _effectOutDuration * 2;
 }
-
