@@ -25,6 +25,8 @@
 //*                                                                                *
 //*  nixie@protonmail.ch                                                           *
 //*                                                                                *
+//*  board def: http://arduino.esp8266.com/stable/package_esp8266com_index.json    *
+//*                                                                                *
 //**********************************************************************************
 //**********************************************************************************
 // Standard Libraries
@@ -2939,7 +2941,7 @@ void rootPageHandler() {
   response_message += getTableRow2Col("CPU Freqency (MHz)", ESP.getCpuFreqMHz());
   response_message += getTableRow2Col("SDK version", ESP.getSdkVersion());
   response_message += getTableRow2Col("Chip ID", ESP.getChipId());
-  response_message += getTableRow2Col("Flash Chip ID", ESP.getFlashChipId());
+  response_message += getTableRow2Col("Flash Chip ID", String(ESP.getFlashChipId(), HEX));
   response_message += getTableRow2Col("Flash size", ESP.getFlashChipRealSize());
   response_message += getTableRow2Col("LDR Value", sensorLDRSmoothed);
   response_message += getTableRow2Col("Impressions/Sec", lastImpressionsPerSec);
@@ -4022,4 +4024,3 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   debugMsg("*** Entered config mode");
   setDiagnosticLED(DIAGS_WIFI,STATUS_BLUE);
 }
-

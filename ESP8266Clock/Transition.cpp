@@ -6,6 +6,7 @@
 
 #include "Arduino.h"
 #include "Transition.h"
+#include "ClockDefs.h"
 
 Transition::Transition(int effectInDuration, int effectOutDuration, int holdDuration) {
   _effectInDuration = effectInDuration;
