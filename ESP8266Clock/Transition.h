@@ -36,7 +36,7 @@ class Transition
     byte _savedDisplayType[6] = {FADE, FADE, FADE, FADE, FADE, FADE};
   
     unsigned long getEnd();
-    int scroll(byte);
+    int scroll(int8_t);
     int scramble(int, byte, byte);
     unsigned long hash(unsigned long);
 };

@@ -10,6 +10,9 @@
 #define DISPLAY_COUNT_MAX     DIGIT_DISPLAY_COUNT - 1 // Maximum value we can set to
 #define DISPLAY_COUNT_MIN     100                     // Minimum value we can set to
 
+// Dimming value
+const int DIM_VALUE = DIGIT_DISPLAY_COUNT / 5;
+
 // Display mode, set per digit
 #define BLANKED  0
 #define DIMMED   1
@@ -52,7 +55,7 @@ const byte colourTimeB[] = {   0,   0,   0,   0,  32, 190, 255, 255, 255, 255};
 #define DIAGS_START       0
 #define DIAGS_SPIFFS      1
 #define DIAGS_WIFI        2
-#define DIAGS_TIMESERVER  3
+#define DIAGS_NTP         3
 #define DIAGS_RTC         4
 #define DIAGS_DEBUG       5
 
@@ -69,5 +72,6 @@ const byte colourTimeB[] = {   0,   0,   0,   0,  32, 190, 255, 255, 255, 255};
 #define LED_BLINK_DEFAULT   LED_RAILROAD
 #define LED_MODE_MAX        3
 
+#define DIGIT_COUNT 6
 
 #endif

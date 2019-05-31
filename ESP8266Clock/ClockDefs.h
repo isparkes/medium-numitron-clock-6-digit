@@ -1,5 +1,26 @@
+//**********************************************************************************
+//* Definitions for the basic functions of the clock                               *
+//**********************************************************************************
+
 #ifndef ClockDefs_h
 #define ClockDefs_h
+
+// ---// ***** Pin Defintions ****** Pin Defintions ****** Pin Defintions ******
+
+#define inputPin1   0     // D3
+#define pirPin      2     // D4
+#define LED_DOUT    3     // RX defined by DMA output of library
+#define LDRPin      A0    // ADC input
+
+// Shift register
+#define LATCHPin    14    // D5
+#define CLOCKPin    12    // D6
+#define DATA1Pin    15    // D8 - Segments
+#define DATA2Pin    13    // D7 - Grids
+
+// -------------------------------------------------------------------------------
+// Software version shown in config menu
+#define SOFTWARE_VERSION    1
 
 // -------------------------------------------------------------------------------
 #define MIN_DIM_DEFAULT       100  // The default minimum dim count
@@ -203,11 +224,18 @@
 #define SLOTS_MODE_DEFAULT              1
 
 // -------------------------------------------------------------------------------
-// RTC address
-#define RTC_I2C_ADDRESS                 0x68
+#define SEPARATOR_DIM_FACTOR_MIN        10
+#define SEPARATOR_DIM_FACTOR_MAX        100
+#define SEPARATOR_DIM_FACTOR_DEFAULT    100
 
 // -------------------------------------------------------------------------------
-#define MAX_WIFI_TIME                   5   // The number of minutes to wait before we fall back to RTC
+#define BACKLIGHT_DIM_FACTOR_MIN        10
+#define BACKLIGHT_DIM_FACTOR_MAX        100
+#define BACKLIGHT_DIM_FACTOR_DEFAULT    100
+
+// -------------------------------------------------------------------------------
+// RTC address
+#define RTC_I2C_ADDRESS                 0x68
 
 // -------------------------------------------------------------------------------
 #define DO_NOT_APPLY_LEAD_0_BLANK       false
@@ -222,6 +250,28 @@
 
 // -------------------------------------------------------------------------------
 #define CONFIG_PORTAL_TIMEOUT           60
-#endif
 
 #define DIAGS_DELAY_TIME                500
+
+// -------------------------------------------------------------------------------
+#define SYNC_HOURS 3
+#define SYNC_MINS 4
+#define SYNC_SECS 5
+#define SYNC_DAY 2
+#define SYNC_MONTH 1
+#define SYNC_YEAR 0
+
+// -------------------------------------------------------------------------------
+
+void setPinModes() {
+  // Set up shift registers
+  pinMode(LATCHPin, OUTPUT);
+  pinMode(CLOCKPin, OUTPUT);
+  pinMode(DATA1Pin, OUTPUT);
+  pinMode(DATA2Pin, OUTPUT);
+  
+  // NOTE: Grounding the input pin causes it to actuate
+  pinMode(inputPin1, INPUT_PULLUP);
+}
+
+#endif
