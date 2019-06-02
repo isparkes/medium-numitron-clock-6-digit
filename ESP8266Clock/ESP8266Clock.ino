@@ -1577,8 +1577,8 @@ void outputDisplay() {
       case BLANKED:
         {
           // Setting off = on means we never turn on
-          digitOnTime = DIGIT_DISPLAY_ON;
-          digitOffTime = DIGIT_DISPLAY_ON;
+          digitOnTime = DIGIT_DISPLAY_NEVER;
+          digitOffTime = DIGIT_DISPLAY_NEVER;
           break;
         }
       case DIMMED:
@@ -1685,21 +1685,26 @@ void outputDisplay() {
     // Main display loop - everything up to now was preparation
     for (int timer = DIGIT_DISPLAY_START ; timer <= DIGIT_DISPLAY_COUNT ; timer++) {
       if (timer == ledsOffTime) {
-        digitOnNoLEDs(i, currNumberArray[i], dpArray[i]);
+        digitOnNoLEDs(i, currNumberArray[i], dpArray[i], (tmpDispType == BLANKED));
       }
-      
-      if (timer == DIGIT_DISPLAY_START) {
-        // Give the poor ESP time to do other things while we are in the porch
-        doYieldOutput();
-      } else if (timer == digitOffTime) {
-        digitOff();
-        doYieldDigit();
-      } else if (timer == digitOnTime) {
+
+      if (timer == digitOnTime) {
         digitOn(i, currNumberArray[i], dpArray[i]);
-      } else if (timer == digitSwitchTime) {
+      }
+
+      if (timer == digitSwitchTime) {
         digitOn(i, NumberArray[i], dpArray[i]);
       }
+
+      if (timer == digitOffTime) {
+        digitOff();
+      }
+
+      if (timer == DIGIT_DISPLAY_OFF) {
+        doYieldDigit();
+      }
     }
+    doYieldOutput();
   }
 }
 
@@ -1725,13 +1730,19 @@ void digitOn(byte digit, byte value, boolean setDp) {
 // Assumes that all digits have previously been turned off
 // by a call to "digitOff"
 // ************************************************************
-void digitOnNoLEDs(byte digit, byte value, boolean setDp) {
-  byte dispValue = digitData[value];
-  if (setDp)
-    dispValue |= SEG_DP;
+void digitOnNoLEDs(byte digit, byte value, boolean setDp, boolean digitBlanked) {
+  byte dispValue = 0;
+  byte gridValue = 0;
 
-  byte gridValue = data1[digit];
-  
+  if (digitBlanked) {
+    dispValue = 0;
+  } else {
+    dispValue = digitData[value];
+    if (setDp) dispValue |= SEG_DP;
+
+    gridValue = data1[digit];
+  }
+
   shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, gridValue, dispValue);
 }
 
@@ -1774,7 +1785,7 @@ void shiftOutDual(uint8_t _loadPin,
 // Do some yields after every digit. The number determines
 // the responsiveness of the UI and the blink in the display.
 // ************************************************************
-#define YIELD_COUNT_PER_DIGIT 19
+#define YIELD_COUNT_PER_DIGIT 29
 void doYieldDigit() {
   for (int i = 0 ; i < YIELD_COUNT_PER_DIGIT; i++)
     yield();
@@ -1784,34 +1795,10 @@ void doYieldDigit() {
 // Do some yields after every digit. The number determines
 // the responsiveness of the UI and the blink in the display.
 // ************************************************************
-#define YIELD_COUNT_PER_OUTPUT 99
+#define YIELD_COUNT_PER_OUTPUT 19
 void doYieldOutput() {
   for (int i = 0 ; i < YIELD_COUNT_PER_OUTPUT; i++)
     yield();
-}
-
-// ************************************************************
-// Perform the shift out to the shift register
-// ************************************************************
-void shiftOut(uint8_t _loadPin,
-              uint8_t _dataPin1,
-              uint8_t _clockPin,
-              uint8_t _bitOrder,
-              uint8_t _val1) {
-  uint8_t i;
-
-  digitalWrite(_loadPin, LOW);
-  for (i = 0; i < 8; i++) {
-    if (_bitOrder == LSBFIRST) {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << i)));
-    }
-    else {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << (7 - i))));
-    }
-    digitalWrite(_clockPin, HIGH);
-    digitalWrite(_clockPin, LOW);
-  }
-  digitalWrite(_loadPin, HIGH);
 }
 
 // ************************************************************
