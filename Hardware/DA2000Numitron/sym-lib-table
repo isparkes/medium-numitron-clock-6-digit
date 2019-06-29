@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name DA2000)(type Legacy)(uri /data/sdb/Clocks/DA2000Numitron/DA2000Numitron/DA2000.lib)(options "")(descr ""))
+)
