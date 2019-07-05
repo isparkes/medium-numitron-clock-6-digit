@@ -5,10 +5,10 @@ EELAYER END
 $Descr A3 16535 11693
 encoding utf-8
 Sheet 1 1
-Title ""
-Date ""
-Rev ""
-Comp ""
+Title "DA-2000 Numitron Clock"
+Date "2019-07-05"
+Rev "Revision 1"
+Comp "Ian Sparkes Nixie Clocks"
 Comment1 ""
 Comment2 ""
 Comment3 ""
