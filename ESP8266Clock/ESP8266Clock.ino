@@ -1,5 +1,5 @@
 //**********************************************************************************
-//* Main code for an ESP8266 based Nixie/VFD clock. Features:                      *
+//* Main code for an ESP8266 based Numitron clock. Features:                       *
 //*  - WiFi Clock configuration interface                                          *
 //*  - Real Time Clock interface for DS1307+                                       *
 //*  - Digit fading with configurable fade length                                  *
@@ -51,7 +51,7 @@
 #include "HtmlServer.h"
 #include "VFDDefs.h"
 
-#define DEBUG_DEFAULT true
+#define DEBUG
 
 //**********************************************************************************
 //**********************************************************************************
@@ -62,10 +62,12 @@ void setup()
 {
   WiFiManager wifiManager;
 
-  setupDebug(DEBUG_DEFAULT);
+#ifdef DEBUG
+  setupDebug(true);
   debugMsg("");
   debugMsg("--------------------- START ---------------------");
-  wifiManager.setDebugOutput(getDebug());
+  wifiManager.setDebugOutput(true);
+#endif
 
   // Set up the LED output
   leds.Begin();
@@ -73,7 +75,7 @@ void setup()
   setPinModes();
 
   // turn off all digits
-  digitOff();
+  digitsOff();
 
   setDiagnosticLED(DIAGS_START,STATUS_GREEN);
 
@@ -83,7 +85,7 @@ void setup()
   delay(1000);
 
   for (int i = 0; i < 25 ; i++) button1.checkButton(millis());
-  
+
   if (button1.isButtonPressedNow()) {
     setDiagnosticLED(DIAGS_SPIFFS, STATUS_BLUE);
     factoryReset();
@@ -99,52 +101,6 @@ void setup()
     setDiagnosticLED(DIAGS_SPIFFS, STATUS_GREEN);
   }
 
-  wifiManager.setConfigPortalTimeout(CONFIG_PORTAL_TIMEOUT);
-  wifiManager.setAPCallback(configModeCallback);
-
-  setDiagnosticLED(DIAGS_WIFI, STATUS_YELLOW);
-
-  boolean connected = false;
-  connected = wifiManager.autoConnect("VFDClock", "SetMeUp!");
-
-  if (connected) {
-    debugMsg("Connected!");
-    setDiagnosticLED(DIAGS_WIFI, STATUS_GREEN);
-  } else {
-    debugMsg("Could NOT Connect");
-    setDiagnosticLED(DIAGS_WIFI, STATUS_RED);
-  }
-
-  IPAddress apIP = WiFi.softAPIP();
-  IPAddress myIP = WiFi.localIP();
-  debugMsg("AP IP address: " + formatIPAsString(apIP));
-  debugMsg("IP address: " + formatIPAsString(myIP));
-
-  // Set the default TZ for the local time interpretation
-  setenv("TZ", tzs.c_str(), 0);
-
-  // If we lose the connection, we try to recover it
-  WiFi.setAutoReconnect(true);
-
-  // See if we can already get the time
-  getTimeFromTimeZoneServer();
-  setDiagnosticLED(DIAGS_NTP, STATUS_YELLOW);
-  delay(1500);
-  if (nextUpdateFromServer > 0) {
-    setDiagnosticLED(DIAGS_NTP, STATUS_GREEN);
-  } else {
-    setDiagnosticLED(DIAGS_NTP, STATUS_RED);
-  }
-
-  debugMsg("Starting HTTP server");
-  setServerPageHandlers();
-  server.begin();
-  debugMsg("HTTP server started");
-
-  // Enable OTA updates
-  httpUpdater.setup(&server, "/update", "admin", "update");
-
-  setPIRPullup(usePIRPullup);
 
   // **********************************************************************
 
@@ -170,6 +126,7 @@ void setup()
 
     // All the digits on full
     allBright();
+    unblankDigits();
 
     int secCount = 0;
     int lastSecCount = 0;
@@ -217,11 +174,59 @@ void setup()
 
   button1.reset();
 
-  // initialise the internal time (in case we don't find the time provider)
-  nowMillis = millis();
+  // **********************************************************************
+  
+  wifiManager.setConfigPortalTimeout(CONFIG_PORTAL_TIMEOUT);
+  wifiManager.setAPCallback(configModeCallback);
+
+  setDiagnosticLED(DIAGS_WIFI, STATUS_YELLOW);
+
+  boolean connected = false;
+  connected = wifiManager.autoConnect("ESPClock", "SetMeUp!");
+
+  if (connected) {
+    debugMsg("Connected!");
+    setDiagnosticLED(DIAGS_WIFI, STATUS_GREEN);
+  } else {
+    debugMsg("Could NOT Connect");
+    setDiagnosticLED(DIAGS_WIFI, STATUS_RED);
+  }
+
+  IPAddress apIP = WiFi.softAPIP();
+  IPAddress myIP = WiFi.localIP();
+  debugMsg("AP IP address: " + formatIPAsString(apIP));
+  debugMsg("IP address: " + formatIPAsString(myIP));
+
+  // Set the default TZ for the local time interpretation
+  setenv("TZ", tzs.c_str(), 0);
+
+  // If we lose the connection, we try to recover it
+  WiFi.setAutoReconnect(true);
+
+  // See if we can already get the time
+  getTimeFromTimeZoneServer();
+  setDiagnosticLED(DIAGS_NTP, STATUS_YELLOW);
+  delay(1500);
+  if (nextUpdateFromServer > 0) {
+    setDiagnosticLED(DIAGS_NTP, STATUS_GREEN);
+  } else {
+    setDiagnosticLED(DIAGS_NTP, STATUS_RED);
+  }
 
   Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
   debugMsg("I2C master started");
+
+  setServerPageHandlers();
+  server.begin();
+  debugMsg("HTTP server started");
+
+  // Enable OTA updates
+  httpUpdater.setup(&server, "/update", "admin", "update");
+
+  setPIRPullup(usePIRPullup);
+  
+  // initialise the internal time (in case we don't find the time provider)
+  nowMillis = millis();
 
   testRTCTimeProvider();
   if (useRTC) {
@@ -436,7 +441,7 @@ void performOncePerSecondProcessing() {
 void performOncePerMinuteProcessing() {
   debugMsg("---> OncePerMinuteProcessing");
 
-  debugMsg("Next update: " + String(nextUpdateFromServer));
+  debugMsg("nu: " + String(nextUpdateFromServer));
 
   if (!ntpTimeValid()) {
     getRTCTime(true);
@@ -456,6 +461,14 @@ void performOncePerMinuteProcessing() {
 
   // RTC - light up only if we have lost our RTC
   dpArray[2] = onceHadAnRTC && !useRTC;
+
+  if (getIsConnected()) {
+    IPAddress ip = WiFi.localIP();
+    debugMsg("IP: " + formatIPAsString(ip));
+  } else {
+    IPAddress ip = WiFi.localIP();
+    debugMsg("Not connected IP: " + formatIPAsString(ip));
+  }
 
   // WiFi
   dpArray[3] = (!getIsConnected());
@@ -494,7 +507,7 @@ void setLeds()
   float fixedDim = (float) backlightDimFactor / (float) 100;
   
   // calculate the PWM factor, goes between minDim% and 100%
-  float dimFactor = (float) digitOffCount / (float) DIGIT_DISPLAY_OFF * fixedDim;
+  float dimFactor = (float) digitOffCount / (float) DIGIT_DISPLAY_COUNT * fixedDim;
   
   // Calculate the brightness factor based on the "pulse"
   float pwmFactor = (float) secsDelta / (float) 1000.0;
@@ -662,14 +675,15 @@ void setAllLEDs(byte red, byte green, byte blue) {
 // ************************************************************
 void outputLEDBuffer() {
   for (int i = 0 ; i < DIGIT_COUNT ; i++) {
+    int idx = (DIGIT_COUNT-1) - i;
     RgbColor color(ledR[i], ledG[i], ledB[i]);
-    leds.SetPixelColor(i, color);
+    leds.SetPixelColor(idx, color);
   }
   leds.Show();
 }
 
 // ************************************************************
-// Show the preview of the next mode - we stay in this mode until the 
+// Show the preview of the next mode - we stay in this mode until the
 // button is released
 // ************************************************************
 void setNextMode(int displayMode) {
@@ -685,6 +699,7 @@ void setNextMode(int displayMode) {
       }
     case MODE_HOURS_SET: {
         if (ntpTimeValid()) {
+          // skip past the time and date settings
           setNewNextMode(MODE_12_24);
         }
         loadNumberArrayTime();
@@ -1221,6 +1236,12 @@ void processCurrentMode(int displayMode) {
         break;
       }
     case MODE_RED_CNL: {
+        if ((backlightMode == BACKLIGHT_CYCLE) || (backlightMode == BACKLIGHT_CYCLE_DIM) || (backlightMode == BACKLIGHT_COLOUR_TIME) || (backlightMode == BACKLIGHT_COLOUR_TIME_DIM))  {
+          // Skip if we are in cycle mode
+          nextMode++;
+          currentMode++;
+        }
+
         if (button1.isButtonPressedAndReleased()) {
           redCnl++;
           if (redCnl > COLOUR_CNL_MAX) {
@@ -1232,6 +1253,12 @@ void processCurrentMode(int displayMode) {
         break;
       }
     case MODE_GRN_CNL: {
+        if ((backlightMode == BACKLIGHT_CYCLE) || (backlightMode == BACKLIGHT_CYCLE_DIM) || (backlightMode == BACKLIGHT_COLOUR_TIME) || (backlightMode == BACKLIGHT_COLOUR_TIME_DIM))  {
+          // Skip if we are in cycle mode
+          nextMode++;
+          currentMode++;
+        }
+
         if (button1.isButtonPressedAndReleased()) {
           grnCnl++;
           if (grnCnl > COLOUR_CNL_MAX) {
@@ -1583,32 +1610,32 @@ void outputDisplay() {
         }
       case DIMMED:
         {
-          digitOnTime = DIGIT_DISPLAY_ON;
+          digitOnTime = DIGIT_DISPLAY_START;
           digitOffTime = DIM_VALUE;
           break;
         }
       case BRIGHT:
         {
-          digitOnTime = DIGIT_DISPLAY_ON;
-          digitOffTime = DIGIT_DISPLAY_OFF;
+          digitOnTime = DIGIT_DISPLAY_START;
+          digitOffTime = DIGIT_DISPLAY_COUNT;
           break;
         }
       case FADE:
       case NORMAL:
       case SCROLL:
         {
-          digitOnTime = DIGIT_DISPLAY_ON;
+          digitOnTime = DIGIT_DISPLAY_START;
           digitOffTime = digitOffCount;
           break;
         }
       case BLINK:
         {
           if (blinkState) {
-            digitOnTime = DIGIT_DISPLAY_ON;
+            digitOnTime = DIGIT_DISPLAY_START;
             digitOffTime = digitOffCount;
           } else {
             digitOnTime = DIGIT_DISPLAY_NEVER;
-            digitOffTime = DIGIT_DISPLAY_OFF;
+            digitOffTime = DIGIT_DISPLAY_COUNT;
           }
           break;
         }
@@ -1678,127 +1705,130 @@ void outputDisplay() {
         digitSwitchTime = DIGIT_DISPLAY_NEVER;
         currNumberArray[i] = NumberArray[i];
       }
+    
+      // LEDs off will usually come before the digits off, or be the same 
+      ledsOffTime = digitOffCount * (float) separatorDimFactor / (float) 100;
 
-    // LEDs off will usually come before the digits off, or be the same 
-    ledsOffTime = digitOffCount * (float) separatorDimFactor / (float) 100;
-
-    // Main display loop - everything up to now was preparation
-    for (int timer = DIGIT_DISPLAY_START ; timer <= DIGIT_DISPLAY_COUNT ; timer++) {
-      if (timer == ledsOffTime) {
-        digitOnNoLEDs(i, currNumberArray[i], dpArray[i], (tmpDispType == BLANKED));
-      }
-
-      if (timer == digitOnTime) {
-        digitOn(i, currNumberArray[i], dpArray[i]);
-      }
-
-      if (timer == digitSwitchTime) {
-        digitOn(i, NumberArray[i], dpArray[i]);
-      }
-
-      if (timer == digitOffTime) {
-        digitOff();
-      }
-
-      if (timer == DIGIT_DISPLAY_OFF) {
-        doYieldDigit();
+      // Main display loop - everything up to now was preparation
+      for (int timer = DIGIT_DISPLAY_START ; timer <= DIGIT_DISPLAY_COUNT ; timer++) {
+        if (timer == DIGIT_DISPLAY_START) {
+          shiftDigitsOut();
+          unblankDigits();
+          doYield();
+        }
+        if (timer == digitOffCount) {
+          blankDigits();
+        }
       }
     }
-    doYieldOutput();
-  }
 }
 
 // ************************************************************
-// Set a digit with the given value
-// Assumes that all digits have previously been turned off
-// by a call to "digitOff"
+// Set the 48 output bits with the given value for the current
+// display. "Current" display is what we are fading from, or
+// the stable display when we are not cross-fading.
 // ************************************************************
-void digitOn(byte digit, byte value, boolean setDp) {
-  byte dispValue = digitData[value];
-  if (setDp)
-    dispValue |= SEG_DP;
+void shiftDigitsOut() {
+  // prepare the first 24 bits: made of 3 * 8 bits (Seconds, 10xSeconds, Minutes) plus the three LED bits
+  unsigned long digitSecond = digitData[currNumberArray[5]];
+  unsigned long digitTenSecond = digitData[currNumberArray[4]] << 8;
+  unsigned long digitMinute = digitData[currNumberArray[3]] << 16;
 
-  byte gridValue = data1[digit];
-  if (led1State) gridValue |= LED_1;
-  if (led2State) gridValue |= LED_2;
+  // prepare the second 32 bits: made of 3 * 10 bits (10xMinutes, Hours, 10xHour) plus the two neon bits
+  unsigned long digitTenMinute = digitData[currNumberArray[2]];
+  unsigned long digitHour = digitData[currNumberArray[1]] << 8;
+  unsigned long digitTenHour = digitData[currNumberArray[0]] << 16;
   
-  shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, gridValue, dispValue);
+  if (led1State) {
+    digitTenSecond |= 0x80;
+    digitTenMinute |= 0x80;
+  }
+  
+  if (led2State) {
+    digitMinute |= 0x80;
+    digitHour |= 0x80;
+  }
+  
+  // Add in the indicator bit 1
+  if (getIsConnected()) {
+    digitSecond |= 0x80;
+  }
+
+  // Add in the indicator bit 2
+  digitTenHour |= 0x80;
+  
+  // Mix in the digits
+  unsigned long out1 = digitSecond | digitTenSecond | digitMinute;
+  unsigned long out2 = digitTenMinute | digitHour | digitTenHour;
+
+  digitsOut(out1, out2);
 }
 
 // ************************************************************
-// Set a digit with the given value
+// Turn all digits off
+// ************************************************************
+void digitsOff() {
+  digitalWrite(LATCHPin, LOW);
+  shiftOut24(DATAPin, CLOCKPin, MSBFIRST, 0);
+  shiftOut24(DATAPin, CLOCKPin, MSBFIRST, 0);
+  digitalWrite(LATCHPin, HIGH);
+}
+
+// ************************************************************
+// Set a digit with the given value and turn the HVGen on
 // Assumes that all digits have previously been turned off
 // by a call to "digitOff"
 // ************************************************************
-void digitOnNoLEDs(byte digit, byte value, boolean setDp, boolean digitBlanked) {
-  byte dispValue = 0;
-  byte gridValue = 0;
-
-  if (digitBlanked) {
-    dispValue = 0;
-  } else {
-    dispValue = digitData[value];
-    if (setDp) dispValue |= SEG_DP;
-
-    gridValue = data1[digit];
-  }
-
-  shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, gridValue, dispValue);
-}
-
-// ************************************************************
-// Finish displaying a digit
-// ************************************************************
-void digitOff() {
-  shiftOutDual(LATCHPin, DATA1Pin, DATA2Pin, CLOCKPin, MSBFIRST, 0, 0);
+void digitsOut(unsigned long highBits, unsigned long lowBits) {
+  digitalWrite(LATCHPin, LOW);
+  shiftOut24(DATAPin, CLOCKPin, MSBFIRST, lowBits);
+  shiftOut24(DATAPin, CLOCKPin, MSBFIRST, highBits);
+  digitalWrite(LATCHPin, HIGH);
 }
 
 // ************************************************************
 // Perform the parallel shift out to the registers
 // ************************************************************
-void shiftOutDual(uint8_t _loadPin,
-                  uint8_t _dataPin1,
-                  uint8_t _dataPin2,
+void shiftOut24(uint8_t _dataPin1,
                   uint8_t _clockPin,
                   uint8_t _bitOrder,
-                  uint8_t _val1,
-                  uint8_t _val2) {
+                  uint32_t _val1) {
   uint8_t i;
 
-  digitalWrite(_loadPin, LOW);
-  for (i = 0; i < 8; i++) {
+  for (i = 0; i < 24; i++) {
     if (_bitOrder == LSBFIRST) {
       digitalWrite(_dataPin1, !!(_val1 & (1 << i)));
-      digitalWrite(_dataPin2, !!(_val2 & (1 << i)));
     }
     else {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << (7 - i))));
-      digitalWrite(_dataPin2, !!(_val2 & (1 << (7 - i))));
+      digitalWrite(_dataPin1, !!(_val1 & (1 << (23 - i))));
     }
     digitalWrite(_clockPin, HIGH);
     digitalWrite(_clockPin, LOW);
   }
-  digitalWrite(_loadPin, HIGH);
 }
 
 // ************************************************************
 // Do some yields after every digit. The number determines
 // the responsiveness of the UI and the blink in the display.
 // ************************************************************
-#define YIELD_COUNT_PER_DIGIT 29
-void doYieldDigit() {
+#define YIELD_COUNT_PER_DIGIT 99
+void doYield() {
   for (int i = 0 ; i < YIELD_COUNT_PER_DIGIT; i++)
     yield();
 }
 
 // ************************************************************
-// Do some yields after every digit. The number determines
-// the responsiveness of the UI and the blink in the display.
+// Set the blanking pin to show the display
 // ************************************************************
-#define YIELD_COUNT_PER_OUTPUT 19
-void doYieldOutput() {
-  for (int i = 0 ; i < YIELD_COUNT_PER_OUTPUT; i++)
-    yield();
+void unblankDigits(){
+  digitalWrite(BLANKPin,false);
+}
+
+// ************************************************************
+// Set the blanking pin to blank the display
+// ************************************************************
+void blankDigits(){
+  digitalWrite(BLANKPin,true);
 }
 
 // ************************************************************
@@ -2258,11 +2288,11 @@ void randomRGBFlash(int delayVal) {
   delay(delayVal);
 }
 
-/**
-   Set the diagnostic LED colour:
-   stepNumber 0..5
-   state: 0 = red, 1 = orange, 2 = green, 3 = blue
-*/
+// ************************************************************
+// Set the diagnostic LED colour:
+// stepNumber 0..5
+// state: 0 = red, 1 = orange, 2 = green, 3 = blue
+// ************************************************************
 void setDiagnosticLED(byte stepNumber, byte state) {
   for (int i = 0 ; i < DIGIT_COUNT ; i++) {
     if (i > stepNumber) {
@@ -2402,10 +2432,10 @@ int getDimmingFromLDR() {
     int returnValue = (sensorLDRSmoothed - dimDark) * sensorFactor;
 
     if (returnValue < minDim) returnValue = minDim;
-    if (returnValue > DIGIT_DISPLAY_OFF) returnValue = DIGIT_DISPLAY_OFF;
+    if (returnValue > DIGIT_DISPLAY_COUNT) returnValue = DIGIT_DISPLAY_COUNT;
     return returnValue;
   } else {
-    return DIGIT_DISPLAY_OFF;
+    return DIGIT_DISPLAY_COUNT;
   }
 }
 
@@ -2543,10 +2573,6 @@ boolean getConfigFromSpiffs() {
           backlightDimFactor = json["backlightDimFactor"];
           debugMsg("Loaded backlightDimFactor: " + String(backlightDimFactor));
 
-          boolean debug = json["debug"].as<bool>();
-          debugMsg("Loaded debug: " + String(debug));
-          setupDebug(debug);
-
           loaded = true;
         } else {
           debugMsg("failed to load json config");
@@ -2605,7 +2631,6 @@ void saveConfigToSpiffs() {
     json["webPassword"] = getWebPassword();
     json["separatorDimFactor"] = separatorDimFactor;
     json["backlightDimFactor"] = backlightDimFactor;
-    json["debug"] = getDebug();
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -2743,7 +2768,6 @@ void factoryReset() {
   setWebPassword(WEB_PASSWORD_DEFAULT);
   separatorDimFactor = SEPARATOR_DIM_FACTOR_DEFAULT;
   backlightDimFactor = BACKLIGHT_DIM_FACTOR_DEFAULT;
-  setupDebug(DEBUG_DEFAULT);
 
   saveConfigToSpiffs();
 }
@@ -2825,7 +2849,7 @@ void rootPageHandler() {
   response_message += getTableFoot();
 
   // ******************** Clock Info table ***************************
-  float digitBrightness = digitOffCount * 100.0 / (float) DIGIT_DISPLAY_OFF;
+  float digitBrightness = digitOffCount * 100.0 / (float) DIGIT_DISPLAY_COUNT;
   String motionSensorState = checkPIRInstalled() ? getPIRStateDisplay() : "Not installed";
   String rtcState = useRTC ? "Installed" : "Not installed";
   String timeSource;
@@ -2891,7 +2915,7 @@ void timeServerPageHandler() {
     setenv("TZ", tzs.c_str(), 1);
   }
   saveToSpiffsIfChanged(changed);
-  
+
   // -----------------------------------------------------------------------------
 
   String response_message = getHTMLHead(getIsConnected());
@@ -2900,6 +2924,7 @@ void timeServerPageHandler() {
   // form header
   response_message += getFormHead("Select time server");
 
+  debugMsg("ntpPool is: " + ntpPool);
   response_message += getTextInputWide("NTP Pool", "ntppool", ntpPool, false);
   response_message += getNumberInput("Update interval:", "ntpupdate", NTP_UPDATE_INTERVAL_MIN, NTP_UPDATE_INTERVAL_MAX, ntpUpdateInterval, false);
   response_message += getTextInputWide("Time Zone String", "tzs", tzs, false);
@@ -3403,7 +3428,7 @@ void onPacketReceived_cb(AsyncUDPPacket packet) {
   debugMsgCont("From: ");
   debugMsgCont(formatIPAsString(packet.remoteIP()));
   debugMsgCont(":");
-  debugMsg(String(packet.remotePort()));
+  debugMsg(formatIPAsString(packet.remotePort()));
   debugMsgCont("To: ");
   debugMsgCont(formatIPAsString(packet.localIP()));
   debugMsgCont(":");
@@ -3447,13 +3472,12 @@ void onPacketReceived_cb(AsyncUDPPacket packet) {
     uint32_t done = millis();
     debugMsg("success round trip " + String(done - ntpStarted) + " ms");
     unsigned long t = secsSince1900 - 2208988800UL;                     // Subtract 70 years to get seconds since 1970
-
-//    uint16_t ms = fraction / 4294967UL;                                 // Turn 32 bit fraction into ms by dividing by 2^32 / 1000
-//    unsigned long measured_at = done - ((done - ntpStarted) / 2) - ms;  // Assume symmetric network latency and return when we think the whole second was.
+    uint16_t ms = fraction / 4294967UL;                                 // Turn 32 bit fraction into ms by dividing by 2^32 / 1000
+    unsigned long measured_at = done - ((done - ntpStarted) / 2) - ms;  // Assume symmetric network latency and return when we think the whole second was.
 
     lastUpdateFromServer = done;
     nextUpdateFromServer = ntpUpdateInterval;
-    debugMsg("Set next update: " + String(nextUpdateFromServer));
+    debugMsg("set nu: " + String(nextUpdateFromServer));
 
     time_t ntpTime = t;
     const tm* tm = localtime(&ntpTime);

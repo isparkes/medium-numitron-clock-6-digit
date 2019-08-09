@@ -14,9 +14,10 @@
 
 // Shift register
 #define LATCHPin    14    // D5
-#define CLOCKPin    12    // D6
-#define DATA1Pin    15    // D8 - Segments
-#define DATA2Pin    13    // D7 - Grids
+#define CLOCKPin    13    // D7
+#define DATAPin     12    // D6
+
+#define BLANKPin    16    // D0
 
 // -------------------------------------------------------------------------------
 // Software version shown in config menu
@@ -267,8 +268,8 @@ void setPinModes() {
   // Set up shift registers
   pinMode(LATCHPin, OUTPUT);
   pinMode(CLOCKPin, OUTPUT);
-  pinMode(DATA1Pin, OUTPUT);
-  pinMode(DATA2Pin, OUTPUT);
+  pinMode(DATAPin, OUTPUT);
+  pinMode(BLANKPin, OUTPUT);
   
   // NOTE: Grounding the input pin causes it to actuate
   pinMode(inputPin1, INPUT_PULLUP);

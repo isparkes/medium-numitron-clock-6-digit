@@ -55,7 +55,7 @@ int minDim = MIN_DIM_DEFAULT;
 // 350 is about 1 second
 int fadeSteps = FADE_STEPS_DEFAULT;
 
-int digitOffCount = DIGIT_DISPLAY_OFF;
+int digitOffCount = DIGIT_DISPLAY_COUNT;
 int scrollSteps = SCROLL_STEPS_DEFAULT;
 boolean scrollback = true;
 boolean fade = true;
@@ -134,7 +134,7 @@ boolean blankLEDs = false;
 int dimDark = SENSOR_LOW_DEFAULT;
 int dimBright = SENSOR_HIGH_DEFAULT;
 double sensorLDRSmoothed = 0;
-double sensorFactor = (double)(DIGIT_DISPLAY_OFF) / (double)(dimBright - dimDark);
+double sensorFactor = (double)(DIGIT_DISPLAY_COUNT) / (double)(dimBright - dimDark);
 int sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
 
 boolean blinkState;
