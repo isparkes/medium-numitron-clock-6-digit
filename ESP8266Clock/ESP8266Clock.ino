@@ -126,7 +126,7 @@ void setup()
 
     // All the digits on full
     allBright();
-    unblankDigits();
+    showDigits();
 
     int secCount = 0;
     int lastSecCount = 0;
@@ -1708,12 +1708,12 @@ void outputDisplay() {
     
       // LEDs off will usually come before the digits off, or be the same 
       ledsOffTime = digitOffCount * (float) separatorDimFactor / (float) 100;
-
+    
       // Main display loop - everything up to now was preparation
       for (int timer = DIGIT_DISPLAY_START ; timer <= DIGIT_DISPLAY_COUNT ; timer++) {
         if (timer == DIGIT_DISPLAY_START) {
           shiftDigitsOut();
-          unblankDigits();
+          if (!blanked) showDigits();
           doYield();
         }
         if (timer == digitOffCount) {
@@ -1731,35 +1731,37 @@ void outputDisplay() {
 void shiftDigitsOut() {
   // prepare the first 24 bits: made of 3 * 8 bits (Seconds, 10xSeconds, Minutes) plus the three LED bits
   unsigned long digitSecond = digitData[currNumberArray[5]];
-  unsigned long digitTenSecond = digitData[currNumberArray[4]] << 8;
-  unsigned long digitMinute = digitData[currNumberArray[3]] << 16;
+  unsigned long digitTenSecond = digitData[currNumberArray[4]];
+  unsigned long digitMinute = digitData[currNumberArray[3]];
 
   // prepare the second 32 bits: made of 3 * 10 bits (10xMinutes, Hours, 10xHour) plus the two neon bits
   unsigned long digitTenMinute = digitData[currNumberArray[2]];
-  unsigned long digitHour = digitData[currNumberArray[1]] << 8;
-  unsigned long digitTenHour = digitData[currNumberArray[0]] << 16;
+  unsigned long digitHour = digitData[currNumberArray[1]];
+  unsigned long digitTenHour = digitData[currNumberArray[0]];
   
   if (led1State) {
-    digitTenSecond |= 0x80;
-    digitTenMinute |= 0x80;
+    digitTenSecond |= SEG_IND;
+    digitTenMinute |= SEG_IND;
   }
   
   if (led2State) {
-    digitMinute |= 0x80;
-    digitHour |= 0x80;
+    digitMinute |= SEG_IND;
+    digitHour |= SEG_IND;
   }
   
   // Add in the indicator bit 1
   if (getIsConnected()) {
-    digitSecond |= 0x80;
+    digitSecond |= SEG_IND;
   }
 
-  // Add in the indicator bit 2
-  digitTenHour |= 0x80;
-  
+  // Add in the indicator bit 1
+  if (blanked) {
+    digitTenHour |= SEG_IND;
+  }
+
   // Mix in the digits
-  unsigned long out1 = digitSecond | digitTenSecond | digitMinute;
-  unsigned long out2 = digitTenMinute | digitHour | digitTenHour;
+  unsigned long out1 = digitSecond | (digitTenSecond << 8) | (digitMinute << 16);
+  unsigned long out2 = digitTenMinute | (digitHour <<8) | (digitTenHour << 16);
 
   digitsOut(out1, out2);
 }
@@ -1820,7 +1822,7 @@ void doYield() {
 // ************************************************************
 // Set the blanking pin to show the display
 // ************************************************************
-void unblankDigits(){
+void showDigits(){
   digitalWrite(BLANKPin,false);
 }
 
