@@ -347,10 +347,6 @@ void loop()
     processCurrentMode(currentMode);
   }
 
-  // get the LDR ambient light reading
-  digitOffCount = getDimmingFromLDR();
-  fadeStep = digitOffCount / fadeSteps;
-
   // Prepare the tick and backlight LEDs
   setLeds();
 
@@ -358,7 +354,9 @@ void loop()
     pirConsecutiveCounts++;
   }
 
+  ldrValue = getDimmingFromLDR();
   outputDisplay();
+  delay(10);
 }
 
 // ************************************************************
@@ -507,7 +505,7 @@ void setLeds()
   float fixedDim = (float) backlightDimFactor / (float) 100;
   
   // calculate the PWM factor, goes between minDim% and 100%
-  float dimFactor = (float) digitOffCount / (float) DIGIT_DISPLAY_COUNT * fixedDim;
+  float dimFactor = (float) (1023 - ldrValue) / (float) 1023.0 * fixedDim;
   
   // Calculate the brightness factor based on the "pulse"
   float pwmFactor = (float) secsDelta / (float) 1000.0;
@@ -1516,10 +1514,12 @@ void loadNumberArrayLDR() {
   NumberArray[5] = 0;
   NumberArray[4] = 0;
 
-  NumberArray[3] = (digitOffCount / 1) % 10;
-  NumberArray[2] = (digitOffCount / 10) % 10;
-  NumberArray[1] = (digitOffCount / 100) % 10;
-  NumberArray[0] = (digitOffCount / 1000) % 10;
+  int ldrValueDisp = 1023 - ldrValue;
+  
+  NumberArray[3] = (ldrValueDisp / 1) % 10;
+  NumberArray[2] = (ldrValueDisp / 10) % 10;
+  NumberArray[1] = (ldrValueDisp / 100) % 10;
+  NumberArray[0] = (ldrValueDisp / 1000) % 10;
 }
 
 // ************************************************************
@@ -1583,144 +1583,8 @@ void loadNumberArrayIP(byte byte1, byte byte2) {
 // This is the heart of the display processing!
 // ************************************************************
 void outputDisplay() {
-  int digitOnTime;
-  int digitOffTime;
-  int ledsOffTime;
-  int digitSwitchTime;
-  float digitSwitchTimeFloat;
-  int tmpDispType;
-
-  // used to blank all leading digits if 0
-  boolean leadingZeros = true;
-
-  for ( int i = 0 ; i < DIGIT_COUNT ; i ++ ) {
-    if (blankTubes) {
-      tmpDispType = BLANKED;
-    } else {
-      tmpDispType = displayType[i];
-    }
-
-    switch (tmpDispType) {
-      case BLANKED:
-        {
-          // Setting off = on means we never turn on
-          digitOnTime = DIGIT_DISPLAY_NEVER;
-          digitOffTime = DIGIT_DISPLAY_NEVER;
-          break;
-        }
-      case DIMMED:
-        {
-          digitOnTime = DIGIT_DISPLAY_START;
-          digitOffTime = DIM_VALUE;
-          break;
-        }
-      case BRIGHT:
-        {
-          digitOnTime = DIGIT_DISPLAY_START;
-          digitOffTime = DIGIT_DISPLAY_COUNT;
-          break;
-        }
-      case FADE:
-      case NORMAL:
-      case SCROLL:
-        {
-          digitOnTime = DIGIT_DISPLAY_START;
-          digitOffTime = digitOffCount;
-          break;
-        }
-      case BLINK:
-        {
-          if (blinkState) {
-            digitOnTime = DIGIT_DISPLAY_START;
-            digitOffTime = digitOffCount;
-          } else {
-            digitOnTime = DIGIT_DISPLAY_NEVER;
-            digitOffTime = DIGIT_DISPLAY_COUNT;
-          }
-          break;
-        }
-    }
-
-    // Do scrollback when we are going to 0
-    if ((NumberArray[i] != currNumberArray[i]) &&
-        (NumberArray[i] == 0) &&
-        scrollback) {
-      tmpDispType = SCROLL;
-    }
-
-    // --------------------- Scroll ---------------------
-
-    // manage scrolling, each impression we show 1 fade step less of the old
-    // digit and 1 fade step more of the new
-    if (tmpDispType == SCROLL) {
-      digitSwitchTime = DIGIT_DISPLAY_NEVER;
-      if (NumberArray[i] != currNumberArray[i]) {
-        if (fadeState[i] == 0) {
-          // Start the fade
-          fadeState[i] = scrollSteps;
-        }
-
-        if (fadeState[i] == 1) {
-          // finish the fade
-          fadeState[i] = 0;
-          currNumberArray[i] = currNumberArray[i] - 1;
-        } else if (fadeState[i] > 1) {
-          // Continue the scroll countdown
-          fadeState[i] = fadeState[i] - 1;
-        }
-      }
-    } else
-
-      // --------------------- Fade ---------------------
-
-      // manage fading, each impression we show 1 fade step less of the old
-      // digit and 1 fade step more of the new
-      if (tmpDispType == FADE) {
-        float countsPerStep = (digitOffTime - digitOnTime) / fadeSteps;
-
-        if (NumberArray[i] != currNumberArray[i]) {
-          // Start the fade
-          if (fadeState[i] == 0) {
-            // Start the fade
-            fadeState[i] = fadeSteps;
-            digitSwitchTime = digitOnTime + (fadeState[i] * countsPerStep);
-          }
-        }
-
-        if (fadeState[i] == 1) {
-          // finish the fade
-          fadeState[i] = 0;
-          currNumberArray[i] = NumberArray[i];
-          digitSwitchTime = digitOffTime;
-        } else if (fadeState[i] > 1) {
-          // Continue the fade
-          fadeState[i] = fadeState[i] - 1;
-          digitSwitchTime = digitOnTime + (fadeState[i] * countsPerStep);
-        }
-      } else
-
-        // --------------------- Normal ---------------------
-
-      {
-        digitSwitchTime = DIGIT_DISPLAY_NEVER;
-        currNumberArray[i] = NumberArray[i];
-      }
-    
-      // LEDs off will usually come before the digits off, or be the same 
-      ledsOffTime = digitOffCount * (float) separatorDimFactor / (float) 100;
-    
-      // Main display loop - everything up to now was preparation
-      for (int timer = DIGIT_DISPLAY_START ; timer <= DIGIT_DISPLAY_COUNT ; timer++) {
-        if (timer == DIGIT_DISPLAY_START) {
-          shiftDigitsOut();
-          if (!blanked) showDigits();
-          doYield();
-        }
-        if (timer == digitOffCount) {
-          blankDigits();
-        }
-      }
-    }
+  shiftDigitsOut();
+  showDigits();
 }
 
 // ************************************************************
@@ -1730,14 +1594,14 @@ void outputDisplay() {
 // ************************************************************
 void shiftDigitsOut() {
   // prepare the first 24 bits: made of 3 * 8 bits (Seconds, 10xSeconds, Minutes) plus the three LED bits
-  unsigned long digitSecond = digitData[currNumberArray[5]];
-  unsigned long digitTenSecond = digitData[currNumberArray[4]];
-  unsigned long digitMinute = digitData[currNumberArray[3]];
+  unsigned long digitSecond = digitData[NumberArray[5]];
+  unsigned long digitTenSecond = digitData[NumberArray[4]];
+  unsigned long digitMinute = digitData[NumberArray[3]];
 
   // prepare the second 32 bits: made of 3 * 10 bits (10xMinutes, Hours, 10xHour) plus the two neon bits
-  unsigned long digitTenMinute = digitData[currNumberArray[2]];
-  unsigned long digitHour = digitData[currNumberArray[1]];
-  unsigned long digitTenHour = digitData[currNumberArray[0]];
+  unsigned long digitTenMinute = digitData[NumberArray[2]];
+  unsigned long digitHour = digitData[NumberArray[1]];
+  unsigned long digitTenHour = digitData[NumberArray[0]];
   
   if (led1State) {
     digitTenSecond |= SEG_IND;
@@ -1755,7 +1619,7 @@ void shiftDigitsOut() {
   }
 
   // Add in the indicator bit 1
-  if (blanked) {
+  if (ntpTimeValid()) {
     digitTenHour |= SEG_IND;
   }
 
@@ -1810,27 +1674,21 @@ void shiftOut24(uint8_t _dataPin1,
 }
 
 // ************************************************************
-// Do some yields after every digit. The number determines
-// the responsiveness of the UI and the blink in the display.
-// ************************************************************
-#define YIELD_COUNT_PER_DIGIT 99
-void doYield() {
-  for (int i = 0 ; i < YIELD_COUNT_PER_DIGIT; i++)
-    yield();
-}
-
-// ************************************************************
 // Set the blanking pin to show the display
 // ************************************************************
 void showDigits(){
-  digitalWrite(BLANKPin,false);
+  if (!blanked) {
+    analogWrite(BLANKPin,ldrValue);
+  } else {
+    blankDigits();
+  }
 }
 
 // ************************************************************
 // Set the blanking pin to blank the display
 // ************************************************************
-void blankDigits(){
-  digitalWrite(BLANKPin,true);
+void blankDigits() {
+  analogWrite(BLANKPin,1023);
 }
 
 // ************************************************************
@@ -2414,30 +2272,30 @@ void setRTCTime() {
 //
 // The LDR in bright light gives reading of around 50, the reading in
 // total darkness is around 900.
-//
-// The return value is the dimming count we are using. 999 is full
-// brightness, 100 is very dim.
-//
-// Because the floating point calculation may return more than the
-// maximum value, we have to clamp it as the final step
 // ******************************************************************
 int getDimmingFromLDR() {
   if (useLDR) {
     int rawLDR = analogRead(LDRPin);
-    if (rawLDR < 100) rawLDR = 100;
-    if (rawLDR > 1000) rawLDR = 1000;
-    int rawSensorVal = 1100 - rawLDR;
 
+    // If we are below the threshold value, set full brightness
+    int rawSensorVal = rawLDR - thresholdBright;    
+
+    if (rawSensorVal < 0) rawSensorVal = 0;
+
+    double sensorFactor = (float) sensitivityLDR / 100.0;
+    
+    double sensorVal = (float) rawSensorVal * sensorFactor;
+    
     double sensorDiff = rawSensorVal - sensorLDRSmoothed;
-    sensorLDRSmoothed += (sensorDiff / (double)sensorSmoothCountLDR);
+    sensorLDRSmoothed += (sensorDiff / (double) sensorSmoothCountLDR);
 
-    int returnValue = (sensorLDRSmoothed - dimDark) * sensorFactor;
+    int returnValue = sensorLDRSmoothed;
 
-    if (returnValue < minDim) returnValue = minDim;
-    if (returnValue > DIGIT_DISPLAY_COUNT) returnValue = DIGIT_DISPLAY_COUNT;
+    if (returnValue > (1023 - minDim)) returnValue = (1023 - minDim);
+
     return returnValue;
   } else {
-    return DIGIT_DISPLAY_COUNT;
+    return 0;
   }
 }
 
@@ -2497,17 +2355,20 @@ boolean getConfigFromSpiffs() {
           dateFormat = json["dateFormat"];
           debugMsg("Loaded date format: " + String(dateFormat));
 
-          dimDark = json["dimDark"];
-          debugMsg("Loaded dimDark: " + String(dimDark));
-
           scrollSteps = json["scrollSteps"];
           debugMsg("Loaded scroll steps: " + String(scrollSteps));
 
-          dimBright = json["dimBright"];
-          debugMsg("Loaded dimBright: " + String(dimBright));
+          thresholdBright = json["thresholdBright"];
+          debugMsg("Loaded thresholdBright: " + String(thresholdBright));
+
+          sensitivityLDR = json["sensitivityLDR"];
+          debugMsg("Loaded sensitivityLDR: " + String(sensitivityLDR));
 
           sensorSmoothCountLDR = json["sensorSmoothCountLDR"];
           debugMsg("Loaded sensorSmoothCountLDR: " + String(sensorSmoothCountLDR));
+
+          minDim = json["minDim"];
+          debugMsg("Loaded minDim: " + String(minDim));
 
           backlightMode = json["backlightMode"];
           debugMsg("Loaded backlight mode: " + String(backlightMode));
@@ -2529,9 +2390,6 @@ boolean getConfigFromSpiffs() {
 
           cycleSpeed = json["cycleSpeed"];
           debugMsg("Loaded cycleSpeed: " + String(cycleSpeed));
-
-          minDim = json["minDim"];
-          debugMsg("Loaded minDim: " + String(minDim));
 
           antiGhost = json["antiGhost"];
           debugMsg("Loaded antiGhost: " + String(antiGhost));
@@ -2608,10 +2466,13 @@ void saveConfigToSpiffs() {
     json["fadeSteps"] = fadeSteps;
     json["dateFormat"] = dateFormat;
     json["dayBlanking"] = dayBlanking;
-    json["dimDark"] = dimDark;
     json["scrollSteps"] = scrollSteps;
-    json["dimBright"] = dimBright;
+
+    json["thresholdBright"] = thresholdBright;
+    json["sensitivityLDR"] = sensitivityLDR;
+    json["minDim"] = minDim;
     json["sensorSmoothCountLDR"] = sensorSmoothCountLDR;
+
     json["backlightMode"] = backlightMode;
     json["redCnl"] = redCnl;
     json["grnCnl"] = grnCnl;
@@ -2619,7 +2480,6 @@ void saveConfigToSpiffs() {
     json["blankHourStart"] = blankHourStart;
     json["blankHourEnd"] = blankHourEnd;
     json["cycleSpeed"] = cycleSpeed;
-    json["minDim"] = minDim;
     json["antiGhost"] = antiGhost;
     json["pirTimeout"] = pirTimeout;
     json["useLDR"] = useLDR;
@@ -2743,10 +2603,13 @@ void factoryReset() {
   fadeSteps = FADE_STEPS_DEFAULT;
   dateFormat = DATE_FORMAT_DEFAULT;
   dayBlanking = DAY_BLANKING_DEFAULT;
-  dimDark = SENSOR_LOW_DEFAULT;
   scrollSteps = SCROLL_STEPS_DEFAULT;
-  dimBright = SENSOR_HIGH_DEFAULT;
+
+  thresholdBright = SENSOR_BRIGHT_DEFAULT;
   sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
+  sensitivityLDR = SENSOR_SENSIT_DEFAULT;
+  minDim = MIN_DIM_DEFAULT;
+
   dateFormat = DATE_FORMAT_DEFAULT;
   dayBlanking = DAY_BLANKING_DEFAULT;
   backlightMode = BACKLIGHT_DEFAULT;
@@ -2756,7 +2619,6 @@ void factoryReset() {
   blankHourStart = 0;
   blankHourEnd = 7;
   cycleSpeed = CYCLE_SPEED_DEFAULT;
-  minDim = MIN_DIM_DEFAULT;
   antiGhost = ANTI_GHOST_DEFAULT;
   pirTimeout = PIR_TIMEOUT_DEFAULT;
   useLDR = USE_LDR_DEFAULT;
@@ -2851,7 +2713,7 @@ void rootPageHandler() {
   response_message += getTableFoot();
 
   // ******************** Clock Info table ***************************
-  float digitBrightness = digitOffCount * 100.0 / (float) DIGIT_DISPLAY_COUNT;
+  float digitBrightness = (1023 - ldrValue) * 100.0 / 1023.0;
   String motionSensorState = checkPIRInstalled() ? getPIRStateDisplay() : "Not installed";
   String rtcState = useRTC ? "Installed" : "Not installed";
   String timeSource;

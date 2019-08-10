@@ -24,17 +24,18 @@
 #define SOFTWARE_VERSION    1
 
 // -------------------------------------------------------------------------------
-#define MIN_DIM_DEFAULT       100  // The default minimum dim count
+#define MIN_DIM_DEFAULT       400  // The default minimum dim count
 #define MIN_DIM_MIN           100  // The minimum dim count
-#define MIN_DIM_MAX           500  // The maximum dim count
+#define MIN_DIM_MAX           800  // The maximum dim count
 
 // -------------------------------------------------------------------------------
-#define SENSOR_LOW_MIN        0
-#define SENSOR_LOW_MAX        900
-#define SENSOR_LOW_DEFAULT    100  // Dark
-#define SENSOR_HIGH_MIN       0
-#define SENSOR_HIGH_MAX       900
-#define SENSOR_HIGH_DEFAULT   700 // Bright
+#define SENSOR_SENSIT_MIN     100 // Sensor Sensitivity
+#define SENSOR_SENSIT_MAX     400
+#define SENSOR_SENSIT_DEFAULT 300
+
+#define SENSOR_BRIGHT_MIN     0   // Bright is when we have LDR value = 0, when we read less than this value, we have full brightness
+#define SENSOR_BRIGHT_MAX     500
+#define SENSOR_BRIGHT_DEFAULT 200
 
 #define SENSOR_SMOOTH_READINGS_MIN     1
 #define SENSOR_SMOOTH_READINGS_MAX     255

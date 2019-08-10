@@ -131,11 +131,12 @@ boolean blankLEDs = false;
 
 // --------------- Ambient light dimming ---------------
 
-int dimDark = SENSOR_LOW_DEFAULT;
-int dimBright = SENSOR_HIGH_DEFAULT;
+int thresholdBright = SENSOR_BRIGHT_DEFAULT;
+int sensitivityLDR = SENSOR_SENSIT_DEFAULT;
 double sensorLDRSmoothed = 0;
-double sensorFactor = (double)(DIGIT_DISPLAY_COUNT) / (double)(dimBright - dimDark);
+double sensorFactor = (double)SENSOR_SENSIT_DEFAULT / 100.0;
 int sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
+int ldrValue = 0;
 
 boolean blinkState;
 
