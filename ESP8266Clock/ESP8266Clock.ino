@@ -2865,7 +2865,13 @@ void rootPageHandler() {
   }
   String currentTime = String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second());
   response_message += getTableHead2Col("Clock information", "Name", "Value");
-  response_message += getTableRow2Col("LDR Value", sensorLDRSmoothed);
+
+  if (useLDR) {
+    response_message += getTableRow2Col("LDR Value", sensorLDRSmoothed);
+  } else {
+    response_message += getTableRow2Col("LDR Value", "LDR disabled");
+  }
+  
   response_message += getTableRow2Col("Digit brightness %", String(digitBrightness, 2));
   response_message += getTableRow2Col("Motion Sensor", motionSensorState);
   response_message += getTableRow2Col("Time Source", timeSource);
