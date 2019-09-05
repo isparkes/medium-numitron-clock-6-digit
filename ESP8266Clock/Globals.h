@@ -69,6 +69,8 @@ int pirTimeout = PIR_TIMEOUT_DEFAULT;
 boolean blankLeading = false;
 byte dateFormat = DATE_FORMAT_DEFAULT;
 byte ledMode = 0;       // Separator LED mode
+byte statusModeL = STATUS_LED_MODE_ONLINE; // Left Status LED mode
+byte statusModeR = STATUS_LED_MODE_NTP; // Right Status LED mode
 byte backlightDimFactor = BACKLIGHT_DIM_FACTOR_DEFAULT;
 boolean testMode = false;
 
@@ -108,6 +110,7 @@ boolean onceHadAnRTC = false;
 unsigned long pirLastSeen = 0;
 boolean pirInstalled = false;
 int pirConsecutiveCounts = 300;  // set with a high value to stop the PIR being falsely detected the first time round the loop
+boolean pirStatus = false;
 
 // --------------------- Blanking ----------------------
 
@@ -136,6 +139,8 @@ boolean upOrDown;
 // Used to control the separator LEDs
 boolean led1State;
 boolean led2State;
+boolean ledLState;
+boolean ledRState;
 
 // Strategy 3
 int changeSteps = 0;

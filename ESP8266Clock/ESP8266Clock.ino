@@ -51,7 +51,7 @@
 #include "HtmlServer.h"
 #include "VFDDefs.h"
 
-#define DEBUG
+#define DEBUG_OFF
 
 //**********************************************************************************
 //**********************************************************************************
@@ -422,6 +422,39 @@ void performOncePerSecondProcessing() {
   if (nextUpdateFromServer < 0) {
     getTimeFromTimeZoneServer();
   }
+
+  // Set the indicator states
+  ledLState = processStatusMode(statusModeL);
+  ledRState = processStatusMode(statusModeR);
+}
+
+bool processStatusMode(byte mode) {
+  switch(mode) {
+    case STATUS_LED_MODE_NTP: {
+      return ntpTimeValid();
+      break;
+    }
+    case STATUS_LED_MODE_ONLINE: {
+      return getIsConnected();
+      break;
+    }
+    case STATUS_LED_MODE_AM_PM: {
+      return isPM();
+      break;
+    }
+    case STATUS_LED_MODE_PIR: {
+      return pirStatus;
+      break;
+    }
+    case STATUS_LED_MODE_OFF: {
+      return false;
+      break;
+    }
+    case STATUS_LED_MODE_ON: {
+      return true;
+      break;
+    }
+  }
 }
 
 // ************************************************************
@@ -632,9 +665,11 @@ boolean checkPIR(unsigned long nowMillis) {
     pirInstalled = true;
     if (nowMillis > (pirLastSeen + (pirTimeout * 1000))) {
       dpArray[4] = false;
+      pirStatus = false;
       return true;
     } else {
       dpArray[4] = true;
+      pirStatus = true;
       return false;
     }
   }
@@ -1490,13 +1525,13 @@ void shiftDigitsOut() {
     digitHour |= SEG_IND;
   }
   
-  // Add in the indicator bit 1
-  if (getIsConnected()) {
+  // Add in the indicator bit on the right
+  if (ledRState) {
     digitSecond |= SEG_IND;
   }
 
-  // Add in the indicator bit 1
-  if (ntpTimeValid()) {
+  // Add in the indicator bit on the left
+  if (ledLState) {
     digitTenHour |= SEG_IND;
   }
 
@@ -2698,6 +2733,8 @@ void clockConfigPageHandler() {
   checkServerArgInt("pirTimeout", "pirTimeout", changed, pirTimeout);
   checkServerArgBoolean("usePIRPullup", "Use PIR pullup", "on", "off", changed, usePIRPullup);
   checkServerArgByte("ledMode", "ledMode", changed, ledMode);
+  checkServerArgByte("statusModeL", "statusModeL", changed, statusModeL);
+  checkServerArgByte("statusModeR", "statusModeR", changed, statusModeR);
   boolean localWebAuth = getWebAuthentication();
   String localWebUserName = getWebUserName();
   String localWebPassword = getWebPassword();
@@ -2831,6 +2868,26 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("3", "Double flash", (ledMode == LED_BLINK_DBL));
   response_message += getDropDownFooter();
 
+  // Status LED mode Left
+  response_message += getDropDownHeader("Left Status LED Mode:", "statusModeL", true);
+  response_message += getDropDownOption("0", "NTP", (statusModeL == STATUS_LED_MODE_NTP));
+  response_message += getDropDownOption("1", "Connected", (statusModeL == STATUS_LED_MODE_ONLINE));
+  response_message += getDropDownOption("2", "AM/PM", (statusModeL == STATUS_LED_MODE_AM_PM));
+  response_message += getDropDownOption("3", "PIR", (statusModeL == STATUS_LED_MODE_PIR));
+  response_message += getDropDownOption("4", "Off", (statusModeL == STATUS_LED_MODE_OFF));
+  response_message += getDropDownOption("5", "On", (statusModeL == STATUS_LED_MODE_ON));
+  response_message += getDropDownFooter();
+
+  // Status LED mode Right
+  response_message += getDropDownHeader("Right Status LED Mode:", "statusModeR", true);
+  response_message += getDropDownOption("0", "NTP", (statusModeR == STATUS_LED_MODE_NTP));
+  response_message += getDropDownOption("1", "Connected", (statusModeR == STATUS_LED_MODE_ONLINE));
+  response_message += getDropDownOption("2", "AM/PM", (statusModeR == STATUS_LED_MODE_AM_PM));
+  response_message += getDropDownOption("3", "PIR", (statusModeR == STATUS_LED_MODE_PIR));
+  response_message += getDropDownOption("4", "Off", (statusModeR == STATUS_LED_MODE_OFF));
+  response_message += getDropDownOption("5", "On", (statusModeR == STATUS_LED_MODE_ON));
+  response_message += getDropDownFooter();
+  
   // PIR timeout
   response_message += getNumberInput("PIR timeout:", "pirTimeout", PIR_TIMEOUT_MIN, PIR_TIMEOUT_MAX, pirTimeout, false);
 
