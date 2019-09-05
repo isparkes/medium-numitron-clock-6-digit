@@ -87,62 +87,48 @@
 #define HOUR_MODE_DEFAULT               false
 #define MODE_LEAD_BLANK                 8  // Mode "01" 1 = blanked
 #define LEAD_BLANK_DEFAULT              false
-#define MODE_SCROLLBACK                 9  // Mode "02" 1 = use scrollback
-#define SCROLLBACK_DEFAULT              false
-#define MODE_FADE                       10 // Mode "03" 1 = use fade
-#define FADE_DEFAULT                    false
-#define MODE_DATE_FORMAT                11 // Mode "04"
-#define MODE_DAY_BLANKING               12 // Mode "05"
-#define MODE_HR_BLNK_START              13 // Mode "06" - skipped if not using hour blanking
-#define MODE_HR_BLNK_END                14 // Mode "07" - skipped if not using hour blanking
+#define MODE_DATE_FORMAT                9 // Mode "04"
+#define MODE_DAY_BLANKING               10 // Mode "05"
+#define MODE_HR_BLNK_START              11 // Mode "06" - skipped if not using hour blanking
+#define MODE_HR_BLNK_END                12 // Mode "07" - skipped if not using hour blanking
 
-#define MODE_USE_LDR                    15 // Mode "08" 1 = use LDR, 0 = don't (and have 100% brightness)
+#define MODE_USE_LDR                    13 // Mode "08" 1 = use LDR, 0 = don't (and have 100% brightness)
 #define MODE_USE_LDR_DEFAULT            true
 
-#define MODE_BLANK_MODE                 16 // Mode "09" 
+#define MODE_BLANK_MODE                 14 // Mode "09" 
 #define MODE_BLANK_MODE_DEFAULT         BLANK_MODE_BOTH
 
-// Display tricks
-#define MODE_FADE_STEPS_UP              17 // Mode "10"
-#define MODE_FADE_STEPS_DOWN            18 // Mode "11"
-#define MODE_DISPLAY_SCROLL_STEPS_UP    19 // Mode "12"
-#define MODE_DISPLAY_SCROLL_STEPS_DOWN  20 // Mode "13"
-
-#define MODE_SLOTS_MODE                 21 // Mode "14"
+#define MODE_SLOTS_MODE                 15 // Mode "14"
 
 // Separator LED mode
-#define MODE_LED_BLINK                  22 // Mode "15"
+#define MODE_LED_BLINK                  16 // Mode "15"
 
 // PIR
-#define MODE_PIR_TIMEOUT_UP             23 // Mode "16"
-#define MODE_PIR_TIMEOUT_DOWN           24 // Mode "17"
+#define MODE_PIR_TIMEOUT_UP             17// Mode "16"
+#define MODE_PIR_TIMEOUT_DOWN           18 // Mode "17"
 
 // Back light
-#define MODE_BACKLIGHT_MODE             25 // Mode "18"
-#define MODE_RED_CNL                    26 // Mode "19"
-#define MODE_GRN_CNL                    27 // Mode "20"
-#define MODE_BLU_CNL                    28 // Mode "21"
-#define MODE_CYCLE_SPEED                29 // Mode "22"
+#define MODE_BACKLIGHT_MODE             19 // Mode "18"
+#define MODE_RED_CNL                    20 // Mode "19"
+#define MODE_GRN_CNL                    21 // Mode "20"
+#define MODE_BLU_CNL                    22 // Mode "21"
+#define MODE_CYCLE_SPEED                23 // Mode "22"
 
 // Minimum dimming value for old tubes
-#define MODE_MIN_DIM_UP                 30 // Mode "23"
-#define MODE_MIN_DIM_DOWN               31 // Mode "24"
-
-// Anti-ghosting for old tubes
-#define MODE_ANTI_GHOST_UP              32 // Mode "25"
-#define MODE_ANTI_GHOST_DOWN            33 // Mode "26"
+#define MODE_MIN_DIM_UP                 24 // Mode "23"
+#define MODE_MIN_DIM_DOWN               25 // Mode "24"
 
 // Use the PIR pin pullup resistor
-#define MODE_USE_PIR_PULLUP             34 // Mode "27" 1 = use Pullup
+#define MODE_USE_PIR_PULLUP             26 // Mode "27" 1 = use Pullup
 #define USE_PIR_PULLUP_DEFAULT          true
 
 // Software Version
-#define MODE_VERSION                    35 // Mode "28"
+#define MODE_VERSION                    27 // Mode "28"
 
 // Tube test - all six digits, so no flashing mode indicator
-#define MODE_TUBE_TEST                  36
+#define MODE_TUBE_TEST                  30
 
-#define MODE_MAX                        36
+#define MODE_MAX                        30
 
 // -------------------------------------------------------------------------------
 // Temporary display modes - accessed by a short press ( < 1S ) on the button when in MODE_TIME
@@ -224,11 +210,6 @@
 #define SLOTS_MODE_1M_SCR_SCR           1   // use slots effect every minute, scroll in, scramble out
 #define SLOTS_MODE_MAX                  1
 #define SLOTS_MODE_DEFAULT              1
-
-// -------------------------------------------------------------------------------
-#define SEPARATOR_DIM_FACTOR_MIN        10
-#define SEPARATOR_DIM_FACTOR_MAX        100
-#define SEPARATOR_DIM_FACTOR_DEFAULT    100
 
 // -------------------------------------------------------------------------------
 #define BACKLIGHT_DIM_FACTOR_MIN        10

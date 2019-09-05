@@ -182,13 +182,10 @@ void Transition::loadAlternateValues() {
 
 void Transition::saveCurrentDisplayType() {
   memcpy(_savedDisplayType, displayType, sizeof(_savedDisplayType));
-  _savedScrollback = scrollback;
-  scrollback = false;
 }
 
 void Transition::restoreCurrentDisplayType() {
   memcpy(displayType, _savedDisplayType, sizeof(_savedDisplayType));
-  scrollback = _savedScrollback;
 }
 
 unsigned long Transition::getEnd() {

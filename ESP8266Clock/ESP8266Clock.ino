@@ -112,14 +112,8 @@ void setup()
     boolean oldUseLDR = useLDR;
     byte oldBacklightMode = backlightMode;
 
-    // reset the EEPROM values
-    factoryReset();
-
     // turn off LDR
     useLDR = false;
-
-    // turn off Scrollback
-    scrollback = false;
 
     // set backlights to change with the displayed digits
     backlightMode = BACKLIGHT_COLOUR_TIME;
@@ -133,9 +127,6 @@ void setup()
     lastCheckMillis = millis();
 
     boolean inLoop = true;
-
-    // We don't want to stay in test mode forever
-    long startTestMode = lastCheckMillis;
 
     while (inLoop) {
       // Otherwise we get SOFT WDT
@@ -321,7 +312,7 @@ void loop()
     saveConfigToSpiffs();
 
     // Preset the display
-    allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+    allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
 
     nextMode = currentMode;
   } else if (button1.isButtonPressedReleased1S()) {
@@ -334,7 +325,7 @@ void loop()
       saveConfigToSpiffs();
 
       // Preset the display
-      allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+      allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
     }
 
     nextMode = currentMode;
@@ -692,7 +683,7 @@ void setNextMode(int displayMode) {
   switch (displayMode) {
     case MODE_TIME: {
         loadNumberArrayTime();
-        allFadeOrNormal(APPLY_LEAD_0_BLANK);
+        allNormal(APPLY_LEAD_0_BLANK);
         break;
       }
     case MODE_HOURS_SET: {
@@ -739,16 +730,6 @@ void setNextMode(int displayMode) {
         displayConfig();
         break;
       }
-    case MODE_SCROLLBACK: {
-        loadNumberArrayConfBool(scrollback, displayMode);
-        displayConfig();
-        break;
-      }
-    case MODE_FADE: {
-        loadNumberArrayConfBool(fade, displayMode);
-        displayConfig();
-        break;
-      }
     case MODE_DATE_FORMAT: {
         loadNumberArrayConfInt(dateFormat, displayMode);
         displayConfig();
@@ -783,18 +764,6 @@ void setNextMode(int displayMode) {
       }
     case MODE_BLANK_MODE: {
         loadNumberArrayConfInt(blankMode, displayMode);
-        displayConfig();
-        break;
-      }
-    case MODE_FADE_STEPS_UP:
-    case MODE_FADE_STEPS_DOWN: {
-        loadNumberArrayConfInt(fadeSteps, displayMode);
-        displayConfig();
-        break;
-      }
-    case MODE_DISPLAY_SCROLL_STEPS_UP:
-    case MODE_DISPLAY_SCROLL_STEPS_DOWN: {
-        loadNumberArrayConfInt(scrollSteps, displayMode);
         displayConfig();
         break;
       }
@@ -848,12 +817,6 @@ void setNextMode(int displayMode) {
         displayConfig();
         break;
       }
-    case MODE_ANTI_GHOST_UP:
-    case MODE_ANTI_GHOST_DOWN: {
-        loadNumberArrayConfInt(antiGhost, displayMode);
-        displayConfig();
-        break;
-      }
     case MODE_USE_PIR_PULLUP: {
         loadNumberArrayConfBool(usePIRPullup, displayMode);
         displayConfig();
@@ -866,7 +829,7 @@ void setNextMode(int displayMode) {
       }
     case MODE_TUBE_TEST: {
         loadNumberArrayTestDigits();
-        allNormal();
+        allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
         break;
       }
   }
@@ -956,7 +919,7 @@ void processCurrentMode(int displayMode) {
             loadNumberArrayConfInt(lastImpressionsPerSec, 0);
           }
 
-          allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+          allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
 
         } else {
           if (slotsMode > SLOTS_MODE_MIN) {
@@ -967,7 +930,7 @@ void processCurrentMode(int displayMode) {
               transition.setAlternateValues();
               loadNumberArrayTime();
               transition.setRegularValues();
-              allFadeOrNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+              allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
 
               transition.start(nowMillis);
             }
@@ -989,13 +952,13 @@ void processCurrentMode(int displayMode) {
               // do normal time thing when we are not in slots
               loadNumberArrayTime();
 
-              allFadeOrNormal(APPLY_LEAD_0_BLANK);
+              allNormal(APPLY_LEAD_0_BLANK);
             }
           } else {
             // no slots mode, just do normal time thing
             loadNumberArrayTime();
 
-            allFadeOrNormal(APPLY_LEAD_0_BLANK);
+            allNormal(APPLY_LEAD_0_BLANK);
           }
         }
         break;
@@ -1064,22 +1027,6 @@ void processCurrentMode(int displayMode) {
         displayConfig();
         break;
       }
-    case MODE_SCROLLBACK: {
-        if (button1.isButtonPressedAndReleased()) {
-          scrollback = !scrollback;
-        }
-        loadNumberArrayConfBool(scrollback, displayMode);
-        displayConfig();
-        break;
-      }
-    case MODE_FADE: {
-        if (button1.isButtonPressedAndReleased()) {
-          fade = !fade;
-        }
-        loadNumberArrayConfBool(fade, displayMode);
-        displayConfig();
-        break;
-      }
     case MODE_DATE_FORMAT: {
         if (button1.isButtonPressedAndReleased()) {
           dateFormat++;
@@ -1140,52 +1087,6 @@ void processCurrentMode(int displayMode) {
           useLDR = !useLDR;
         }
         loadNumberArrayConfBool(useLDR, displayMode);
-        displayConfig();
-        break;
-      }
-    case MODE_FADE_STEPS_UP: {
-        if (button1.isButtonPressedAndReleased()) {
-          fadeSteps++;
-          if (fadeSteps > FADE_STEPS_MAX) {
-            fadeSteps = FADE_STEPS_MIN;
-          }
-        }
-        loadNumberArrayConfInt(fadeSteps, displayMode);
-        displayConfig();
-        fadeStep = DIGIT_DISPLAY_COUNT / fadeSteps;
-        break;
-      }
-    case MODE_FADE_STEPS_DOWN: {
-        if (button1.isButtonPressedAndReleased()) {
-          fadeSteps--;
-          if (fadeSteps < FADE_STEPS_MIN) {
-            fadeSteps = FADE_STEPS_MAX;
-          }
-        }
-        loadNumberArrayConfInt(fadeSteps, displayMode);
-        displayConfig();
-        fadeStep = DIGIT_DISPLAY_COUNT / fadeSteps;
-        break;
-      }
-    case MODE_DISPLAY_SCROLL_STEPS_UP: {
-        if (button1.isButtonPressedAndReleased()) {
-          scrollSteps++;
-          if (scrollSteps > SCROLL_STEPS_MAX) {
-            scrollSteps = SCROLL_STEPS_MIN;
-          }
-        }
-        loadNumberArrayConfInt(scrollSteps, displayMode);
-        displayConfig();
-        break;
-      }
-    case MODE_DISPLAY_SCROLL_STEPS_DOWN: {
-        if (button1.isButtonPressedAndReleased()) {
-          scrollSteps--;
-          if (scrollSteps < SCROLL_STEPS_MIN) {
-            scrollSteps = SCROLL_STEPS_MAX;
-          }
-        }
-        loadNumberArrayConfInt(scrollSteps, displayMode);
         displayConfig();
         break;
       }
@@ -1311,30 +1212,6 @@ void processCurrentMode(int displayMode) {
         displayConfig();
         break;
       }
-    case MODE_ANTI_GHOST_UP: {
-        if (button1.isButtonPressedAndReleased()) {
-          antiGhost += 1;
-          if (antiGhost > ANTI_GHOST_MAX) {
-            antiGhost = ANTI_GHOST_MAX;
-          }
-          dispCount = DIGIT_DISPLAY_COUNT + antiGhost;
-        }
-        loadNumberArrayConfInt(antiGhost, displayMode);
-        displayConfig();
-        break;
-      }
-    case MODE_ANTI_GHOST_DOWN: {
-        if (button1.isButtonPressedAndReleased()) {
-          antiGhost -= 1;
-          if (antiGhost < ANTI_GHOST_MIN) {
-            antiGhost = ANTI_GHOST_MIN;
-          }
-          dispCount = DIGIT_DISPLAY_COUNT + antiGhost;
-        }
-        loadNumberArrayConfInt(antiGhost, displayMode);
-        displayConfig();
-        break;
-      }
     case MODE_USE_PIR_PULLUP: {
         if (button1.isButtonPressedAndReleased()) {
           usePIRPullup = !usePIRPullup;
@@ -1350,7 +1227,7 @@ void processCurrentMode(int displayMode) {
         break;
       }
     case MODE_TUBE_TEST: {
-        allNormal();
+        allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
         loadNumberArrayTestDigits();
         break;
       }
@@ -1711,21 +1588,6 @@ void applyBlanking() {
 // ************************************************************
 // Display preset
 // ************************************************************
-void allFadeOrNormal(boolean blanking) {
-  if (fade) {
-    allFade();
-  } else {
-    allNormal();
-  }
-
-  if (blanking) {
-    applyBlanking();
-  }
-}
-
-// ************************************************************
-// Display preset
-// ************************************************************
 void allFade() {
   if (displayType[0] != FADE) displayType[0] = FADE;
   if (displayType[1] != FADE) displayType[1] = FADE;
@@ -1837,7 +1699,7 @@ void highlight4and5() {
 // ************************************************************
 // Display preset
 // ************************************************************
-void allNormal() {
+void allNormal(bool leadingBlank) {
   if (displayType[0] != NORMAL) displayType[0] = NORMAL;
   if (displayType[1] != NORMAL) displayType[1] = NORMAL;
   if (displayType[2] != NORMAL) displayType[2] = NORMAL;
@@ -2343,26 +2205,14 @@ boolean getConfigFromSpiffs() {
           blankLeading = json["blankLeading"].as<bool>();
           debugMsg("Loaded lead zero blanking: " + String(blankLeading));
 
-          scrollback = json["scrollback"].as<bool>();
-          debugMsg("Loaded ScrollBack mode: " + String(scrollback));
-
-          fade = json["fade"].as<bool>();
-          debugMsg("Loaded Fade mode: " + String(fade));
-
-          fadeSteps = json["fadeSteps"];
-          debugMsg("Loaded Fade Steps mode: " + String(fadeSteps));
+          sensitivityLDR = json["sensitivityLDR"];
+          debugMsg("Loaded sensitivityLDR: " + String(sensitivityLDR));
 
           dateFormat = json["dateFormat"];
           debugMsg("Loaded date format: " + String(dateFormat));
 
-          scrollSteps = json["scrollSteps"];
-          debugMsg("Loaded scroll steps: " + String(scrollSteps));
-
           thresholdBright = json["thresholdBright"];
           debugMsg("Loaded thresholdBright: " + String(thresholdBright));
-
-          sensitivityLDR = json["sensitivityLDR"];
-          debugMsg("Loaded sensitivityLDR: " + String(sensitivityLDR));
 
           sensorSmoothCountLDR = json["sensorSmoothCountLDR"];
           debugMsg("Loaded sensorSmoothCountLDR: " + String(sensorSmoothCountLDR));
@@ -2390,9 +2240,6 @@ boolean getConfigFromSpiffs() {
 
           cycleSpeed = json["cycleSpeed"];
           debugMsg("Loaded cycleSpeed: " + String(cycleSpeed));
-
-          antiGhost = json["antiGhost"];
-          debugMsg("Loaded antiGhost: " + String(antiGhost));
 
           pirTimeout = json["pirTimeout"];
           debugMsg("Loaded pirTimeout: " + String(pirTimeout));
@@ -2427,9 +2274,6 @@ boolean getConfigFromSpiffs() {
           debugMsg("Loaded webPassword: " + webPassword);
           setWebPassword(webPassword);
 
-          separatorDimFactor = json["separatorDimFactor"];
-          debugMsg("Loaded separatorDimFactor: " + String(separatorDimFactor));
-
           backlightDimFactor = json["backlightDimFactor"];
           debugMsg("Loaded backlightDimFactor: " + String(backlightDimFactor));
 
@@ -2461,12 +2305,8 @@ void saveConfigToSpiffs() {
     json["time_zone_string"] = tzs;
     json["hourMode"] = hourMode;
     json["blankLeading"] = blankLeading;
-    json["scrollback"] = scrollback;
-    json["fade"] = fade;
-    json["fadeSteps"] = fadeSteps;
     json["dateFormat"] = dateFormat;
     json["dayBlanking"] = dayBlanking;
-    json["scrollSteps"] = scrollSteps;
 
     json["thresholdBright"] = thresholdBright;
     json["sensitivityLDR"] = sensitivityLDR;
@@ -2480,7 +2320,6 @@ void saveConfigToSpiffs() {
     json["blankHourStart"] = blankHourStart;
     json["blankHourEnd"] = blankHourEnd;
     json["cycleSpeed"] = cycleSpeed;
-    json["antiGhost"] = antiGhost;
     json["pirTimeout"] = pirTimeout;
     json["useLDR"] = useLDR;
     json["blankMode"] = blankMode;
@@ -2491,7 +2330,6 @@ void saveConfigToSpiffs() {
     json["webAuthentication"] = getWebAuthentication();
     json["webUsername"] = getWebUserName();
     json["webPassword"] = getWebPassword();
-    json["separatorDimFactor"] = separatorDimFactor;
     json["backlightDimFactor"] = backlightDimFactor;
 
     File configFile = SPIFFS.open("/config.json", "w");
@@ -2598,12 +2436,8 @@ void factoryReset() {
   tzs = TIME_ZONE_STRING_DEFAULT;
   hourMode = HOUR_MODE_DEFAULT;
   blankLeading = LEAD_BLANK_DEFAULT;
-  scrollback = SCROLLBACK_DEFAULT;
-  fade = FADE_DEFAULT;
-  fadeSteps = FADE_STEPS_DEFAULT;
   dateFormat = DATE_FORMAT_DEFAULT;
   dayBlanking = DAY_BLANKING_DEFAULT;
-  scrollSteps = SCROLL_STEPS_DEFAULT;
 
   thresholdBright = SENSOR_BRIGHT_DEFAULT;
   sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
@@ -2619,7 +2453,6 @@ void factoryReset() {
   blankHourStart = 0;
   blankHourEnd = 7;
   cycleSpeed = CYCLE_SPEED_DEFAULT;
-  antiGhost = ANTI_GHOST_DEFAULT;
   pirTimeout = PIR_TIMEOUT_DEFAULT;
   useLDR = USE_LDR_DEFAULT;
   blankMode = BLANK_MODE_DEFAULT;
@@ -2630,7 +2463,6 @@ void factoryReset() {
   setWebAuthentication(WEB_AUTH_DEFAULT);
   setWebUserName(WEB_USERNAME_DEFAULT);
   setWebPassword(WEB_PASSWORD_DEFAULT);
-  separatorDimFactor = SEPARATOR_DIM_FACTOR_DEFAULT;
   backlightDimFactor = BACKLIGHT_DIM_FACTOR_DEFAULT;
 
   saveConfigToSpiffs();
@@ -2848,15 +2680,13 @@ void clockConfigPageHandler() {
 
   checkServerArgBoolean("12h24hMode", "12/24h mode", "12h", "24h", changed, hourMode);
   checkServerArgBoolean("blankLeading", "Leading zero", "blank", "show", changed, blankLeading);
-  checkServerArgBoolean("scrollback", "Use scrollback", "on", "off", changed, scrollback);
-  checkServerArgBoolean("fade", "Use fade", "on", "off", changed, fade);
   checkServerArgBoolean("useLDR", "Use LDR", "on", "off", changed, useLDR);
+  checkServerArgInt("minDim", "minDim", changed, minDim);
+  checkServerArgInt("sensitivityLDR", "sensitivityLDR", changed, sensitivityLDR);
   checkServerArgByte("dateFormat", "dateFormat", changed, dateFormat);
   checkServerArgByte("dayBlanking", "dayBlanking", changed, dayBlanking);
   checkServerArgByte("blankHourStart", "blankHourStart", changed, blankHourStart);
   checkServerArgByte("blankHourEnd", "blankHourEnd", changed, blankHourEnd);
-  checkServerArgInt("fadeSteps", "fadeSteps", changed, fadeSteps);
-  checkServerArgInt("scrollSteps", "scrollSteps", changed, scrollSteps);
   checkServerArgByte("backlightMode", "backlightMode", changed, backlightMode);
   checkServerArgByte("redCnl", "redCnl", changed, redCnl);
   checkServerArgByte("grnCnl", "grnCnl", changed, grnCnl);
@@ -2867,9 +2697,7 @@ void clockConfigPageHandler() {
   checkServerArgByte("slotsMode", "slotsMode", changed, slotsMode);
   checkServerArgInt("pirTimeout", "pirTimeout", changed, pirTimeout);
   checkServerArgBoolean("usePIRPullup", "Use PIR pullup", "on", "off", changed, usePIRPullup);
-  checkServerArgInt("minDim", "minDim", changed, minDim);
   checkServerArgByte("ledMode", "ledMode", changed, ledMode);
-  checkServerArgByte("separatorDimFactor", "separatorDimFactor", changed, separatorDimFactor);
   boolean localWebAuth = getWebAuthentication();
   String localWebUserName = getWebUserName();
   String localWebPassword = getWebPassword();
@@ -2879,7 +2707,6 @@ void clockConfigPageHandler() {
   setWebAuthentication(localWebAuth);
   setWebUserName(localWebUserName);
   setWebPassword(localWebPassword);
-  checkServerArgByte("separatorDimFactor", "separatorDimFactor", changed, separatorDimFactor);
   saveToSpiffsIfChanged(changed);
 
   // -----------------------------------------------------------------------------
@@ -2911,34 +2738,6 @@ void clockConfigPageHandler() {
   }
   response_message += getRadioGroupFooter();
 
-  // Scrollback
-  response_message += getRadioGroupHeader("Scrollback effect:");
-  if (scrollback) {
-    response_message += getRadioButton("scrollback", "On", "on", true);
-    response_message += getRadioButton("scrollback", "Off", "off", false);
-  } else {
-    response_message += getRadioButton("scrollback", "On", "on", false);
-    response_message += getRadioButton("scrollback", "Off", "off", true);
-  }
-  response_message += getRadioGroupFooter();
-
-  // Scroll steps
-  response_message += getNumberInput("Scroll steps:", "scrollSteps", SCROLL_STEPS_MIN, SCROLL_STEPS_MAX, scrollSteps, !scrollback);
-
-  // fade
-  response_message += getRadioGroupHeader("Fade effect:");
-  if (fade) {
-    response_message += getRadioButton("fade", "On", "on", true);
-    response_message += getRadioButton("fade", "Off", "off", false);
-  } else {
-    response_message += getRadioButton("fade", "On", "on", false);
-    response_message += getRadioButton("fade", "Off", "off", true);
-  }
-  response_message += getRadioGroupFooter();
-
-  // Fade steps
-  response_message += getNumberInput("Fade steps:", "fadeSteps", FADE_STEPS_MIN, FADE_STEPS_MAX, fadeSteps, !fade);
-
   // LDR
   response_message += getRadioGroupHeader("Use LDR:");
   if (useLDR) {
@@ -2949,6 +2748,12 @@ void clockConfigPageHandler() {
     response_message += getRadioButton("useLDR", "Off", "off", true);
   }
   response_message += getRadioGroupFooter();
+
+  // Min dim
+  response_message += getNumberInput("Min Dim:", "minDim", MIN_DIM_MIN, MIN_DIM_MAX, minDim, false);
+
+  // LDR Sensitivity
+  response_message += getNumberInput("LDR Sensitivity:", "sensitivityLDR", SENSOR_SENSIT_MIN, SENSOR_SENSIT_MAX, sensitivityLDR, false);
 
   // Date format
   response_message += getDropDownHeader("Date format:", "dateFormat", false);
@@ -3026,9 +2831,6 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("3", "Double flash", (ledMode == LED_BLINK_DBL));
   response_message += getDropDownFooter();
 
-  // Separator dim factor
-  response_message += getNumberInput("Separator Dim:", "separatorDimFactor", SEPARATOR_DIM_FACTOR_MIN, SEPARATOR_DIM_FACTOR_MAX, separatorDimFactor, false);
-
   // PIR timeout
   response_message += getNumberInput("PIR timeout:", "pirTimeout", PIR_TIMEOUT_MIN, PIR_TIMEOUT_MAX, pirTimeout, false);
 
@@ -3042,9 +2844,6 @@ void clockConfigPageHandler() {
     response_message += getRadioButton("usePIRPullup", "Off", "off", true);
   }
   response_message += getRadioGroupFooter();
-
-  // Min dim
-  response_message += getNumberInput("Min Dim:", "minDim", MIN_DIM_MIN, MIN_DIM_MAX, minDim, false);
 
   // web auth mode
   response_message += getRadioGroupHeader("Web Authentication:");

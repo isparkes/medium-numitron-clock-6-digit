@@ -51,17 +51,7 @@ boolean dpArray[6]         = {false, false, false, false, false, false};
 boolean hourMode = false;     // 24H
 int minDim = MIN_DIM_DEFAULT;
 
-// how many fade steps to increment (out of DIGIT_DISPLAY_COUNT) each impression
-// 350 is about 1 second
-int fadeSteps = FADE_STEPS_DEFAULT;
-
 int digitOffCount = DIGIT_DISPLAY_COUNT;
-int scrollSteps = SCROLL_STEPS_DEFAULT;
-boolean scrollback = true;
-boolean fade = true;
-byte antiGhost = ANTI_GHOST_DEFAULT;
-int dispCount = DIGIT_DISPLAY_COUNT + antiGhost;
-float fadeStep = DIGIT_DISPLAY_COUNT / fadeSteps;
 byte dayBlanking = DAY_BLANKING_DEFAULT;
 byte blankHourStart = 0;
 byte blankHourEnd = 0;
@@ -74,14 +64,13 @@ byte grnCnl = COLOUR_GRN_CNL_DEFAULT;
 byte bluCnl = COLOUR_BLU_CNL_DEFAULT;
 byte cycleCount = 0;
 byte cycleSpeed = CYCLE_SPEED_DEFAULT;
-boolean testMode = false;
 byte slotsMode = SLOTS_MODE_DEFAULT;
 int pirTimeout = PIR_TIMEOUT_DEFAULT;
 boolean blankLeading = false;
 byte dateFormat = DATE_FORMAT_DEFAULT;
 byte ledMode = 0;       // Separator LED mode
-byte separatorDimFactor = SEPARATOR_DIM_FACTOR_DEFAULT;
 byte backlightDimFactor = BACKLIGHT_DIM_FACTOR_DEFAULT;
+boolean testMode = false;
 
 // ------------- Time management variables -------------
 
