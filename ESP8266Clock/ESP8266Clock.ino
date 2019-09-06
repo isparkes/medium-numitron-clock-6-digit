@@ -79,6 +79,10 @@ void setup()
 
   setDiagnosticLED(DIAGS_START,STATUS_GREEN);
 
+  // Start I2C now so that the update from NTP can be sent to the RTC immediately
+  Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
+  debugMsg("I2C master started");
+
   button1.reset();
 
   setDiagnosticLED(DIAGS_SPIFFS, STATUS_YELLOW);
@@ -213,9 +217,6 @@ void setup()
   } else {
     setDiagnosticLED(DIAGS_NTP, STATUS_GREEN);
   }
-
-  Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
-  debugMsg("I2C master started");
 
   setServerPageHandlers();
   server.begin();

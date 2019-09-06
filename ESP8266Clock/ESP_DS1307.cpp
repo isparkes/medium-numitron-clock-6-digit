@@ -104,4 +104,3 @@ unsigned char DS1307::isRunning()
   Wire.requestFrom(DS1307_I2C_ADDRESS, 1);
   return !(Wire.read() & 0x80);
 }
-
