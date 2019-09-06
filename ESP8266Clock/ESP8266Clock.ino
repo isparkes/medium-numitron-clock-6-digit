@@ -2322,6 +2322,12 @@ boolean getConfigFromSpiffs() {
           backlightDimFactor = json["backlightDimFactor"];
           debugMsg("Loaded backlightDimFactor: " + String(backlightDimFactor));
 
+          statusModeL = json["statusModeL"];
+          debugMsg("Loaded statusModeL: " + String(statusModeL));
+
+          statusModeR = json["statusModeR"];
+          debugMsg("Loaded statusModeR: " + String(statusModeR));
+
           loaded = true;
         } else {
           debugMsg("failed to load json config");
@@ -2376,6 +2382,8 @@ void saveConfigToSpiffs() {
     json["webUsername"] = getWebUserName();
     json["webPassword"] = getWebPassword();
     json["backlightDimFactor"] = backlightDimFactor;
+    json["statusModeL"] = statusModeL;
+    json["statusModeR"] = statusModeR;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -2509,6 +2517,8 @@ void factoryReset() {
   setWebUserName(WEB_USERNAME_DEFAULT);
   setWebPassword(WEB_PASSWORD_DEFAULT);
   backlightDimFactor = BACKLIGHT_DIM_FACTOR_DEFAULT;
+  statusModeL = STATUS_LED_MODE_ONLINE;
+  statusModeR = STATUS_LED_MODE_NTP;
 
   saveConfigToSpiffs();
 }
