@@ -11,12 +11,8 @@ const int DIM_VALUE = DIGIT_DISPLAY_COUNT / 5;
 
 // Display mode, set per digit
 #define BLANKED  0
-#define DIMMED   1
-#define FADE     2
-#define NORMAL   3
-#define BLINK    4
-#define SCROLL   5
-#define BRIGHT   6
+#define NORMAL   1
+#define BLINK    2
 
 // ************************************************************
 // LED brightness correction: The perceived brightness is not linear
@@ -66,7 +62,8 @@ const byte colourTimeB[] = {   0,   0,   0,   0,  32, 190, 255, 255, 255, 255};
 #define LED_BLINK_FAST      2
 #define LED_BLINK_DBL       3
 #define LED_BLINK_DEFAULT   LED_RAILROAD
-#define LED_MODE_MAX        3
+#define LED_RAILROAD_X      4
+#define LED_MODE_MAX        4
 
 #define STATUS_LED_MODE_MIN    0
 #define STATUS_LED_MODE_NTP    0

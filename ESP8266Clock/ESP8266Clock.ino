@@ -123,7 +123,7 @@ void setup()
     backlightMode = BACKLIGHT_COLOUR_TIME;
 
     // All the digits on full
-    allBright();
+    allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
     showDigits();
 
     int secCount = 0;
@@ -528,6 +528,17 @@ void setLeds()
         }
         break;
       }
+    case LED_RAILROAD_X:
+      {
+        if (upOrDown) {
+          led1State = true;
+          led2State = true;
+        } else {
+          led1State = false;
+          led2State = false;
+        }
+        break;
+      }
     case LED_BLINK_SLOW:
       {
         if (upOrDown) {
@@ -604,17 +615,17 @@ void setLeds()
         break;
       case BACKLIGHT_COLOUR_TIME:
         for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-          ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[NumberArray[i]], 1, fixedDim);
-          ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[NumberArray[i]], 1, fixedDim);
-          ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[NumberArray[i]], 1, fixedDim);
+          ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, fixedDim);
+          ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], 1, fixedDim);
+          ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], 1, fixedDim);
         }
         outputLEDBuffer();
         break;
       case BACKLIGHT_COLOUR_TIME_DIM:
         for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-          ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[NumberArray[i]], 1, dimFactor);
-          ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[NumberArray[i]], 1, dimFactor);
-          ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[NumberArray[i]], 1, dimFactor);
+          ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, dimFactor);
+          ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], 1, dimFactor);
+          ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], 1, dimFactor);
         }
         outputLEDBuffer();
         break;
@@ -1332,16 +1343,16 @@ void cycleColours3(int colors[3]) {
 // Break the time into displayable digits
 // ************************************************************
 void loadNumberArrayTime() {
-  NumberArray[5] = second() % 10;
-  NumberArray[4] = second() / 10;
-  NumberArray[3] = minute() % 10;
-  NumberArray[2] = minute() / 10;
+  numberArray[5] = second() % 10;
+  numberArray[4] = second() / 10;
+  numberArray[3] = minute() % 10;
+  numberArray[2] = minute() / 10;
   if (hourMode) {
-    NumberArray[1] = hourFormat12() % 10;
-    NumberArray[0] = hourFormat12() / 10;
+    numberArray[1] = hourFormat12() % 10;
+    numberArray[0] = hourFormat12() / 10;
   } else {
-    NumberArray[1] = hour() % 10;
-    NumberArray[0] = hour() / 10;
+    numberArray[1] = hour() % 10;
+    numberArray[0] = hour() / 10;
   }
 }
 
@@ -1349,24 +1360,24 @@ void loadNumberArrayTime() {
 // Show the value we got over I2C
 // ************************************************************
 void loadNumberArrayValue() {
-  NumberArray[5] = valueToShow[2] & 0xf;
-  NumberArray[4] = valueToShow[2] >> 4;
-  NumberArray[3] = valueToShow[1] & 0xf;
-  NumberArray[2] = valueToShow[1] >> 4;
-  NumberArray[1] = valueToShow[0] & 0xf;
-  NumberArray[0] = valueToShow[0] >> 4;
+  numberArray[5] = valueToShow[2] & 0xf;
+  numberArray[4] = valueToShow[2] >> 4;
+  numberArray[3] = valueToShow[1] & 0xf;
+  numberArray[2] = valueToShow[1] >> 4;
+  numberArray[1] = valueToShow[0] & 0xf;
+  numberArray[0] = valueToShow[0] >> 4;
 }
 
 // ************************************************************
 // Break the time into displayable digits
 // ************************************************************
 void loadNumberArraySameValue(byte val) {
-  NumberArray[5] = val;
-  NumberArray[4] = val;
-  NumberArray[3] = val;
-  NumberArray[2] = val;
-  NumberArray[1] = val;
-  NumberArray[0] = val;
+  numberArray[5] = val;
+  numberArray[4] = val;
+  numberArray[3] = val;
+  numberArray[2] = val;
+  numberArray[1] = val;
+  numberArray[0] = val;
 }
 
 // ************************************************************
@@ -1375,28 +1386,28 @@ void loadNumberArraySameValue(byte val) {
 void loadNumberArrayDate() {
   switch (dateFormat) {
     case DATE_FORMAT_YYMMDD:
-      NumberArray[5] = day() % 10;
-      NumberArray[4] = day() / 10;
-      NumberArray[3] = month() % 10;
-      NumberArray[2] = month() / 10;
-      NumberArray[1] = (year() - 2000) % 10;
-      NumberArray[0] = (year() - 2000) / 10;
+      numberArray[5] = day() % 10;
+      numberArray[4] = day() / 10;
+      numberArray[3] = month() % 10;
+      numberArray[2] = month() / 10;
+      numberArray[1] = (year() - 2000) % 10;
+      numberArray[0] = (year() - 2000) / 10;
       break;
     case DATE_FORMAT_MMDDYY:
-      NumberArray[5] = (year() - 2000) % 10;
-      NumberArray[4] = (year() - 2000) / 10;
-      NumberArray[3] = day() % 10;
-      NumberArray[2] = day() / 10;
-      NumberArray[1] = month() % 10;
-      NumberArray[0] = month() / 10;
+      numberArray[5] = (year() - 2000) % 10;
+      numberArray[4] = (year() - 2000) / 10;
+      numberArray[3] = day() % 10;
+      numberArray[2] = day() / 10;
+      numberArray[1] = month() % 10;
+      numberArray[0] = month() / 10;
       break;
     case DATE_FORMAT_DDMMYY:
-      NumberArray[5] = (year() - 2000) % 10;
-      NumberArray[4] = (year() - 2000) / 10;
-      NumberArray[3] = month() % 10;
-      NumberArray[2] = month() / 10;
-      NumberArray[1] = day() % 10;
-      NumberArray[0] = day() / 10;
+      numberArray[5] = (year() - 2000) % 10;
+      numberArray[4] = (year() - 2000) / 10;
+      numberArray[3] = month() % 10;
+      numberArray[2] = month() / 10;
+      numberArray[1] = day() % 10;
+      numberArray[0] = day() / 10;
       break;
   }
 }
@@ -1405,39 +1416,39 @@ void loadNumberArrayDate() {
 // Break the LDR reading into displayable digits
 // ************************************************************
 void loadNumberArrayLDR() {
-  NumberArray[5] = 0;
-  NumberArray[4] = 0;
+  numberArray[5] = 0;
+  numberArray[4] = 0;
 
   int ldrValueDisp = 1023 - ldrValue;
   
-  NumberArray[3] = (ldrValueDisp / 1) % 10;
-  NumberArray[2] = (ldrValueDisp / 10) % 10;
-  NumberArray[1] = (ldrValueDisp / 100) % 10;
-  NumberArray[0] = (ldrValueDisp / 1000) % 10;
+  numberArray[3] = (ldrValueDisp / 1) % 10;
+  numberArray[2] = (ldrValueDisp / 10) % 10;
+  numberArray[1] = (ldrValueDisp / 100) % 10;
+  numberArray[0] = (ldrValueDisp / 1000) % 10;
 }
 
 // ************************************************************
 // Test digits
 // ************************************************************
 void loadNumberArrayTestDigits() {
-  NumberArray[5] =  second() % 10;
-  NumberArray[4] = (second() + 1) % 10;
-  NumberArray[3] = (second() + 2) % 10;
-  NumberArray[2] = (second() + 3) % 10;
-  NumberArray[1] = (second() + 4) % 10;
-  NumberArray[0] = (second() + 5) % 10;
+  numberArray[5] =  second() % 10;
+  numberArray[4] = (second() + 1) % 10;
+  numberArray[3] = (second() + 2) % 10;
+  numberArray[2] = (second() + 3) % 10;
+  numberArray[1] = (second() + 4) % 10;
+  numberArray[0] = (second() + 5) % 10;
 }
 
 // ************************************************************
 // Show an integer configuration value
 // ************************************************************
 void loadNumberArrayConfInt(int confValue, int confNum) {
-  NumberArray[5] = (confNum) % 10;
-  NumberArray[4] = (confNum / 10) % 10;
-  NumberArray[3] = (confValue / 1) % 10;
-  NumberArray[2] = (confValue / 10) % 10;
-  NumberArray[1] = (confValue / 100) % 10;
-  NumberArray[0] = (confValue / 1000) % 10;
+  numberArray[5] = (confNum) % 10;
+  numberArray[4] = (confNum / 10) % 10;
+  numberArray[3] = (confValue / 1) % 10;
+  numberArray[2] = (confValue / 10) % 10;
+  numberArray[1] = (confValue / 100) % 10;
+  numberArray[0] = (confValue / 1000) % 10;
 }
 
 // ************************************************************
@@ -1450,31 +1461,28 @@ void loadNumberArrayConfBool(boolean confValue, int confNum) {
   } else {
     boolInt = 0;
   }
-  NumberArray[5] = (confNum) % 10;
-  NumberArray[4] = (confNum / 10) % 10;
-  NumberArray[3] = boolInt;
-  NumberArray[2] = 0;
-  NumberArray[1] = 0;
-  NumberArray[0] = 0;
+  numberArray[5] = (confNum) % 10;
+  numberArray[4] = (confNum / 10) % 10;
+  numberArray[3] = boolInt;
+  numberArray[2] = 0;
+  numberArray[1] = 0;
+  numberArray[0] = 0;
 }
 
 // ************************************************************
 // Show an integer configuration value
 // ************************************************************
 void loadNumberArrayIP(byte byte1, byte byte2) {
-  NumberArray[5] = (byte2) % 10;
-  NumberArray[4] = (byte2 / 10) % 10;
-  NumberArray[3] = (byte2 / 100) % 10;
-  NumberArray[2] = (byte1) % 10;
-  NumberArray[1] = (byte1 / 10) % 10;
-  NumberArray[0] = (byte1 / 100) % 10;
+  numberArray[5] = (byte2) % 10;
+  numberArray[4] = (byte2 / 10) % 10;
+  numberArray[3] = (byte2 / 100) % 10;
+  numberArray[2] = (byte1) % 10;
+  numberArray[1] = (byte1 / 10) % 10;
+  numberArray[0] = (byte1 / 100) % 10;
 }
 
 // ************************************************************
-// Do a single complete display, including any fading and
-// dimming requested. Performs the display loop
-// DIGIT_DISPLAY_COUNT times for each digit, with no delays.
-// This is the heart of the display processing!
+// Do a single complete display
 // ************************************************************
 void outputDisplay() {
   shiftDigitsOut();
@@ -1488,14 +1496,14 @@ void outputDisplay() {
 // ************************************************************
 void shiftDigitsOut() {
   // prepare the first 24 bits: made of 3 * 8 bits (Seconds, 10xSeconds, Minutes) plus the three LED bits
-  unsigned long digitSecond = digitData[NumberArray[5]];
-  unsigned long digitTenSecond = digitData[NumberArray[4]];
-  unsigned long digitMinute = digitData[NumberArray[3]];
+  unsigned long digitSecond = digitData[numberArray[5]];
+  unsigned long digitTenSecond = digitData[numberArray[4]];
+  unsigned long digitMinute = digitData[numberArray[3]];
 
   // prepare the second 32 bits: made of 3 * 10 bits (10xMinutes, Hours, 10xHour) plus the two neon bits
-  unsigned long digitTenMinute = digitData[NumberArray[2]];
-  unsigned long digitHour = digitData[NumberArray[1]];
-  unsigned long digitTenHour = digitData[NumberArray[0]];
+  unsigned long digitTenMinute = digitData[numberArray[2]];
+  unsigned long digitHour = digitData[numberArray[1]];
+  unsigned long digitTenHour = digitData[numberArray[0]];
   
   if (led1State) {
     digitTenSecond |= SEG_IND;
@@ -1595,35 +1603,11 @@ void applyBlanking() {
   }
 
   // We only want to blank the hours tens digit
-  if (NumberArray[0] == 0) {
+  if (numberArray[0] == 0) {
     if (displayType[0] != BLANKED) {
       displayType[0] = BLANKED;
     }
   }
-}
-
-// ************************************************************
-// Display preset
-// ************************************************************
-void allFade() {
-  if (displayType[0] != FADE) displayType[0] = FADE;
-  if (displayType[1] != FADE) displayType[1] = FADE;
-  if (displayType[2] != FADE) displayType[2] = FADE;
-  if (displayType[3] != FADE) displayType[3] = FADE;
-  if (displayType[4] != FADE) displayType[4] = FADE;
-  if (displayType[5] != FADE) displayType[5] = FADE;
-}
-
-// ************************************************************
-// Display preset
-// ************************************************************
-void allBright() {
-  if (displayType[0] != BRIGHT) displayType[0] = BRIGHT;
-  if (displayType[1] != BRIGHT) displayType[1] = BRIGHT;
-  if (displayType[2] != BRIGHT) displayType[2] = BRIGHT;
-  if (displayType[3] != BRIGHT) displayType[3] = BRIGHT;
-  if (displayType[4] != BRIGHT) displayType[4] = BRIGHT;
-  if (displayType[5] != BRIGHT) displayType[5] = BRIGHT;
 }
 
 // ************************************************************
@@ -1681,36 +1665,36 @@ void highlightDaysDateFormat() {
 // Display preset, highlight digits 0 and 1
 // ************************************************************
 void highlight0and1() {
-  if (displayType[0] != BRIGHT) displayType[0] = BRIGHT;
-  if (displayType[1] != BRIGHT) displayType[1] = BRIGHT;
-  if (displayType[2] != DIMMED) displayType[2] = DIMMED;
-  if (displayType[3] != DIMMED) displayType[3] = DIMMED;
-  if (displayType[4] != DIMMED) displayType[4] = DIMMED;
-  if (displayType[5] != DIMMED) displayType[5] = DIMMED;
+  if (displayType[0] != BLINK) displayType[0] = BLINK;
+  if (displayType[1] != BLINK) displayType[1] = BLINK;
+  if (displayType[2] != NORMAL) displayType[2] = NORMAL;
+  if (displayType[3] != NORMAL) displayType[3] = NORMAL;
+  if (displayType[4] != NORMAL) displayType[4] = NORMAL;
+  if (displayType[5] != NORMAL) displayType[5] = NORMAL;
 }
 
 // ************************************************************
 // Display preset, highlight digits 2 and 3
 // ************************************************************
 void highlight2and3() {
-  if (displayType[0] != DIMMED) displayType[0] = DIMMED;
-  if (displayType[1] != DIMMED) displayType[1] = DIMMED;
-  if (displayType[2] != BRIGHT) displayType[2] = BRIGHT;
-  if (displayType[3] != BRIGHT) displayType[3] = BRIGHT;
-  if (displayType[4] != DIMMED) displayType[4] = DIMMED;
-  if (displayType[5] != DIMMED) displayType[5] = DIMMED;
+  if (displayType[0] != NORMAL) displayType[0] = NORMAL;
+  if (displayType[1] != NORMAL) displayType[1] = NORMAL;
+  if (displayType[2] != BLINK) displayType[2] = BLINK;
+  if (displayType[3] != BLINK) displayType[3] = BLINK;
+  if (displayType[4] != NORMAL) displayType[4] = NORMAL;
+  if (displayType[5] != NORMAL) displayType[5] = NORMAL;
 }
 
 // ************************************************************
 // Display preset, highlight digits 4 and 5
 // ************************************************************
 void highlight4and5() {
-  if (displayType[0] != DIMMED) displayType[0] = DIMMED;
-  if (displayType[1] != DIMMED) displayType[1] = DIMMED;
-  if (displayType[2] != DIMMED) displayType[2] = DIMMED;
-  if (displayType[3] != DIMMED) displayType[3] = DIMMED;
-  if (displayType[4] != BRIGHT) displayType[4] = BRIGHT;
-  if (displayType[5] != BRIGHT) displayType[5] = BRIGHT;
+  if (displayType[0] != NORMAL) displayType[0] = NORMAL;
+  if (displayType[1] != NORMAL) displayType[1] = NORMAL;
+  if (displayType[2] != NORMAL) displayType[2] = NORMAL;
+  if (displayType[3] != NORMAL) displayType[3] = NORMAL;
+  if (displayType[4] != BLINK) displayType[4] = BLINK;
+  if (displayType[5] != BLINK) displayType[5] = BLINK;
 }
 
 // ************************************************************
@@ -1729,34 +1713,10 @@ void allNormal(bool leadingBlank) {
 // Display preset
 // ************************************************************
 void displayConfig() {
-  if (displayType[0] != BRIGHT) displayType[0] = BRIGHT;
-  if (displayType[1] != BRIGHT) displayType[1] = BRIGHT;
-  if (displayType[2] != BRIGHT) displayType[2] = BRIGHT;
-  if (displayType[3] != BRIGHT) displayType[3] = BRIGHT;
-  if (displayType[4] != BLINK)  displayType[4] = BLINK;
-  if (displayType[5] != BLINK)  displayType[5] = BLINK;
-}
-
-// ************************************************************
-// Display preset
-// ************************************************************
-void displayConfig3() {
-  if (displayType[0] != BLANKED) displayType[0] = BLANKED;
-  if (displayType[1] != NORMAL) displayType[1] = BRIGHT;
-  if (displayType[2] != NORMAL) displayType[2] = BRIGHT;
-  if (displayType[3] != NORMAL) displayType[3] = BRIGHT;
-  if (displayType[4] != BLINK)  displayType[4] = BLINK;
-  if (displayType[5] != BLINK)  displayType[5] = BLINK;
-}
-
-// ************************************************************
-// Display preset
-// ************************************************************
-void displayConfig2() {
-  if (displayType[0] != BLANKED) displayType[0] = BLANKED;
-  if (displayType[1] != BLANKED) displayType[1] = BLANKED;
-  if (displayType[2] != NORMAL) displayType[2] = BRIGHT;
-  if (displayType[3] != NORMAL) displayType[3] = BRIGHT;
+  if (displayType[0] != NORMAL) displayType[0] = NORMAL;
+  if (displayType[1] != NORMAL) displayType[1] = NORMAL;
+  if (displayType[2] != NORMAL) displayType[2] = NORMAL;
+  if (displayType[3] != NORMAL) displayType[3] = NORMAL;
   if (displayType[4] != BLINK)  displayType[4] = BLINK;
   if (displayType[5] != BLINK)  displayType[5] = BLINK;
 }

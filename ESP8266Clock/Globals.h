@@ -35,13 +35,13 @@ unsigned long ntpStarted = 0;
 
 // ------------------ Display Variables ----------------
 
-byte NumberArray[DIGIT_COUNT]          = {0, 0, 0, 0};
-byte currNumberArray[DIGIT_COUNT]      = {0, 0, 0, 0};
-byte displayType[DIGIT_COUNT]          = {FADE, FADE, FADE, FADE};
-byte fadeState[DIGIT_COUNT]            = {0, 0, 0, 0};
+byte numberArray[DIGIT_COUNT]          = {0, 0, 0, 0, 0, 0};
+//byte currNumberArray[DIGIT_COUNT]      = {0, 0, 0, 0, 0, 0};
+byte displayType[DIGIT_COUNT]          = {NORMAL, NORMAL, NORMAL, NORMAL};
+//byte fadeState[DIGIT_COUNT]            = {0, 0, 0, 0, 0, 0};
 byte valueDisplayTime                  = 0;
-byte valueToShow[DIGIT_COUNT / 2]      = {0, 0};
-byte valueDisplayType[DIGIT_COUNT / 2] = {NORMAL | NORMAL >> 4, NORMAL | NORMAL >> 4}; // All normal by default
+byte valueToShow[DIGIT_COUNT / 2]      = {0, 0, 0};
+byte valueDisplayType[DIGIT_COUNT / 2] = {NORMAL | NORMAL >> 4, NORMAL | NORMAL >> 4, NORMAL | NORMAL >> 4}; // All normal by default
 
 // Decimal point indicators
 boolean dpArray[6]         = {false, false, false, false, false, false};
