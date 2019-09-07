@@ -439,35 +439,6 @@ void performOncePerSecondProcessing() {
   ledRState = processStatusMode(statusModeR);
 }
 
-bool processStatusMode(byte mode) {
-  switch(mode) {
-    case STATUS_LED_MODE_NTP: {
-      return ntpTimeValid();
-      break;
-    }
-    case STATUS_LED_MODE_ONLINE: {
-      return getIsConnected();
-      break;
-    }
-    case STATUS_LED_MODE_AM_PM: {
-      return isPM();
-      break;
-    }
-    case STATUS_LED_MODE_PIR: {
-      return pirStatus;
-      break;
-    }
-    case STATUS_LED_MODE_OFF: {
-      return false;
-      break;
-    }
-    case STATUS_LED_MODE_ON: {
-      return true;
-      break;
-    }
-  }
-}
-
 // ************************************************************
 // Called once per minute
 // ************************************************************
@@ -650,7 +621,7 @@ void setLeds()
     }
   }
 
-  // Blinking for
+  // Toggle blinking every half sec
   blinkState = (secsDeltaAbs % 500) > 250;
 }
 
@@ -1600,7 +1571,7 @@ void shiftOut24(uint8_t _dataPin1,
 // Set the blanking pin to show the display
 // ************************************************************
 void showDigits(){
-  if (!blanked) {
+  if (!blankTubes) {
     analogWrite(BLANKPin,ldrValue);
   } else {
     blankDigits();
@@ -1938,6 +1909,37 @@ void setTimeFromServer(String timeString) {
   debugMsg("Set internal time to NTP time: " + String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
 }
 
+// ************************************************************
+// Set the Status LED
+// ************************************************************
+bool processStatusMode(byte mode) {
+  switch(mode) {
+    case STATUS_LED_MODE_NTP: {
+      return ntpTimeValid();
+      break;
+    }
+    case STATUS_LED_MODE_ONLINE: {
+      return getIsConnected();
+      break;
+    }
+    case STATUS_LED_MODE_AM_PM: {
+      return isPM();
+      break;
+    }
+    case STATUS_LED_MODE_PIR: {
+      return pirStatus;
+      break;
+    }
+    case STATUS_LED_MODE_OFF: {
+      return false;
+      break;
+    }
+    case STATUS_LED_MODE_ON: {
+      return true;
+      break;
+    }
+  }
+}
 
 // ************************************************************
 // Check the blanking, overridden if we have a PIR installed
