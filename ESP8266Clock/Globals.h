@@ -129,6 +129,7 @@ double sensorLDRSmoothed = 0;
 double sensorFactor = (double)SENSOR_SENSIT_DEFAULT / 100.0;
 int sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
 int ldrValue = 0;
+int lastLDRValue = 0;
 
 boolean blinkState;
 

@@ -1580,17 +1580,14 @@ void shiftOut24(uint8_t _dataPin1,
 // ************************************************************
 void showDigits(){
   if (!blankTubes) {
-    analogWrite(BLANKPin,ldrValue);
+    lastLDRValue = ldrValue;
   } else {
-    blankDigits();
+    if (lastLDRValue < 1023) {
+      lastLDRValue++;
+    }
   }
-}
-
-// ************************************************************
-// Set the blanking pin to blank the display
-// ************************************************************
-void blankDigits() {
-  analogWrite(BLANKPin,1023);
+  
+  analogWrite(BLANKPin,lastLDRValue);
 }
 
 // ************************************************************
