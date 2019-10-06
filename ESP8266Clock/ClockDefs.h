@@ -42,9 +42,6 @@
 #define SENSOR_SMOOTH_READINGS_DEFAULT 100  // Speed at which the brighness adapts to changes
 
 // -------------------------------------------------------------------------------
-#define BLINK_COUNT_MAX       40   // The number of impressions between blink state toggle
-
-// -------------------------------------------------------------------------------
 // How quickly the scroll works
 #define SCROLL_STEPS_DEFAULT 8
 #define SCROLL_STEPS_MIN     1

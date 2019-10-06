@@ -270,13 +270,17 @@ void loop()
   server.handleClient();
 
   nowMillis = millis();
+  static uint16_t lastSec = second();
 
   // shows us how fast the inner loop is running
   impressionsPerSec++;
 
   // -------------------------------------------------------------------------------
 
-  if (abs(nowMillis - lastCheckMillis) >= 1000) {
+  if (lastSec != second()) {
+    lastSec = second();
+    lastCheckMillis = nowMillis;
+    
     if ((second() == 0) && (!triggeredThisSec)) {
       if ((minute() == 0)) {
         if (hour() == 0) {
@@ -295,7 +299,7 @@ void loop()
       triggeredThisSec = false;
     }
 
-    lastCheckMillis = nowMillis;
+    //lastCheckMillis = nowMillis;
   }
 
   // Check button, we evaluate below
@@ -631,9 +635,6 @@ void setLeds()
         break;
     }
   }
-
-  // Toggle blinking every half sec
-  blinkState = (secsDeltaAbs % 500) > 250;
 }
 
 // ************************************************************
@@ -1485,6 +1486,14 @@ void loadNumberArrayIP(byte byte1, byte byte2) {
 // Do a single complete display
 // ************************************************************
 void outputDisplay() {
+  // Deal with blink, calculate if we are on or off
+  static uint16_t blinkCounter = BLINK_COUNT_OFF;
+  blinkCounter--;
+  if (blinkCounter <= 0) {
+    blinkState = !blinkState;
+    blinkCounter = blinkState ? BLINK_COUNT_ON : BLINK_COUNT_OFF;
+  }
+
   shiftDigitsOut();
   showDigits();
 }
@@ -1495,41 +1504,54 @@ void outputDisplay() {
 // the stable display when we are not cross-fading.
 // ************************************************************
 void shiftDigitsOut() {
-  // prepare the first 24 bits: made of 3 * 8 bits (Seconds, 10xSeconds, Minutes) plus the three LED bits
-  unsigned long digitSecond = digitData[numberArray[5]];
-  unsigned long digitTenSecond = digitData[numberArray[4]];
-  unsigned long digitMinute = digitData[numberArray[3]];
+byte digits[6];
+static byte lastDigits[6] = {0, 0, 0, 0, 0, 0};
 
-  // prepare the second 32 bits: made of 3 * 10 bits (10xMinutes, Hours, 10xHour) plus the two neon bits
-  unsigned long digitTenMinute = digitData[numberArray[2]];
-  unsigned long digitHour = digitData[numberArray[1]];
-  unsigned long digitTenHour = digitData[numberArray[0]];
-  
+  for (int i=5; i>=0; i--) {
+    if (displayType[i] == BLANKED || (displayType[i] == BLINK && !blinkState)) {
+      digits[i] = DIGIT_BLANK;
+    }
+    else {
+      digits[i] = digitData[numberArray[i]];
+    }
+  }
+    
   if (led1State) {
-    digitTenSecond |= SEG_IND;
-    digitTenMinute |= SEG_IND;
+    digits[2] |= SEG_IND;
+    digits[4] |= SEG_IND;
   }
   
   if (led2State) {
-    digitMinute |= SEG_IND;
-    digitHour |= SEG_IND;
+    digits[1] |= SEG_IND;
+    digits[3] |= SEG_IND;
   }
   
   // Add in the indicator bit on the right
   if (ledRState) {
-    digitSecond |= SEG_IND;
+    digits[5] |= SEG_IND;  
   }
 
   // Add in the indicator bit on the left
   if (ledLState) {
-    digitTenHour |= SEG_IND;
+    digits[0] |= SEG_IND;
   }
 
-  // Mix in the digits
-  unsigned long out1 = digitSecond | (digitTenSecond << 8) | (digitMinute << 16);
-  unsigned long out2 = digitTenMinute | (digitHour <<8) | (digitTenHour << 16);
+  // See if anything has changed since the last impression
+  bool changeFlag = false;
+  for (int i=0; i<=5; i++) {
+    if (digits[i] != lastDigits[i]) {
+      changeFlag = true;
+      lastDigits[i] = digits[i];
+    }     
+  }
 
-  digitsOut(out1, out2);
+  // If nothing has changed don't bother updating tubes - it would be redundant
+   if (changeFlag) {
+    // Mix in the digits
+    unsigned long out1 = digits[5] | (digits[4] << 8) | (digits[3] << 16);
+    unsigned long out2 = digits[2] | (digits[1] << 8) | (digits[0] << 16);
+    digitsOut(out1, out2);
+  }
 }
 
 // ************************************************************
@@ -1594,16 +1616,13 @@ void showDigits(){
 // Display preset - apply leading zero blanking
 // ************************************************************
 void applyBlanking() {
-  // If we are not blanking, just get out
-  if (blankLeading == false) {
-    return;
-  }
 
   // We only want to blank the hours tens digit
-  if (numberArray[0] == 0) {
-    if (displayType[0] != BLANKED) {
+  if (blankLeading && numberArray[0] == 0) {
       displayType[0] = BLANKED;
-    }
+  }
+  else {
+      displayType[0] = NORMAL;
   }
 }
 
@@ -1698,12 +1717,17 @@ void highlight4and5() {
 // Display preset
 // ************************************************************
 void allNormal(bool leadingBlank) {
-  if (displayType[0] != NORMAL) displayType[0] = NORMAL;
+ 
+  if (leadingBlank)
+    applyBlanking();
+  else
+    if (displayType[0] != NORMAL) displayType[0] = NORMAL;
+
   if (displayType[1] != NORMAL) displayType[1] = NORMAL;
   if (displayType[2] != NORMAL) displayType[2] = NORMAL;
   if (displayType[3] != NORMAL) displayType[3] = NORMAL;
   if (displayType[4] != NORMAL) displayType[4] = NORMAL;
-  if (displayType[5] != NORMAL) displayType[5] = NORMAL;
+  if (displayType[5] != NORMAL) displayType[5] = NORMAL;  
 }
 
 // ************************************************************
