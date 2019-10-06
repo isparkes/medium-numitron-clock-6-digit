@@ -14,7 +14,7 @@ AsyncUDP udp;                           // ESPAsyncUDP.h
 Transition transition(500, 1000, 3000); // Scroll/Scramble (Transition.h)  
 DS1307 Clock;                           // RTC, uses Analogue pins A4 (SDA) and A5 (SCL)
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(DIGIT_COUNT, LED_DOUT);
-ClockButton button1(inputPin1, true);   // Clock button debounce and handling
+ClockButton button1(inputPin1, CLOCK_BUTTON_ACTIVE_LO);
 
 // ------------------------ NTP ------------------------
 

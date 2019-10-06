@@ -3,6 +3,9 @@
 
 #include "Arduino.h"
 
+#define CLOCK_BUTTON_ACTIVE_LO true
+#define CLOCK_BUTTON_ACTIVE_HI false
+
 class ClockButton
 {
   public:
