@@ -13,6 +13,9 @@ const int DIM_VALUE = DIGIT_DISPLAY_COUNT / 5;
 #define BLANKED  0
 #define NORMAL   1
 #define BLINK    2
+#define BLINK_COUNT_ON        70                      // The number of impressions blinking digits are ON
+#define BLINK_COUNT_OFF       55                      // The number of impressions blinking digits are OFF
+                                                      // Blink is asymetrical because Numitrons light up slowly
 
 // ************************************************************
 // LED brightness correction: The perceived brightness is not linear
