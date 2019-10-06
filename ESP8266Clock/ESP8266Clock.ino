@@ -2686,14 +2686,9 @@ void timeServerPageHandler() {
 void resetPageHandler() {
   debugMsg("Reset page in");
 
-  WiFiManager wifiManager;
-  wifiManager.resetSettings();
-  factoryReset();
-
   String response_message = getHTMLHead(getIsConnected());
   response_message += getNavBar();
 
-  response_message += "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">Send time to I2C right now</h3>";
   response_message += "<div class=\"alert alert-success fade in\"><strong>Success!</strong> Reset done.</div></div>";
 
   response_message += getHTMLFoot();
@@ -2998,14 +2993,21 @@ void setDisplayValuePageHandler() {
 void utilityPageHandler()
 {
   debugMsg("Utility page in");
+
+  
   String response_message = getHTMLHead(getIsConnected());
   response_message += getNavBar();
 
-  response_message += "<hr><li><a href=\"/resetwifi\">Restart WiFi module</a></li>";
-  response_message += "<hr><li><a href=\"/reset\">Clear WiFi config and restart module</a></li>";
+  // form header
+  response_message += getFormHead("Clock Utilities");
+  
+  response_message += "<ul>";
+  response_message += "<hr><li><a href=\"/resetwifi\">Clear WiFi configuration and restart</a></li>";
+  response_message += "<hr><li><a href=\"/reset\">Restart module</a></li>";
   response_message += "<hr><li><a href=\"/update\">Update firmware</a></li>";
   response_message += "<hr><li><a href=\"/ntpupdate\">Force update from NTP now</a></li>";
-  response_message += "<hr><li><a href=\"/factoryreset\">Perform factory reset</a></li>";
+  response_message += "<hr><li><a href=\"/factoryreset\">Perform factory reset without resetting Wifi configuration</a></li>";
+  response_message += "</ul>";
 
   response_message += getHTMLFoot();
   server.send(200, "text/html", response_message);
