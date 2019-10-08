@@ -77,7 +77,7 @@ void setup()
   // turn off all digits
   digitsOff();
 
-  setDiagnosticLED(DIAGS_START,STATUS_GREEN);
+  setDiagnosticLED(DIAGS_START, STATUS_GREEN);
 
   // Start I2C now so that the update from NTP can be sent to the RTC immediately
   Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
@@ -170,7 +170,7 @@ void setup()
   button1.reset();
 
   // **********************************************************************
-  
+
   wifiManager.setConfigPortalTimeout(CONFIG_PORTAL_TIMEOUT);
   wifiManager.setAPCallback(configModeCallback);
 
@@ -203,7 +203,7 @@ void setup()
   setDiagnosticLED(DIAGS_NTP, STATUS_YELLOW);
   long startSeachMs = millis();
   bool needUpdate = true;
-  while(((millis() - startSeachMs) < 10000) && needUpdate) {
+  while (((millis() - startSeachMs) < 10000) && needUpdate) {
     delay(500);
     getTimeFromTimeZoneServer();
     if (lastUpdateFromServer > 0) {
@@ -211,7 +211,7 @@ void setup()
       needUpdate = false;
     }
   }
-  
+
   if (needUpdate) {
     setDiagnosticLED(DIAGS_NTP, STATUS_RED);
   } else {
@@ -226,7 +226,7 @@ void setup()
   httpUpdater.setup(&server, "/update", "admin", "update");
 
   setPIRPullup(usePIRPullup);
-  
+
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
 
@@ -249,11 +249,11 @@ void setup()
   blanked = false;
   setTubesAndLEDSBlankMode();
 
-  #ifdef DEBUG
-    setDiagnosticLED(DIAGS_DEBUG,STATUS_BLUE);
-  #else
-    setDiagnosticLED(DIAGS_DEBUG,STATUS_GREEN);
-  #endif
+#ifdef DEBUG
+  setDiagnosticLED(DIAGS_DEBUG, STATUS_BLUE);
+#else
+  setDiagnosticLED(DIAGS_DEBUG, STATUS_GREEN);
+#endif
 
   debugMsg("Exit startup in 1 second");
   getStatsFromSpiffs();
@@ -287,8 +287,12 @@ void loop()
   }
   if (lastSec != second()) {
     lastSec = second();
+<<<<<<< HEAD
     lastSecMillis = nowMillis;
     oncePerSecDone = false;
+=======
+    lastCheckMillis = nowMillis;
+>>>>>>> fe1e5300f229d896b4a57691b8a8e10f8dd7e56e
 
     if ((second() == 0) && (!triggeredThisSec)) {
       if ((minute() == 0)) {
@@ -467,7 +471,7 @@ void performOncePerMinuteProcessing() {
   if (!blankTubes) {
     tubeOnTimeMins++;
   }
-  
+
   // AM/PM indicator
   if (hourMode) {
     dpArray[1] = (hour() > 12);
@@ -519,10 +523,10 @@ void setLeds()
 
   // Fixed backlight dim setting
   float fixedDim = (float) backlightDimFactor / (float) 100;
-  
+
   // calculate the PWM factor, goes between minDim% and 100%
   float dimFactor = (float) (1023 - ldrValue) / (float) 1023.0 * fixedDim;
-  
+
   // Calculate the brightness factor based on the "pulse"
   float pwmFactor = (float) secsDelta / (float) 1000.0;
 
@@ -705,7 +709,7 @@ void setAllLEDs(byte red, byte green, byte blue) {
 // ************************************************************
 void outputLEDBuffer() {
   for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-    int idx = (DIGIT_COUNT-1) - i;
+    int idx = (DIGIT_COUNT - 1) - i;
     RgbColor color(ledR[i], ledG[i], ledB[i]);
     leds.SetPixelColor(idx, color);
   }
@@ -980,10 +984,10 @@ void processCurrentMode(int displayMode) {
             boolean msgDisplaying;
             switch (slotsMode) {
               case SLOTS_MODE_1M_SCR_SCR:
-              {
-                msgDisplaying = transition.scrollInScrambleOut(nowMillis);
-                break;
-              }
+                {
+                  msgDisplaying = transition.scrollInScrambleOut(nowMillis);
+                  break;
+                }
             }
 
             // Continue slots
@@ -1133,7 +1137,7 @@ void processCurrentMode(int displayMode) {
       }
     case MODE_PIR_TIMEOUT_UP: {
         if (button1.isButtonPressedAndReleased()) {
-          pirTimeout+=10;
+          pirTimeout += 10;
           if (pirTimeout > PIR_TIMEOUT_MAX) {
             pirTimeout = PIR_TIMEOUT_MIN;
           }
@@ -1144,7 +1148,7 @@ void processCurrentMode(int displayMode) {
       }
     case MODE_PIR_TIMEOUT_DOWN: {
         if (button1.isButtonPressedAndReleased()) {
-          pirTimeout-=10;
+          pirTimeout -= 10;
           if (pirTimeout < PIR_TIMEOUT_MIN) {
             pirTimeout = PIR_TIMEOUT_MAX;
           }
@@ -1433,7 +1437,7 @@ void loadNumberArrayLDR() {
   numberArray[4] = 0;
 
   int ldrValueDisp = 1023 - ldrValue;
-  
+
   numberArray[3] = (ldrValueDisp / 1) % 10;
   numberArray[2] = (ldrValueDisp / 10) % 10;
   numberArray[1] = (ldrValueDisp / 100) % 10;
@@ -1516,6 +1520,7 @@ void outputDisplay() {
 // the stable display when we are not cross-fading.
 // ************************************************************
 void shiftDigitsOut() {
+<<<<<<< HEAD
   byte displayDigits[6];  
   static byte prevNumberArray[6];
   static bool smoothRunning[6];
@@ -1526,6 +1531,13 @@ void shiftDigitsOut() {
   // Handle blanking of individual digits
   static bool digitWasBlanked[6];
   for (int i = 0; i <= 5; i++) {
+=======
+  byte digits[6];
+  static unsigned long lastOut1 = 0;
+  static unsigned long lastOut2 = 0;
+
+  for (int i = 5; i >= 0; i--) {
+>>>>>>> fe1e5300f229d896b4a57691b8a8e10f8dd7e56e
     if (displayType[i] == BLANKED || (displayType[i] == BLINK && !blinkState)) {
       displayDigits[i] = DIGIT_BLANK;
       smoothRunning[i] = false;
@@ -1541,6 +1553,7 @@ void shiftDigitsOut() {
     }
   }
 
+<<<<<<< HEAD
   // Smooth the changing of digits by superimposing the number it
   // is changing FROM onto the number it is changing TO. For
   // TUBE_LAG_MS both numbers are actually being displayed.
@@ -1576,6 +1589,47 @@ void shiftDigitsOut() {
   // Mix in the digits
   unsigned long out1 = displayDigits[5] | (displayDigits[4] << 8) | (displayDigits[3] << 16);
   unsigned long out2 = displayDigits[2] | (displayDigits[1] << 8) | (displayDigits[0] << 16);
+=======
+
+  // DIRTY HACK - trying to smooth out the display by compensating for
+  // the fact that segments turn off much quicker than they turn on.
+  // If we are going to use this it needs refinement and further testing
+  static byte lastDig[6];
+  static bool going[6];
+  static unsigned long startMS[6];
+  if (backlightMode == BACKLIGHT_FIXED) {
+    for (int i = 0; i <= 5; i++) {
+      if (numberArray[i] != lastDig[i]) {
+        if (!going[i]) {
+          going[i] = true;
+          startMS[i] = millis();
+        }
+
+        if (millis() - startMS[i] > 190) {
+          lastDig[i] = numberArray[i];
+          going[i] = false;
+        }
+        else {
+          digits[i] |= digitData[lastDig[i]];
+        }
+      }
+    }
+  }
+>>>>>>> fe1e5300f229d896b4a57691b8a8e10f8dd7e56e
+
+  // Add in the orange separator "colon" LEDs
+  digits[2] |= SEG_IND * led1State;
+  digits[4] |= SEG_IND * led1State;
+  digits[1] |= SEG_IND * led2State;
+  digits[3] |= SEG_IND * led2State;
+
+  // Add in the red indicator LEDs
+  digits[0] |= SEG_IND * ledLState;
+  digits[5] |= SEG_IND * ledRState;
+
+  // Mix in the digits
+  unsigned long out1 = digits[5] | (digits[4] << 8) | (digits[3] << 16);
+  unsigned long out2 = digits[2] | (digits[1] << 8) | (digits[0] << 16);
 
   // If nothing has changed don't bother updating tubes - it would be redundant
   if (out1 != lastOut1 || out2 != lastOut2) {
@@ -1583,6 +1637,7 @@ void shiftDigitsOut() {
     lastOut2 = out2;
     digitsOut(out1, out2);
   }
+
 }
 
 
@@ -1612,9 +1667,9 @@ void digitsOut(unsigned long highBits, unsigned long lowBits) {
 // Perform the parallel shift out to the registers
 // ************************************************************
 void shiftOut24(uint8_t _dataPin1,
-                  uint8_t _clockPin,
-                  uint8_t _bitOrder,
-                  uint32_t _val1) {
+                uint8_t _clockPin,
+                uint8_t _bitOrder,
+                uint32_t _val1) {
   uint8_t i;
 
   for (i = 0; i < 24; i++) {
@@ -1632,7 +1687,7 @@ void shiftOut24(uint8_t _dataPin1,
 // ************************************************************
 // Set the blanking pin to show the display
 // ************************************************************
-void showDigits(){
+void showDigits() {
   if (!blankTubes) {
     lastLDRValue = ldrValue;
   } else {
@@ -1640,8 +1695,8 @@ void showDigits(){
       lastLDRValue++;
     }
   }
-  
-  analogWrite(BLANKPin,lastLDRValue);
+
+  analogWrite(BLANKPin, lastLDRValue);
 }
 
 // ************************************************************
@@ -1651,10 +1706,10 @@ void applyBlanking() {
 
   // We only want to blank the hours tens digit
   if (blankLeading && numberArray[0] == 0) {
-      displayType[0] = BLANKED;
+    displayType[0] = BLANKED;
   }
   else {
-      displayType[0] = NORMAL;
+    displayType[0] = NORMAL;
   }
 }
 
@@ -1749,17 +1804,16 @@ void highlight4and5() {
 // Display preset
 // ************************************************************
 void allNormal(bool leadingBlank) {
- 
+
   if (leadingBlank)
     applyBlanking();
-  else
-    if (displayType[0] != NORMAL) displayType[0] = NORMAL;
+  else if (displayType[0] != NORMAL) displayType[0] = NORMAL;
 
   if (displayType[1] != NORMAL) displayType[1] = NORMAL;
   if (displayType[2] != NORMAL) displayType[2] = NORMAL;
   if (displayType[3] != NORMAL) displayType[3] = NORMAL;
   if (displayType[4] != NORMAL) displayType[4] = NORMAL;
-  if (displayType[5] != NORMAL) displayType[5] = NORMAL;  
+  if (displayType[5] != NORMAL) displayType[5] = NORMAL;
 }
 
 // ************************************************************
@@ -1926,31 +1980,31 @@ void setTimeFromServer(String timeString) {
 // Set the Status LED
 // ************************************************************
 bool processStatusMode(byte mode) {
-  switch(mode) {
+  switch (mode) {
     case STATUS_LED_MODE_NTP: {
-      return ntpTimeValid();
-      break;
-    }
+        return ntpTimeValid();
+        break;
+      }
     case STATUS_LED_MODE_ONLINE: {
-      return getIsConnected();
-      break;
-    }
+        return getIsConnected();
+        break;
+      }
     case STATUS_LED_MODE_AM_PM: {
-      return isPM();
-      break;
-    }
+        return isPM();
+        break;
+      }
     case STATUS_LED_MODE_PIR: {
-      return pirStatus;
-      break;
-    }
+        return pirStatus;
+        break;
+      }
     case STATUS_LED_MODE_OFF: {
-      return false;
-      break;
-    }
+        return false;
+        break;
+      }
     case STATUS_LED_MODE_ON: {
-      return true;
-      break;
-    }
+        return true;
+        break;
+      }
   }
 }
 
@@ -2201,14 +2255,14 @@ int getDimmingFromLDR() {
     int rawLDR = analogRead(LDRPin);
 
     // If we are below the threshold value, set full brightness
-    int rawSensorVal = rawLDR - thresholdBright;    
+    int rawSensorVal = rawLDR - thresholdBright;
 
     if (rawSensorVal < 0) rawSensorVal = 0;
 
     double sensorFactor = (float) sensitivityLDR / 100.0;
-    
+
     double sensorVal = (float) rawSensorVal * sensorFactor;
-    
+
     double sensorDiff = rawSensorVal - sensorLDRSmoothed;
     sensorLDRSmoothed += (sensorDiff / (double) sensorSmoothCountLDR);
 
@@ -2636,7 +2690,7 @@ void rootPageHandler() {
   } else {
     response_message += getTableRow2Col("LDR Value", "LDR disabled");
   }
-  
+
   response_message += getTableRow2Col("Digit brightness %", String(digitBrightness, 2));
   response_message += getTableRow2Col("Motion Sensor", motionSensorState);
   response_message += getTableRow2Col("Time Source", timeSource);
@@ -2918,7 +2972,7 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("4", "Off", (statusModeR == STATUS_LED_MODE_OFF));
   response_message += getDropDownOption("5", "On", (statusModeR == STATUS_LED_MODE_ON));
   response_message += getDropDownFooter();
-  
+
   // PIR timeout
   response_message += getNumberInput("PIR timeout:", "pirTimeout", PIR_TIMEOUT_MIN, PIR_TIMEOUT_MAX, pirTimeout, false);
 
@@ -2973,7 +3027,7 @@ void setDisplayValuePageHandler() {
   int valueToDisplay = 0;
   int valueTime = 0;
   int valueFormat = 0;
-  
+
   checkServerArgInt("value", "value", valueValid, valueToDisplay);
   checkServerArgInt("time", "time", timeValid, valueTime);
   checkServerArgInt("format", "format", formatValid, valueFormat);
@@ -2985,7 +3039,7 @@ void setDisplayValuePageHandler() {
     valueToShow[0] = val0;
     valueToShow[1] = val1;
   }
-  
+
   if (timeValid) {
     if (valueTime > 255)
       valueTime = 255;
@@ -3026,13 +3080,13 @@ void utilityPageHandler()
 {
   debugMsg("Utility page in");
 
-  
+
   String response_message = getHTMLHead(getIsConnected());
   response_message += getNavBar();
 
   // form header
   response_message += getFormHead("Clock Utilities");
-  
+
   response_message += "<ul>";
   response_message += "<hr><li><a href=\"/resetwifi\">Clear WiFi configuration and restart</a></li>";
   response_message += "<hr><li><a href=\"/reset\">Restart module</a></li>";
@@ -3101,7 +3155,7 @@ void debugPageHandler() {
   debugMsg("Debug page in");
 
   toggleDebug();
-  
+
   server.sendHeader("Location", "/utility", true);
   server.send(302, "text/plain", "");
 
