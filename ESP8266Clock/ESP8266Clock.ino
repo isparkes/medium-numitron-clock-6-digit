@@ -287,12 +287,8 @@ void loop()
   }
   if (lastSec != second()) {
     lastSec = second();
-<<<<<<< HEAD
     lastSecMillis = nowMillis;
     oncePerSecDone = false;
-=======
-    lastCheckMillis = nowMillis;
->>>>>>> fe1e5300f229d896b4a57691b8a8e10f8dd7e56e
 
     if ((second() == 0) && (!triggeredThisSec)) {
       if ((minute() == 0)) {
@@ -1520,7 +1516,6 @@ void outputDisplay() {
 // the stable display when we are not cross-fading.
 // ************************************************************
 void shiftDigitsOut() {
-<<<<<<< HEAD
   byte displayDigits[6];  
   static byte prevNumberArray[6];
   static bool smoothRunning[6];
@@ -1531,13 +1526,6 @@ void shiftDigitsOut() {
   // Handle blanking of individual digits
   static bool digitWasBlanked[6];
   for (int i = 0; i <= 5; i++) {
-=======
-  byte digits[6];
-  static unsigned long lastOut1 = 0;
-  static unsigned long lastOut2 = 0;
-
-  for (int i = 5; i >= 0; i--) {
->>>>>>> fe1e5300f229d896b4a57691b8a8e10f8dd7e56e
     if (displayType[i] == BLANKED || (displayType[i] == BLINK && !blinkState)) {
       displayDigits[i] = DIGIT_BLANK;
       smoothRunning[i] = false;
@@ -1553,7 +1541,6 @@ void shiftDigitsOut() {
     }
   }
 
-<<<<<<< HEAD
   // Smooth the changing of digits by superimposing the number it
   // is changing FROM onto the number it is changing TO. For
   // TUBE_LAG_MS both numbers are actually being displayed.
@@ -1589,47 +1576,6 @@ void shiftDigitsOut() {
   // Mix in the digits
   unsigned long out1 = displayDigits[5] | (displayDigits[4] << 8) | (displayDigits[3] << 16);
   unsigned long out2 = displayDigits[2] | (displayDigits[1] << 8) | (displayDigits[0] << 16);
-=======
-
-  // DIRTY HACK - trying to smooth out the display by compensating for
-  // the fact that segments turn off much quicker than they turn on.
-  // If we are going to use this it needs refinement and further testing
-  static byte lastDig[6];
-  static bool going[6];
-  static unsigned long startMS[6];
-  if (backlightMode == BACKLIGHT_FIXED) {
-    for (int i = 0; i <= 5; i++) {
-      if (numberArray[i] != lastDig[i]) {
-        if (!going[i]) {
-          going[i] = true;
-          startMS[i] = millis();
-        }
-
-        if (millis() - startMS[i] > 190) {
-          lastDig[i] = numberArray[i];
-          going[i] = false;
-        }
-        else {
-          digits[i] |= digitData[lastDig[i]];
-        }
-      }
-    }
-  }
->>>>>>> fe1e5300f229d896b4a57691b8a8e10f8dd7e56e
-
-  // Add in the orange separator "colon" LEDs
-  digits[2] |= SEG_IND * led1State;
-  digits[4] |= SEG_IND * led1State;
-  digits[1] |= SEG_IND * led2State;
-  digits[3] |= SEG_IND * led2State;
-
-  // Add in the red indicator LEDs
-  digits[0] |= SEG_IND * ledLState;
-  digits[5] |= SEG_IND * ledRState;
-
-  // Mix in the digits
-  unsigned long out1 = digits[5] | (digits[4] << 8) | (digits[3] << 16);
-  unsigned long out2 = digits[2] | (digits[1] << 8) | (digits[0] << 16);
 
   // If nothing has changed don't bother updating tubes - it would be redundant
   if (out1 != lastOut1 || out2 != lastOut2) {
