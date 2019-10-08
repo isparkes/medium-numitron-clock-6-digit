@@ -1,6 +1,8 @@
 #ifndef VFDDefs_h
 #define VFDDefs_h
 
+#define TUBE_LAG_MS 190
+
 // Layout
 //   Segment a
 //   Segment b

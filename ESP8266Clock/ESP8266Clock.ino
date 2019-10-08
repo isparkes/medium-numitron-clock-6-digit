@@ -270,17 +270,26 @@ void loop()
   server.handleClient();
 
   nowMillis = millis();
-  static uint16_t lastSec = second();
+  static unsigned long lastSecMillis = nowMillis;
+  static uint16_t lastSec = second();  
+  static bool oncePerSecDone = false;
 
   // shows us how fast the inner loop is running
   impressionsPerSec++;
 
   // -------------------------------------------------------------------------------
 
+  if (!oncePerSecDone && nowMillis - lastSecMillis >= TUBE_LAG_MS) {
+    lastCheckMillis = nowMillis;
+    performOncePerSecondProcessing();    
+    oncePerSecDone = true;
+    updateColourTime = true;
+  }
   if (lastSec != second()) {
     lastSec = second();
-    lastCheckMillis = nowMillis;
-    
+    lastSecMillis = nowMillis;
+    oncePerSecDone = false;
+
     if ((second() == 0) && (!triggeredThisSec)) {
       if ((minute() == 0)) {
         if (hour() == 0) {
@@ -290,7 +299,6 @@ void loop()
       }
       performOncePerMinuteProcessing();
     }
-    performOncePerSecondProcessing();
 
     // Make sure we don't call multiple times
     triggeredThisSec = true;
@@ -298,8 +306,6 @@ void loop()
     if ((second() > 0) && triggeredThisSec) {
       triggeredThisSec = false;
     }
-
-    //lastCheckMillis = nowMillis;
   }
 
   // Check button, we evaluate below
@@ -617,19 +623,25 @@ void setLeds()
                     getLEDAdjusted(colors[1], 1, dimFactor),
                     getLEDAdjusted(colors[2], 1, dimFactor));
         break;
-      case BACKLIGHT_COLOUR_TIME:
-        for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-          ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, fixedDim);
-          ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], 1, fixedDim);
-          ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], 1, fixedDim);
+            case BACKLIGHT_COLOUR_TIME:
+        if (updateColourTime) {
+          for (int i = 0 ; i < DIGIT_COUNT ; i++) {
+            ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, fixedDim);
+            ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], 1, fixedDim);
+            ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], 1, fixedDim);
+          }
+          updateColourTime = false;
         }
         outputLEDBuffer();
         break;
       case BACKLIGHT_COLOUR_TIME_DIM:
-        for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-          ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, dimFactor);
-          ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], 1, dimFactor);
-          ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], 1, dimFactor);
+        if (updateColourTime) {
+          for (int i = 0 ; i < DIGIT_COUNT ; i++) {
+            ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, dimFactor);
+            ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], 1, dimFactor);
+            ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], 1, dimFactor);
+          }
+          updateColourTime = false;
         }
         outputLEDBuffer();
         break;
@@ -1504,55 +1516,75 @@ void outputDisplay() {
 // the stable display when we are not cross-fading.
 // ************************************************************
 void shiftDigitsOut() {
-byte digits[6];
-static byte lastDigits[6] = {0, 0, 0, 0, 0, 0};
+  byte displayDigits[6];  
+  static byte prevNumberArray[6];
+  static bool smoothRunning[6];
+  static unsigned long smoothStartMillis[6];
+  static unsigned long lastOut1 = 0;
+  static unsigned long lastOut2 = 0;
 
-  for (int i=5; i>=0; i--) {
+  // Handle blanking of individual digits
+  static bool digitWasBlanked[6];
+  for (int i = 0; i <= 5; i++) {
     if (displayType[i] == BLANKED || (displayType[i] == BLINK && !blinkState)) {
-      digits[i] = DIGIT_BLANK;
+      displayDigits[i] = DIGIT_BLANK;
+      smoothRunning[i] = false;
+      prevNumberArray[i] = numberArray[i];
+      digitWasBlanked[i] = true;      
     }
     else {
-      digits[i] = digitData[numberArray[i]];
+      displayDigits[i] = digitData[numberArray[i]]; 
+      if (digitWasBlanked[i]) {               // Inhibits smoothing when digit goes
+        prevNumberArray[i] = numberArray[i];  // from BLANKED to NORMAL because that
+        digitWasBlanked[i] = false;           // would not look good.
+      }
     }
   }
-    
-  if (led1State) {
-    digits[2] |= SEG_IND;
-    digits[4] |= SEG_IND;
-  }
-  
-  if (led2State) {
-    digits[1] |= SEG_IND;
-    digits[3] |= SEG_IND;
-  }
-  
-  // Add in the indicator bit on the right
-  if (ledRState) {
-    digits[5] |= SEG_IND;  
+
+  // Smooth the changing of digits by superimposing the number it
+  // is changing FROM onto the number it is changing TO. For
+  // TUBE_LAG_MS both numbers are actually being displayed.
+  // This smooths out the jerky looking changes caused by the
+  // Numitron's thermal inertia, i.e segments appear to go out
+  // quicker than they light up.
+  for (int i = 0; i <= 5; i++) {
+    if (numberArray[i] != prevNumberArray[i]) {
+      displayDigits[i] |= digitData[prevNumberArray[i]];
+      if (!smoothRunning[i]) {
+        smoothRunning[i] = true;
+        smoothStartMillis[i] = millis();
+      }
+      else {            
+        if (millis() - smoothStartMillis[i] >= TUBE_LAG_MS) {
+          prevNumberArray[i] = numberArray[i];
+          smoothRunning[i] = false;
+        }
+      }
+    }
   }
 
-  // Add in the indicator bit on the left
-  if (ledLState) {
-    digits[0] |= SEG_IND;
-  }
+  // Add in the orange separator "colon" LEDs
+  displayDigits[2] |= SEG_IND * led1State;
+  displayDigits[4] |= SEG_IND * led1State;
+  displayDigits[1] |= SEG_IND * led2State;
+  displayDigits[3] |= SEG_IND * led2State;
 
-  // See if anything has changed since the last impression
-  bool changeFlag = false;
-  for (int i=0; i<=5; i++) {
-    if (digits[i] != lastDigits[i]) {
-      changeFlag = true;
-      lastDigits[i] = digits[i];
-    }     
-  }
+  // Add in the red indicator LEDs
+  displayDigits[0] |= SEG_IND * ledLState;
+  displayDigits[5] |= SEG_IND * ledRState;
+
+  // Mix in the digits
+  unsigned long out1 = displayDigits[5] | (displayDigits[4] << 8) | (displayDigits[3] << 16);
+  unsigned long out2 = displayDigits[2] | (displayDigits[1] << 8) | (displayDigits[0] << 16);
 
   // If nothing has changed don't bother updating tubes - it would be redundant
-   if (changeFlag) {
-    // Mix in the digits
-    unsigned long out1 = digits[5] | (digits[4] << 8) | (digits[3] << 16);
-    unsigned long out2 = digits[2] | (digits[1] << 8) | (digits[0] << 16);
+  if (out1 != lastOut1 || out2 != lastOut2) {
+    lastOut1 = out1;
+    lastOut2 = out2;
     digitsOut(out1, out2);
   }
 }
+
 
 // ************************************************************
 // Turn all digits off

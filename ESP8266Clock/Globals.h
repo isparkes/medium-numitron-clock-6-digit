@@ -92,6 +92,7 @@ int colors[3];
 byte ledR[DIGIT_COUNT];
 byte ledG[DIGIT_COUNT];
 byte ledB[DIGIT_COUNT];
+boolean updateColourTime;
 
 // ------------------ Usage statistics -----------------
 
