@@ -11,7 +11,7 @@
 // ----------------------- Components ----------------------------
 
 AsyncUDP udp;                           // ESPAsyncUDP.h
-Transition transition(500, 1000, 3000); // Scroll/Scramble (Transition.h)  
+Transition transition(700, 600, 3000); // Scroll/Scramble (Transition.h)  
 DS1307 Clock;                           // RTC, uses Analogue pins A4 (SDA) and A5 (SCL)
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(DIGIT_COUNT, LED_DOUT);
 ClockButton button1(inputPin1, true);   // Clock button debounce and handling
@@ -78,6 +78,9 @@ boolean testMode = false;
 
 unsigned long nowMillis = 0;
 unsigned long lastCheckMillis = 0;
+unsigned long lastSecMillis = nowMillis;
+unsigned long lastSecond = second();  
+boolean secondsChanged = false;
 
 byte currentMode = MODE_TIME;   // Initial cold start mode
 byte nextMode = currentMode;
@@ -92,7 +95,7 @@ int colors[3];
 byte ledR[DIGIT_COUNT];
 byte ledG[DIGIT_COUNT];
 byte ledB[DIGIT_COUNT];
-boolean updateColourTime;
+boolean syncColourTime;
 
 // ------------------ Usage statistics -----------------
 

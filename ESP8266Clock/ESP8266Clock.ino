@@ -270,26 +270,18 @@ void loop()
   server.handleClient();
 
   nowMillis = millis();
-  static unsigned long lastSecMillis = nowMillis;
-  static uint16_t lastSec = second();  
-  static bool oncePerSecDone = false;
-
+  
   // shows us how fast the inner loop is running
   impressionsPerSec++;
 
   // -------------------------------------------------------------------------------
 
-  if (!oncePerSecDone && nowMillis - lastSecMillis >= TUBE_LAG_MS) {
-    lastCheckMillis = nowMillis;
-    performOncePerSecondProcessing();    
-    oncePerSecDone = true;
-    updateColourTime = true;
-  }
-  if (lastSec != second()) {
-    lastSec = second();
-    lastSecMillis = nowMillis;
-    oncePerSecDone = false;
-
+  if (lastSecond != second()) {
+    lastSecond = second();
+    lastSecMillis = nowMillis;    
+    secondsChanged = true;    
+    performOncePerSecondProcessing();
+    
     if ((second() == 0) && (!triggeredThisSec)) {
       if ((minute() == 0)) {
         if (hour() == 0) {
@@ -359,15 +351,21 @@ void loop()
     processCurrentMode(currentMode);
   }
 
-  // Prepare the tick and backlight LEDs
-  setLeds();
-
   if (digitalRead(pirPin) == HIGH) {
     pirConsecutiveCounts++;
   }
 
   ldrValue = getDimmingFromLDR();
   outputDisplay();
+  
+  // Update the tick and backlight LEDs
+  if (secondsChanged && nowMillis - lastSecMillis >= TUBE_LAG_MS) {
+    lastCheckMillis = nowMillis;
+    upOrDown = !upOrDown;
+    secondsChanged = false;
+  }
+  setLeds();
+  
   delay(10);
 }
 
@@ -378,9 +376,6 @@ void performOncePerSecondProcessing() {
   // Store the current value and reset
   lastImpressionsPerSec = impressionsPerSec;
   impressionsPerSec = 0;
-
-  // Change the direction of the pulse
-  upOrDown = !upOrDown;
 
   // If we are in temp display mode, decrement the count
   if (tempDisplayModeDuration > 0) {
@@ -624,24 +619,22 @@ void setLeds()
                     getLEDAdjusted(colors[2], 1, dimFactor));
         break;
             case BACKLIGHT_COLOUR_TIME:
-        if (updateColourTime) {
+        if (!syncColourTime) {
           for (int i = 0 ; i < DIGIT_COUNT ; i++) {
             ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, fixedDim);
             ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], 1, fixedDim);
             ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], 1, fixedDim);
           }
-          updateColourTime = false;
         }
         outputLEDBuffer();
         break;
       case BACKLIGHT_COLOUR_TIME_DIM:
-        if (updateColourTime) {
+        if (!syncColourTime) {
           for (int i = 0 ; i < DIGIT_COUNT ; i++) {
             ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, dimFactor);
             ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], 1, dimFactor);
             ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], 1, dimFactor);
           }
-          updateColourTime = false;
         }
         outputLEDBuffer();
         break;
@@ -1547,11 +1540,12 @@ void shiftDigitsOut() {
   // This smooths out the jerky looking changes caused by the
   // Numitron's thermal inertia, i.e segments appear to go out
   // quicker than they light up.
+  syncColourTime = false;
   for (int i = 0; i <= 5; i++) {
     if (numberArray[i] != prevNumberArray[i]) {
       displayDigits[i] |= digitData[prevNumberArray[i]];
       if (!smoothRunning[i]) {
-        smoothRunning[i] = true;
+        smoothRunning[i] = true;        
         smoothStartMillis[i] = millis();
       }
       else {            
@@ -1560,6 +1554,7 @@ void shiftDigitsOut() {
           smoothRunning[i] = false;
         }
       }
+      syncColourTime = true;
     }
   }
 
@@ -1583,9 +1578,7 @@ void shiftDigitsOut() {
     lastOut2 = out2;
     digitsOut(out1, out2);
   }
-
 }
-
 
 // ************************************************************
 // Turn all digits off
