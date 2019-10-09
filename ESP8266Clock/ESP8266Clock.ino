@@ -981,15 +981,15 @@ void processCurrentMode(int displayMode) {
                 msgDisplaying = false;
               }
             } 
-                       
+
             if (msgDisplaying) {
               transition.updateRegularDisplaySeconds(second());
             }
             else {
-              // do normal time thing when we are not in slots              
+              // do normal time thing when we are not in slots
               loadNumberArrayTime();
               allNormal(APPLY_LEAD_0_BLANK);
-            }            
+            }
           }
           else {
             // no slots mode, just do normal time thing

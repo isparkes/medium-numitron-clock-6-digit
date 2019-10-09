@@ -6,7 +6,7 @@
 
 extern byte numberArray[];
 extern byte displayType[];
-extern bool blankLeading;
+extern boolean blankLeading;
 
 class Transition
 {
