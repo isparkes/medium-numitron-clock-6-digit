@@ -43,7 +43,7 @@
 // Other parts of the code, broken out for clarity
 #include "Globals.h"
 #include "ClockButton.h"
-#include "Transition.h"
+#include "DA2000-Transition.h"
 #include "DisplayDefs.h"
 #include "ClockUtils.h"
 #include "ClockDefs.h"
@@ -873,6 +873,8 @@ void setNextMode(int displayMode) {
 // Show the next mode - once the button is released
 // ************************************************************
 void processCurrentMode(int displayMode) {
+  static boolean msgDisplaying = false;
+  
   switch (displayMode) {
     case MODE_TIME: {
         if (button1.isButtonPressedAndReleased()) {
@@ -957,41 +959,41 @@ void processCurrentMode(int displayMode) {
 
         } else {
           if (slotsMode > SLOTS_MODE_MIN) {
-            if (second() == 50) {
-
+            if (second() == 50 && !msgDisplaying) {
+              
               // initialise the slots values
               loadNumberArrayDate();
               transition.setAlternateValues();
               loadNumberArrayTime();
               transition.setRegularValues();
-              allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+              allNormal(APPLY_LEAD_0_BLANK);
 
               transition.start(nowMillis);
             }
 
-            // initialise the slots mode
-            boolean msgDisplaying;
+            // Continue slots            
             switch (slotsMode) {
-              case SLOTS_MODE_1M_SCR_SCR:
-                {
-                  msgDisplaying = transition.scrollInScrambleOut(nowMillis);
+              case SLOTS_MODE_WIPE_WIPE: {
+                  msgDisplaying = transition.wipeInWipeOut(nowMillis);
                   break;
-                }
-            }
-
-            // Continue slots
+              }
+              default: {
+                msgDisplaying = false;
+              }
+            } 
+                       
             if (msgDisplaying) {
               transition.updateRegularDisplaySeconds(second());
-            } else {
-              // do normal time thing when we are not in slots
-              loadNumberArrayTime();
-
-              allNormal(APPLY_LEAD_0_BLANK);
             }
-          } else {
+            else {
+              // do normal time thing when we are not in slots              
+              loadNumberArrayTime();
+              allNormal(APPLY_LEAD_0_BLANK);
+            }            
+          }
+          else {
             // no slots mode, just do normal time thing
             loadNumberArrayTime();
-
             allNormal(APPLY_LEAD_0_BLANK);
           }
         }
@@ -2881,7 +2883,7 @@ void clockConfigPageHandler() {
   // Slots Mode
   response_message += getDropDownHeader("Date Slots:", "slotsMode", true);
   response_message += getDropDownOption("0", "Don't use slots mode", (slotsMode == 0));
-  response_message += getDropDownOption("1", "Scroll In, Scramble Out", (slotsMode == 1));
+  response_message += getDropDownOption("1", "Wipe In, Wipe Out", (slotsMode == 1));
   response_message += getDropDownFooter();
 
   // LED mode

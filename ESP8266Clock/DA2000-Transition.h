@@ -6,6 +6,7 @@
 
 extern byte numberArray[];
 extern byte displayType[];
+extern bool blankLeading;
 
 class Transition
 {
@@ -14,9 +15,7 @@ class Transition
     void start(unsigned long);
     boolean isMessageOnDisplay(unsigned long);
     void updateRegularDisplaySeconds(int seconds);
-    boolean scrollMsg(unsigned long);
-    boolean scrambleMsg(unsigned long);
-    boolean scrollInScrambleOut(unsigned long);
+    boolean wipeInWipeOut(unsigned long);
     void setRegularValues();
     void setAlternateValues();
     void loadRegularValues();
@@ -27,6 +26,7 @@ class Transition
     int _effectInDuration;
     int _effectOutDuration;
     int _holdDuration;
+    int _digit;
     unsigned long _started;
     unsigned long _end;
     byte _regularDisplay[DIGIT_COUNT] = {0, 0, 0, 0, 0, 0};
@@ -35,9 +35,6 @@ class Transition
     byte _savedDisplayType[DIGIT_COUNT] = {NORMAL, NORMAL, NORMAL, NORMAL, NORMAL, NORMAL};
   
     unsigned long getEnd();
-    int scroll(int8_t);
-    int scramble(int, byte, byte);
-    unsigned long hash(unsigned long);
 };
 
 #endif

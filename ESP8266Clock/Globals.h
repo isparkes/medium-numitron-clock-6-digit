@@ -4,14 +4,14 @@
 #include "HtmlServer.h"
 #include "DisplayDefs.h"
 #include "ClockDefs.h"
-#include "Transition.h"
+#include "DA2000-Transition.h"
 #include "ESP_DS1307.h"
 #include "ClockButton.h"
 
 // ----------------------- Components ----------------------------
 
 AsyncUDP udp;                           // ESPAsyncUDP.h
-Transition transition(700, 600, 3000); // Scroll/Scramble (Transition.h)  
+Transition transition(800, 700, 2800);  // Wipe In / Wipe Out (DA2000-Transition.h)  
 DS1307 Clock;                           // RTC, uses Analogue pins A4 (SDA) and A5 (SCL)
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(DIGIT_COUNT, LED_DOUT);
 ClockButton button1(inputPin1, true);   // Clock button debounce and handling

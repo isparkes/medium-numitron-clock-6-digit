@@ -204,7 +204,7 @@
 // -------------------------------------------------------------------------------
 #define SLOTS_MODE_MIN                  0
 #define SLOTS_MODE_NONE                 0   // Don't use slots effect
-#define SLOTS_MODE_1M_SCR_SCR           1   // use slots effect every minute, scroll in, scramble out
+#define SLOTS_MODE_WIPE_WIPE            1   // use slots effect every minute, wipe in, wipe out
 #define SLOTS_MODE_MAX                  1
 #define SLOTS_MODE_DEFAULT              1
 
