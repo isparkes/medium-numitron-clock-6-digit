@@ -577,6 +577,18 @@ void setLeds()
         }
         break;
       }
+    case LED_ON:
+      {
+        led1State = true;
+        led2State = true;
+        break;
+      }
+    case LED_OFF:
+      {
+        led1State = false;
+        led2State = false;
+        break;
+      }
   }
 
   if (blankLEDs) {
@@ -2892,6 +2904,8 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("1", "Slow flash", (ledMode == LED_BLINK_SLOW));
   response_message += getDropDownOption("2", "Fast flash", (ledMode == LED_BLINK_FAST));
   response_message += getDropDownOption("3", "Double flash", (ledMode == LED_BLINK_DBL));
+  response_message += getDropDownOption("4", "Always On", (ledMode == LED_ON));
+  response_message += getDropDownOption("5", "Always Off", (ledMode == LED_OFF));
   response_message += getDropDownFooter();
 
   // Status LED mode Left
