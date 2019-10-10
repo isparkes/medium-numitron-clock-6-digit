@@ -4,14 +4,15 @@
 #define TUBE_LAG_MS 200
 
 // Layout
-//   Segment a
-//   Segment b
-//   Segment c
-//   Segment d
-//   Segment e
-//   Segment f
-//   Segment g
-//   Segment indicator
+//   Segment a                          --a-- 
+//   Segment b                         |     |
+//   Segment c                         f     b
+//   Segment d                         |     |
+//   Segment e                          --g--  
+//   Segment f                         |     |
+//   Segment g                         e     c
+//   Segment indicator                 |     |
+//                                      --d--  
 
 // ************************ Display management ************************
 #define SEG_A   B00000001
@@ -35,6 +36,21 @@
 #define DIGIT_9 SEG_A | SEG_B | SEG_C | SEG_D | SEG_F | SEG_G
 #define DIGIT_MINUS SEG_G
 #define DIGIT_BLANK 0
+
+#define LETTER_S SEG_A | SEG_C | SEG_D | SEG_F | SEG_G
+#define LETTER_P SEG_A | SEG_B | SEG_E | SEG_F | SEG_G
+#define LETTER_I SEG_B | SEG_C
+#define LETTER_F SEG_A | SEG_E | SEG_F | SEG_G
+#define LETTER_n SEG_C | SEG_E | SEG_G
+#define LETTER_E SEG_A | SEG_D | SEG_E | SEG_F | SEG_G
+#define LETTER_t SEG_D | SEG_E | SEG_F | SEG_G
+#define LETTER_C SEG_A | SEG_D | SEG_E | SEG_F
+#define LETTER_O SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F
+#define LETTER__ SEG_D
+#define LETTER_r SEG_E | SEG_G
+#define LETTER_A SEG_A | SEG_B | SEG_C | SEG_E | SEG_F | SEG_G
+#define LETTER_U SEG_B | SEG_C | SEG_D | SEG_E | SEG_F
+#define LETTER_L SEG_D | SEG_E | SEG_F
 
 byte digitData[10] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9};
 

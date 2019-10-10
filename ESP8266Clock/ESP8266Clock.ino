@@ -60,6 +60,10 @@
 //**********************************************************************************
 void setup()
 {
+  // Show Start message on tubes
+  loadNumberArrayPOSTMessage(DIAGS_START);
+  shiftDigitsOutDiags();
+
   WiFiManager wifiManager;
 
 #ifdef DEBUG
@@ -74,10 +78,10 @@ void setup()
 
   setPinModes();
 
-  // turn off all digits
-  digitsOff();
-
   setDiagnosticLED(DIAGS_START, STATUS_GREEN);
+  loadNumberArrayPOSTMessage(DIAGS_START);
+  shiftDigitsOutDiags();
+  delay(1000);
 
   // Start I2C now so that the update from NTP can be sent to the RTC immediately
   Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
@@ -86,6 +90,8 @@ void setup()
   button1.reset();
 
   setDiagnosticLED(DIAGS_SPIFFS, STATUS_YELLOW);
+  loadNumberArrayPOSTMessage(DIAGS_SPIFFS);
+  shiftDigitsOutDiags();
   delay(1000);
 
   for (int i = 0; i < 25 ; i++) button1.checkButton(millis());
@@ -175,6 +181,8 @@ void setup()
   wifiManager.setAPCallback(configModeCallback);
 
   setDiagnosticLED(DIAGS_WIFI, STATUS_YELLOW);
+  loadNumberArrayPOSTMessage(DIAGS_WIFI);
+  shiftDigitsOutDiags();
 
   boolean connected = false;
   connected = wifiManager.autoConnect("ESPClock", "SetMeUp!");
@@ -201,6 +209,9 @@ void setup()
   // See if we can already get the time
   getTimeFromTimeZoneServer();
   setDiagnosticLED(DIAGS_NTP, STATUS_YELLOW);
+  loadNumberArrayPOSTMessage(DIAGS_NTP);
+  shiftDigitsOutDiags();
+
   long startSeachMs = millis();
   bool needUpdate = true;
   while (((millis() - startSeachMs) < 10000) && needUpdate) {
@@ -230,6 +241,10 @@ void setup()
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
 
+  loadNumberArrayPOSTMessage(DIAGS_RTC);
+  shiftDigitsOutDiags();
+  delay(1000);
+  
   testRTCTimeProvider();
   if (useRTC) {
     getRTCTime(true);
@@ -249,6 +264,8 @@ void setup()
   blanked = false;
   setTubesAndLEDSBlankMode();
 
+  loadNumberArrayPOSTMessage(DIAGS_DEBUG);
+  shiftDigitsOutDiags();
 #ifdef DEBUG
   setDiagnosticLED(DIAGS_DEBUG, STATUS_BLUE);
 #else
@@ -1403,6 +1420,86 @@ void loadNumberArraySameValue(byte val) {
 // ************************************************************
 // Break the time into displayable digits
 // ************************************************************
+void loadNumberArrayPOSTMessage(byte val) {
+  switch(val) {
+    case DIAGS_START:
+    {
+      numberArray[0] = LETTER_S;
+      numberArray[1] = LETTER_t;
+      numberArray[2] = LETTER_A;
+      numberArray[3] = LETTER_r;
+      numberArray[4] = LETTER_t;
+      numberArray[5] = DIGIT_BLANK;
+      break;
+    }
+    case DIAGS_SPIFFS:
+    {
+      numberArray[0] = LETTER_S;
+      numberArray[1] = LETTER_P;
+      numberArray[2] = LETTER_I;
+      numberArray[3] = LETTER_F;
+      numberArray[4] = LETTER_F;
+      numberArray[5] = LETTER_S;
+      break;
+    }
+    case DIAGS_WIFI:
+    {
+      numberArray[0] = LETTER_n;
+      numberArray[1] = LETTER_E;
+      numberArray[2] = LETTER_t;
+      numberArray[3] = LETTER__;
+      numberArray[4] = LETTER_U;
+      numberArray[5] = LETTER_P;
+      break;
+    }
+    case DIAGS_NTP:
+    {
+      numberArray[0] = LETTER_n;
+      numberArray[1] = LETTER_t;
+      numberArray[2] = LETTER_P;
+      numberArray[3] = LETTER__;
+      numberArray[4] = LETTER_U;
+      numberArray[5] = LETTER_P;
+      break;
+    }
+    case DIAGS_RTC:
+    {
+      numberArray[0] = LETTER_r;
+      numberArray[1] = LETTER_t;
+      numberArray[2] = LETTER_C;
+      numberArray[3] = LETTER__;
+      numberArray[4] = LETTER_U;
+      numberArray[5] = LETTER_P;
+      break;
+    }
+    case DIAGS_DEBUG:
+    {
+      numberArray[0] = LETTER_A;
+      numberArray[1] = LETTER_L;
+      numberArray[2] = LETTER_L;
+      numberArray[3] = LETTER__;
+      numberArray[4] = LETTER_O;
+      numberArray[5] = LETTER_n;
+      break;
+    }
+    case AP_MODE:
+    {
+      numberArray[0] = LETTER_A;
+      numberArray[1] = LETTER_P;
+      numberArray[2] = LETTER__;
+      numberArray[3] = LETTER__;
+      numberArray[4] = LETTER_O;
+      numberArray[5] = LETTER_n;
+      break;
+    }
+  }
+}
+
+
+
+// ************************************************************
+// Break the time into displayable digits
+// ************************************************************
 void loadNumberArrayDate() {
   switch (dateFormat) {
     case DATE_FORMAT_YYMMDD:
@@ -1592,6 +1689,18 @@ void shiftDigitsOut() {
     lastOut2 = out2;
     digitsOut(out1, out2);
   }
+}
+
+// ************************************************************
+// Set the 48 output bits with the given value for the current
+// display. "Current" display is what we are fading from, or
+// the stable display when we are not cross-fading.
+// ************************************************************
+void shiftDigitsOutDiags() {
+  // Mix in the digits
+  unsigned long out1 = numberArray[5] | (numberArray[4] << 8) | (numberArray[3] << 16);
+  unsigned long out2 = numberArray[2] | (numberArray[1] << 8) | (numberArray[0] << 16);
+  digitsOut(out1, out2);
 }
 
 // ************************************************************
@@ -3276,6 +3385,8 @@ boolean getIsConnected() {
 void configModeCallback(WiFiManager *myWiFiManager) {
   debugMsg("*** Entered config mode");
   setDiagnosticLED(DIAGS_WIFI, STATUS_BLUE);
+  loadNumberArrayPOSTMessage(AP_MODE);
+  outputDisplay();
 }
 
 // ************************************************************

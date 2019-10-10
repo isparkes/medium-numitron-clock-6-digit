@@ -54,6 +54,9 @@ const byte colourTimeB[] = {   0,   0,   0,   0,  32, 190, 255, 255, 255, 255};
 #define DIAGS_RTC         4
 #define DIAGS_DEBUG       5
 
+// added to allow display to show when we enter AP MODE - not a Diags step!
+#define AP_MODE           6
+
 #define STATUS_RED    0
 #define STATUS_YELLOW 1
 #define STATUS_GREEN  2
