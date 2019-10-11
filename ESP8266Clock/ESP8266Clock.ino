@@ -376,7 +376,7 @@ void loop()
   outputDisplay();
 
   // Update the tick and backlight LEDs
-  if (secondsChanged && nowMillis - lastSecMillis >= TUBE_LAG_MS) {
+  if (secondsChanged && nowMillis - lastSecMillis >= getTubeLag(ldrValue)) {
     lastCheckMillis = nowMillis;
     upOrDown = !upOrDown;
     secondsChanged = false;
@@ -1645,9 +1645,8 @@ void shiftDigitsOut() {
     }
   }
 
-  // Smooth the changing of digits by superimposing the number it
-  // is changing FROM onto the number it is changing TO. For
-  // TUBE_LAG_MS both numbers are actually being displayed.
+  // Smooth the changing of digits by briefly superimposing the
+  // number it is changing FROM onto the number it is changing TO.
   // This smooths out the jerky looking changes caused by the
   // Numitron's thermal inertia, i.e segments appear to go out
   // quicker than they light up.
@@ -1660,7 +1659,7 @@ void shiftDigitsOut() {
         smoothStartMillis[i] = millis();
       }
       else {            
-        if (millis() - smoothStartMillis[i] >= TUBE_LAG_MS) {
+        if (millis() - smoothStartMillis[i] >= getTubeLag(ldrValue)) {
           prevNumberArray[i] = numberArray[i];
           smoothRunning[i] = false;
         }
@@ -2336,6 +2335,16 @@ int getDimmingFromLDR() {
   } else {
     return 0;
   }
+}
+
+// ************************************************************
+// Get the Tube Lag value (used for display smoothing) that
+// corresponds to the current display dimming level. The
+// dimmer the display is the longer the lag is.
+// ************************************************************
+int getTubeLag(int currentLDR) {
+  int returnValue = .000655 * pow(currentLDR, 2) + -.01159 * currentLDR + 148;
+  return returnValue;
 }
 
 //**********************************************************************************
