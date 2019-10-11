@@ -7,10 +7,11 @@
 #include "Arduino.h"
 #include "DA2000-Transition.h"
 
-Transition::Transition(int effectInDuration, int effectOutDuration, int holdDuration) {
+Transition::Transition(int effectInDuration, int effectOutDuration, int holdDuration, int selectedEffect) {
   _effectInDuration = effectInDuration;
   _effectOutDuration = effectOutDuration;
   _holdDuration = holdDuration;
+  _selectedEffect = selectedEffect;
   _started = 0;
   _end = 0;
 }
@@ -22,6 +23,20 @@ void Transition::start(unsigned long now) {
     saveCurrentDisplayType(); 
   }
   // else we are already running!
+}
+
+boolean Transition::runEffect(unsigned long now) {
+  switch (_selectedEffect) {
+    case SLOTS_MODE_WIPE_WIPE:
+      return wipeInWipeOut(now);
+      break;
+    case SLOTS_MODE_BANG_BANG:
+      return bangInBangOut(now);
+      break;
+    default:
+      return false;
+      break;
+  }
 }
 
 boolean Transition::isMessageOnDisplay(unsigned long now)
@@ -67,6 +82,43 @@ boolean Transition::wipeInWipeOut(unsigned long now)
       numberArray[_digit] = _regularDisplay[_digit];
       if (!blankLeading || _digit != 0 || numberArray[_digit] != 0)
         displayType[_digit] = NORMAL;
+    }
+    // We now return you to your regularly scheduled program
+    else {
+      loadRegularValues();
+      restoreCurrentDisplayType();
+      _end = 0;
+   }
+    return true;  // we are still running
+  }
+  return false;   // We aren't running
+}
+
+boolean Transition::bangInBangOut(unsigned long now)
+{
+  if (now < _end) {
+    int msCount = now - _started;
+    // Bang In blanking
+    if (msCount < _effectInDuration) {
+      memset(displayType, BLANKED, DIGIT_COUNT);
+    }
+    // Bang In date values
+    else if (msCount < _effectInDuration * 2) {
+      loadAlternateValues();
+      memset(displayType, NORMAL, DIGIT_COUNT);
+    }
+    // Hold date display
+    else if (msCount < _effectInDuration * 2 + _holdDuration) {
+      loadAlternateValues();
+    }
+    // Bang Out blanking
+    else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration) {
+      memset(displayType, BLANKED, DIGIT_COUNT);
+    }
+    // Bang Out to time values
+    else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration * 2) {
+      loadRegularValues();
+      restoreCurrentDisplayType();
     }
     // We now return you to your regularly scheduled program
     else {

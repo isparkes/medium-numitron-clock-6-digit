@@ -327,3 +327,14 @@ void debugMsgCont(String message) {
 void toggleDebug() {
   setupDebug(!useDebug);
 }
+
+void setPinModes() {
+  // Set up shift registers
+  pinMode(LATCHPin, OUTPUT);
+  pinMode(CLOCKPin, OUTPUT);
+  pinMode(DATAPin, OUTPUT);
+  pinMode(BLANKPin, OUTPUT);
+  
+  // NOTE: Grounding the input pin causes it to actuate
+  pinMode(inputPin1, INPUT_PULLUP);
+}
