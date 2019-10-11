@@ -130,7 +130,7 @@ void setup()
 
     // All the digits on full
     allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
-    showDigits();
+    setBlankingPin();
 
     int secCount = 0;
     int lastSecCount = 0;
@@ -1619,7 +1619,7 @@ void outputDisplay() {
   }
 
   shiftDigitsOut();
-  showDigits();
+  setBlankingPin();
 }
 
 // ************************************************************
@@ -1699,9 +1699,9 @@ void shiftDigitsOut() {
 }
 
 // ************************************************************
-// Set the 48 output bits with the given value for the current
-// display. "Current" display is what we are fading from, or
-// the stable display when we are not cross-fading.
+// Set the 48 output bits on the shift registers without trying
+// to interpret them as numbers. This is used when displaying
+// non-numerical values.
 // ************************************************************
 void shiftDigitsOutDiags() {
   // Mix in the digits
@@ -1754,12 +1754,15 @@ void shiftOut24(uint8_t _dataPin1,
 }
 
 // ************************************************************
-// Set the blanking pin to show the display
+// Set the blanking pin to show the display. If we have gone
+// into display blanking mode, slowly fade out the display to
+// completely off.
 // ************************************************************
-void showDigits() {
+void setBlankingPin() {
   if (!blankTubes) {
     lastLDRValue = ldrValue;
   } else {
+    // Fade out slowly
     if (lastLDRValue < 1023) {
       lastLDRValue++;
     }
