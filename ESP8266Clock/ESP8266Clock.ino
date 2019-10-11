@@ -244,7 +244,6 @@ void setup()
   loadNumberArrayPOSTMessage(DIAGS_RTC);
   shiftDigitsOutDiags();
   delay(1000);
-
   testRTCTimeProvider();
   if (useRTC) {
     getRTCTime(true);
@@ -255,6 +254,7 @@ void setup()
 
   // Note that we had an RTC to allow the indicator DP to have meaning
   onceHadAnRTC = useRTC;
+  delay(1000);
 
   // Show the version for 1 s
   tempDisplayMode = TEMP_MODE_VERSION;
