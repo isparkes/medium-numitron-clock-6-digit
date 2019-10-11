@@ -43,9 +43,18 @@ const byte rgb_backlight_curve[] = {0, 16, 32, 48, 64, 80, 99, 112, 128, 144, 16
 
 // Used to define "colourTime" colours
 //                             0    1    2    3    4    5    6    7    8    9
-const byte colourTimeR[] = { 255, 255, 255, 96,   0,   0,   0,   0, 180,  255};
-const byte colourTimeG[] = {   0, 164, 255, 255, 255, 255, 128,   0,   0,   0};
-const byte colourTimeB[] = {   0,   0,   0,   0,  32, 190, 255, 255, 255, 255};
+const byte colourTimeR[] = { 255, 255, 204,  51,   0,   0,   0, 153, 204, 255};
+const byte colourTimeG[] = {   0, 153, 192, 192, 255, 192, 102,   0,   0,   0};
+const byte colourTimeB[] = {   0,   0,   0,   0,  51, 192, 255, 255, 255, 153};
+
+// These are the "pure" HSV values turned to RGB
+// Number                        0    1    2    3    4    5    6    7    8    9
+// Degrees                       0   36   72  108  144  180  216  252  288  324
+//const byte colourTimeR[] = { 255, 255, 204,  51,   0,   0,   0,  51, 204, 255};
+//const byte colourTimeG[] = {   0, 153, 255, 255, 255, 255, 102,   0,   0,   0};
+//const byte colourTimeB[] = {   0,   0,   0,   0, 102, 255, 255, 255, 255, 153};
+// With these values 2/3 and 6/7 are not easily distinguishable
+// 2 is too green, 6 is too blue
 
 #define DIAGS_START       0
 #define DIAGS_SPIFFS      1
