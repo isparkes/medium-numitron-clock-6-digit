@@ -243,8 +243,7 @@ void setup()
 
   loadNumberArrayPOSTMessage(DIAGS_RTC);
   shiftDigitsOutDiags();
-  delay(1000);
-  
+
   testRTCTimeProvider();
   if (useRTC) {
     getRTCTime(true);
@@ -255,6 +254,7 @@ void setup()
 
   // Note that we had an RTC to allow the indicator DP to have meaning
   onceHadAnRTC = useRTC;
+  delay(1000);
 
   // Show the version for 1 s
   tempDisplayMode = TEMP_MODE_VERSION;
@@ -298,7 +298,7 @@ void loop()
     lastSecMillis = nowMillis;    
     secondsChanged = true;    
     performOncePerSecondProcessing();
-    
+
     if ((second() == 0) && (!triggeredThisSec)) {
       if ((minute() == 0)) {
         if (hour() == 0) {
@@ -374,7 +374,7 @@ void loop()
 
   ldrValue = getDimmingFromLDR();
   outputDisplay();
-  
+
   // Update the tick and backlight LEDs
   if (secondsChanged && nowMillis - lastSecMillis >= TUBE_LAG_MS) {
     lastCheckMillis = nowMillis;
@@ -382,7 +382,7 @@ void loop()
     secondsChanged = false;
   }
   setLeds();
-  
+
   delay(10);
 }
 
