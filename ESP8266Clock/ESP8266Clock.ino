@@ -2641,7 +2641,7 @@ void factoryReset() {
   dateFormat = DATE_FORMAT_DEFAULT;
   dayBlanking = DAY_BLANKING_DEFAULT;
 
-  thresholdBright = SENSOR_BRIGHT_DEFAULT;
+  thresholdBright = SENSOR_THRSH_DEFAULT;
   sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
   sensitivityLDR = SENSOR_SENSIT_DEFAULT;
   minDim = MIN_DIM_DEFAULT;
@@ -2881,6 +2881,7 @@ void clockConfigPageHandler() {
   checkServerArgBoolean("blankLeading", "Leading zero", "blank", "show", changed, blankLeading);
   checkServerArgBoolean("useLDR", "Use LDR", "on", "off", changed, useLDR);
   checkServerArgInt("minDim", "minDim", changed, minDim);
+  checkServerArgInt("thresholdBright", "thresholdBright", changed, thresholdBright);
   checkServerArgInt("sensitivityLDR", "sensitivityLDR", changed, sensitivityLDR);
   checkServerArgByte("dateFormat", "dateFormat", changed, dateFormat);
   checkServerArgByte("dayBlanking", "dayBlanking", changed, dayBlanking);
@@ -2953,6 +2954,9 @@ void clockConfigPageHandler() {
   // Min dim
   response_message += getNumberInput("Min Dim:", "minDim", MIN_DIM_MIN, MIN_DIM_MAX, minDim, false);
 
+  // LDR threshold
+  response_message += getNumberInput("LDR Threshold:", "thresholdBright", SENSOR_THRSH_MIN, SENSOR_THRSH_MAX, thresholdBright, false);
+  
   // LDR Sensitivity
   response_message += getNumberInput("LDR Sensitivity:", "sensitivityLDR", SENSOR_SENSIT_MIN, SENSOR_SENSIT_MAX, sensitivityLDR, false);
 

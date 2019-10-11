@@ -33,9 +33,9 @@
 #define SENSOR_SENSIT_MAX     400
 #define SENSOR_SENSIT_DEFAULT 300
 
-#define SENSOR_BRIGHT_MIN     0   // Bright is when we have LDR value = 0, when we read less than this value, we have full brightness
-#define SENSOR_BRIGHT_MAX     500
-#define SENSOR_BRIGHT_DEFAULT 200
+#define SENSOR_THRSH_MIN      0   // Bright is when we have LDR value = 0, when we read less than this value, we have full brightness
+#define SENSOR_THRSH_MAX      500
+#define SENSOR_THRSH_DEFAULT  200
 
 #define SENSOR_SMOOTH_READINGS_MIN     1
 #define SENSOR_SMOOTH_READINGS_MAX     255
