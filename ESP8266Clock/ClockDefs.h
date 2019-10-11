@@ -205,7 +205,8 @@
 #define SLOTS_MODE_MIN                  0
 #define SLOTS_MODE_NONE                 0   // Don't use slots effect
 #define SLOTS_MODE_WIPE_WIPE            1   // use slots effect every minute, wipe in, wipe out
-#define SLOTS_MODE_MAX                  1
+#define SLOTS_MODE_BANG_BANG            2   // use slots effect every minute, bang in, bang out
+#define SLOTS_MODE_MAX                  2
 #define SLOTS_MODE_DEFAULT              1
 
 // -------------------------------------------------------------------------------
@@ -240,18 +241,5 @@
 #define SYNC_DAY 2
 #define SYNC_MONTH 1
 #define SYNC_YEAR 0
-
-// -------------------------------------------------------------------------------
-
-void setPinModes() {
-  // Set up shift registers
-  pinMode(LATCHPin, OUTPUT);
-  pinMode(CLOCKPin, OUTPUT);
-  pinMode(DATAPin, OUTPUT);
-  pinMode(BLANKPin, OUTPUT);
-  
-  // NOTE: Grounding the input pin causes it to actuate
-  pinMode(inputPin1, INPUT_PULLUP);
-}
 
 #endif

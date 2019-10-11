@@ -244,7 +244,7 @@ void setup()
   loadNumberArrayPOSTMessage(DIAGS_RTC);
   shiftDigitsOutDiags();
   delay(1000);
-  
+
   testRTCTimeProvider();
   if (useRTC) {
     getRTCTime(true);
@@ -287,7 +287,7 @@ void loop()
   server.handleClient();
 
   nowMillis = millis();
-  
+
   // shows us how fast the inner loop is running
   impressionsPerSec++;
 
@@ -295,10 +295,10 @@ void loop()
 
   if (lastSecond != second()) {
     lastSecond = second();
-    lastSecMillis = nowMillis;    
-    secondsChanged = true;    
+    lastSecMillis = nowMillis;
+    secondsChanged = true;
     performOncePerSecondProcessing();
-    
+
     if ((second() == 0) && (!triggeredThisSec)) {
       if ((minute() == 0)) {
         if (hour() == 0) {
@@ -374,7 +374,7 @@ void loop()
 
   ldrValue = getDimmingFromLDR();
   outputDisplay();
-  
+
   // Update the tick and backlight LEDs
   if (secondsChanged && nowMillis - lastSecMillis >= getTubeLag(ldrValue)) {
     lastCheckMillis = nowMillis;
@@ -382,7 +382,7 @@ void loop()
     secondsChanged = false;
   }
   setLeds();
-  
+
   delay(10);
 }
 
@@ -647,7 +647,7 @@ void setLeds()
                     getLEDAdjusted(colors[1], 1, dimFactor),
                     getLEDAdjusted(colors[2], 1, dimFactor));
         break;
-            case BACKLIGHT_COLOUR_TIME:
+      case BACKLIGHT_COLOUR_TIME:
         if (!syncColourTime) {
           for (int i = 0 ; i < DIGIT_COUNT ; i++) {
             ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, fixedDim);
@@ -903,7 +903,7 @@ void setNextMode(int displayMode) {
 // ************************************************************
 void processCurrentMode(int displayMode) {
   static boolean msgDisplaying = false;
-  
+
   switch (displayMode) {
     case MODE_TIME: {
         if (button1.isButtonPressedAndReleased()) {
@@ -987,35 +987,43 @@ void processCurrentMode(int displayMode) {
           allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
 
         } else {
-          if (slotsMode > SLOTS_MODE_MIN) {
-            if (second() == 50 && !msgDisplaying) {
-              
-              // initialise the slots values
-              loadNumberArrayDate();
-              transition.setAlternateValues();
-              loadNumberArrayTime();
-              transition.setRegularValues();
-              allNormal(APPLY_LEAD_0_BLANK);
 
-              transition.start(nowMillis);
+          if (slotsMode > SLOTS_MODE_MIN) {
+
+            // Which slots transition are we using?
+            if (!msgDisplaying) {
+              switch (slotsMode) {
+                case SLOTS_MODE_WIPE_WIPE: {
+                    activeTransition = &transitionWipe;
+                    break;
+                  }
+                case SLOTS_MODE_BANG_BANG: {
+                    activeTransition = &transitionBang;
+                    break;
+                  }
+                default: {
+                    activeTransition = &transitionDummy; // Insurance against null pointers
+                  }
+              }
             }
 
-            // Continue slots            
-            switch (slotsMode) {
-              case SLOTS_MODE_WIPE_WIPE: {
-                  msgDisplaying = transition.wipeInWipeOut(nowMillis);
-                  break;
-              }
-              default: {
-                msgDisplaying = false;
-              }
-            } 
+            // Initialise the slots transition values and start it
+            if (second() == 50 && !msgDisplaying) {
+              loadNumberArrayDate();
+              activeTransition->setAlternateValues();
+              loadNumberArrayTime();
+              activeTransition->setRegularValues();
+              allNormal(APPLY_LEAD_0_BLANK);
+              activeTransition->start(nowMillis);
+            }
 
+            // Continue slots transition
+            msgDisplaying = activeTransition->runEffect(nowMillis);
             if (msgDisplaying) {
-              transition.updateRegularDisplaySeconds(second());
+              activeTransition->updateRegularDisplaySeconds(second());
             }
             else {
-              // do normal time thing when we are not in slots
+              // Do normal time thing when we are not in slots
               loadNumberArrayTime();
               allNormal(APPLY_LEAD_0_BLANK);
             }
@@ -1421,77 +1429,77 @@ void loadNumberArraySameValue(byte val) {
 // Break the time into displayable digits
 // ************************************************************
 void loadNumberArrayPOSTMessage(byte val) {
-  switch(val) {
+  switch (val) {
     case DIAGS_START:
-    {
-      numberArray[0] = LETTER_S;
-      numberArray[1] = LETTER_t;
-      numberArray[2] = LETTER_A;
-      numberArray[3] = LETTER_r;
-      numberArray[4] = LETTER_t;
-      numberArray[5] = DIGIT_BLANK;
-      break;
-    }
+      {
+        numberArray[0] = LETTER_S;
+        numberArray[1] = LETTER_t;
+        numberArray[2] = LETTER_A;
+        numberArray[3] = LETTER_r;
+        numberArray[4] = LETTER_t;
+        numberArray[5] = DIGIT_BLANK;
+        break;
+      }
     case DIAGS_SPIFFS:
-    {
-      numberArray[0] = LETTER_S;
-      numberArray[1] = LETTER_P;
-      numberArray[2] = LETTER_I;
-      numberArray[3] = LETTER_F;
-      numberArray[4] = LETTER_F;
-      numberArray[5] = LETTER_S;
-      break;
-    }
+      {
+        numberArray[0] = LETTER_S;
+        numberArray[1] = LETTER_P;
+        numberArray[2] = LETTER_I;
+        numberArray[3] = LETTER_F;
+        numberArray[4] = LETTER_F;
+        numberArray[5] = LETTER_S;
+        break;
+      }
     case DIAGS_WIFI:
-    {
-      numberArray[0] = LETTER_n;
-      numberArray[1] = LETTER_E;
-      numberArray[2] = LETTER_t;
-      numberArray[3] = LETTER__;
-      numberArray[4] = LETTER_U;
-      numberArray[5] = LETTER_P;
-      break;
-    }
+      {
+        numberArray[0] = LETTER_n;
+        numberArray[1] = LETTER_E;
+        numberArray[2] = LETTER_t;
+        numberArray[3] = LETTER__;
+        numberArray[4] = LETTER_U;
+        numberArray[5] = LETTER_P;
+        break;
+      }
     case DIAGS_NTP:
-    {
-      numberArray[0] = LETTER_n;
-      numberArray[1] = LETTER_t;
-      numberArray[2] = LETTER_P;
-      numberArray[3] = LETTER__;
-      numberArray[4] = LETTER_U;
-      numberArray[5] = LETTER_P;
-      break;
-    }
+      {
+        numberArray[0] = LETTER_n;
+        numberArray[1] = LETTER_t;
+        numberArray[2] = LETTER_P;
+        numberArray[3] = LETTER__;
+        numberArray[4] = LETTER_U;
+        numberArray[5] = LETTER_P;
+        break;
+      }
     case DIAGS_RTC:
-    {
-      numberArray[0] = LETTER_r;
-      numberArray[1] = LETTER_t;
-      numberArray[2] = LETTER_C;
-      numberArray[3] = LETTER__;
-      numberArray[4] = LETTER_U;
-      numberArray[5] = LETTER_P;
-      break;
-    }
+      {
+        numberArray[0] = LETTER_r;
+        numberArray[1] = LETTER_t;
+        numberArray[2] = LETTER_C;
+        numberArray[3] = LETTER__;
+        numberArray[4] = LETTER_U;
+        numberArray[5] = LETTER_P;
+        break;
+      }
     case DIAGS_DEBUG:
-    {
-      numberArray[0] = LETTER_A;
-      numberArray[1] = LETTER_L;
-      numberArray[2] = LETTER_L;
-      numberArray[3] = LETTER__;
-      numberArray[4] = LETTER_O;
-      numberArray[5] = LETTER_n;
-      break;
-    }
+      {
+        numberArray[0] = LETTER_A;
+        numberArray[1] = LETTER_L;
+        numberArray[2] = LETTER_L;
+        numberArray[3] = LETTER__;
+        numberArray[4] = LETTER_O;
+        numberArray[5] = LETTER_n;
+        break;
+      }
     case AP_MODE:
-    {
-      numberArray[0] = LETTER_A;
-      numberArray[1] = LETTER_P;
-      numberArray[2] = LETTER__;
-      numberArray[3] = LETTER__;
-      numberArray[4] = LETTER_O;
-      numberArray[5] = LETTER_n;
-      break;
-    }
+      {
+        numberArray[0] = LETTER_A;
+        numberArray[1] = LETTER_P;
+        numberArray[2] = LETTER__;
+        numberArray[3] = LETTER__;
+        numberArray[4] = LETTER_O;
+        numberArray[5] = LETTER_n;
+        break;
+      }
   }
 }
 
@@ -1620,7 +1628,7 @@ void outputDisplay() {
 // the stable display when we are not cross-fading.
 // ************************************************************
 void shiftDigitsOut() {
-  byte displayDigits[6];  
+  byte displayDigits[6];
   static byte prevNumberArray[6];
   static bool smoothRunning[6];
   static unsigned long smoothStartMillis[6];
@@ -1634,10 +1642,10 @@ void shiftDigitsOut() {
       displayDigits[i] = DIGIT_BLANK;
       smoothRunning[i] = false;
       prevNumberArray[i] = numberArray[i];
-      digitWasBlanked[i] = true;      
+      digitWasBlanked[i] = true;
     }
     else {
-      displayDigits[i] = digitData[numberArray[i]]; 
+      displayDigits[i] = digitData[numberArray[i]];
       if (digitWasBlanked[i]) {               // Inhibits smoothing when digit goes
         prevNumberArray[i] = numberArray[i];  // from BLANKED to NORMAL because that
         digitWasBlanked[i] = false;           // would not look good.
@@ -1655,10 +1663,10 @@ void shiftDigitsOut() {
     if (numberArray[i] != prevNumberArray[i]) {
       displayDigits[i] |= digitData[prevNumberArray[i]];
       if (!smoothRunning[i]) {
-        smoothRunning[i] = true;        
+        smoothRunning[i] = true;
         smoothStartMillis[i] = millis();
       }
-      else {            
+      else {
         if (millis() - smoothStartMillis[i] >= getTubeLag(ldrValue)) {
           prevNumberArray[i] = numberArray[i];
           smoothRunning[i] = false;
@@ -3014,6 +3022,7 @@ void clockConfigPageHandler() {
   response_message += getDropDownHeader("Date Slots:", "slotsMode", true);
   response_message += getDropDownOption("0", "Don't use slots mode", (slotsMode == 0));
   response_message += getDropDownOption("1", "Wipe In, Wipe Out", (slotsMode == 1));
+  response_message += getDropDownOption("2", "Bang In, Bang Out", (slotsMode == 2));
   response_message += getDropDownFooter();
 
   // LED mode

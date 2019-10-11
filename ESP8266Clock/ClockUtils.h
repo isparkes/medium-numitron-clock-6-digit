@@ -9,6 +9,7 @@
 #include <Wire.h>
 #include <ESP8266HTTPClient.h>
 #include "HtmlServer.h"
+#include "ClockDefs.h"
 
 /*
  * A collection of utility functions
@@ -57,4 +58,5 @@ void debugMsgCont(String message);
 boolean getDebug();
 void toggleDebug();
 
+void setPinModes();
 #endif
