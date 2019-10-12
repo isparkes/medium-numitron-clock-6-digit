@@ -30,7 +30,7 @@
 // Standard Libraries
 #include <FS.h>
 #include <Wire.h>
-#include <DNSServer.h>          //https://github.com/esp8266/Arduino/tree/master/libraries/DNSServer
+//#include <DNSServer.h>          // https://github.com/esp8266/Arduino/tree/master/libraries/DNSServer
 
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
@@ -2176,28 +2176,6 @@ void setTubesAndLEDSBlankMode() {
 }
 
 // ************************************************************
-// Random colour flash from the back lights
-// ************************************************************
-void randomRGBFlash(int delayVal) {
-  // Set up the PRNG with something so that it looks random
-  randomSeed(analogRead(LDRPin));
-
-  if (random(3) == 0) {
-    setAllLEDs(255, 0, 0);
-  }
-  if (random(3) == 0) {
-    setAllLEDs(0, 255, 0);
-  }
-  if (random(3) == 0) {
-    setAllLEDs(0, 0, 255);
-  }
-  delay(delayVal);
-
-  setAllLEDs(0, 0, 0);
-  delay(delayVal);
-}
-
-// ************************************************************
 // Set the diagnostic LED colour:
 // stepNumber 0..5
 // state: 0 = red, 1 = orange, 2 = green, 3 = blue
@@ -2232,6 +2210,9 @@ void setDiagnosticLED(byte stepNumber, byte state) {
   delay(500);
 }
 
+// ************************************************************
+// Set the state of the internal PIR pullup resistor
+// ************************************************************
 void setPIRPullup(boolean newState) {
   if (newState) {
     debugMsg("Setting PIR pullup");
@@ -2364,6 +2345,9 @@ int getTubeLag(int currentLDR) {
 //**********************************************************************************
 //**********************************************************************************
 
+// ************************************************************
+// Retrieve the config from the SPIFFS
+// ************************************************************
 boolean getConfigFromSpiffs() {
   boolean loaded = false;
   if (SPIFFS.begin()) {
@@ -2496,6 +2480,9 @@ boolean getConfigFromSpiffs() {
   return loaded;
 }
 
+// ************************************************************
+// Save config back to the SPIFFS
+// ************************************************************
 void saveConfigToSpiffs() {
   if (SPIFFS.begin()) {
     debugMsg("mounted file system");
@@ -2557,6 +2544,9 @@ void saveConfigToSpiffs() {
   SPIFFS.end();
 }
 
+// ************************************************************
+// Get the statistics from the SPIFFS
+// ************************************************************
 boolean getStatsFromSpiffs() {
   boolean loaded = false;
   if (SPIFFS.begin()) {
@@ -2602,6 +2592,9 @@ boolean getStatsFromSpiffs() {
   return loaded;
 }
 
+// ************************************************************
+// Save the statistics back to the SPIFFS
+// ************************************************************
 void saveStatsToSpiffs() {
   if (SPIFFS.begin()) {
     debugMsg("mounted file system");
@@ -2675,12 +2668,10 @@ void factoryReset() {
   saveConfigToSpiffs();
 }
 
-//**********************************************************************************
-//**********************************************************************************
-//*                                Page Handlers                                   *
-//**********************************************************************************
-//**********************************************************************************
-
+// ************************************************************
+// Conditionally trigger the save (don't write if we don't have
+// any changes - that just wears out the flash)
+// ************************************************************
 void saveToSpiffsIfChanged(boolean changed) {
   if (changed) {
     debugMsg("Config options changed, saving them");
@@ -2690,6 +2681,12 @@ void saveToSpiffsIfChanged(boolean changed) {
     saveStatsToSpiffs();
   }
 }
+
+//**********************************************************************************
+//**********************************************************************************
+//*                                Page Handlers                                   *
+//**********************************************************************************
+//**********************************************************************************
 
 // ************************************************************
 // Summary page
@@ -3411,7 +3408,7 @@ void configModeCallback(WiFiManager *myWiFiManager) {
   debugMsg("*** Entered config mode");
   setDiagnosticLED(DIAGS_WIFI, STATUS_BLUE);
   loadNumberArrayPOSTMessage(AP_MODE);
-  outputDisplay();
+  shiftDigitsOutDiags();
 }
 
 // ************************************************************
