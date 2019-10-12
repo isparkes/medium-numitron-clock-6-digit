@@ -30,7 +30,6 @@
 // Standard Libraries
 #include <FS.h>
 #include <Wire.h>
-//#include <DNSServer.h>          // https://github.com/esp8266/Arduino/tree/master/libraries/DNSServer
 
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
@@ -236,6 +235,10 @@ void setup()
   // Enable OTA updates
   httpUpdater.setup(&server, "/update", "admin", "update");
 
+  if (mdns.begin("numitron", WiFi.localIP())) {
+    Serial.println("MDNS responder started");
+  }
+
   setPIRPullup(usePIRPullup);
 
   // initialise the internal time (in case we don't find the time provider)
@@ -285,6 +288,7 @@ void setup()
 void loop()
 {
   server.handleClient();
+  mdns.update();
 
   nowMillis = millis();
 
