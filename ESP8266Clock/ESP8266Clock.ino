@@ -1614,6 +1614,10 @@ void loadNumberArrayIP(byte byte1, byte byte2) {
 // Do a single complete display
 // ************************************************************
 void outputDisplay() {
+  byte digits[6];
+  static byte prevNumberArray[6];
+  static bool smoothRunning[6];
+  
   // Deal with blink, calculate if we are on or off
   static uint16_t blinkCounter = BLINK_COUNT_OFF;
   blinkCounter--;
@@ -1622,7 +1626,13 @@ void outputDisplay() {
     blinkCounter = blinkState ? BLINK_COUNT_ON : BLINK_COUNT_OFF;
   }
 
-  shiftDigitsOut();
+  // Decode numbers to 7-segment digits
+  for (int i=0; i<=5; i++) digits[i] = digitData[numberArray[i]];
+  
+  blankDigits(digits, prevNumberArray, smoothRunning);  
+  smoothDigits(digits, prevNumberArray, smoothRunning);
+  
+  shiftDigitsOut(digits);
   setBlankingPin();
 }
 
@@ -1631,54 +1641,9 @@ void outputDisplay() {
 // display. "Current" display is what we are fading from, or
 // the stable display when we are not cross-fading.
 // ************************************************************
-void shiftDigitsOut() {
-  byte displayDigits[6];
-  static byte prevNumberArray[6];
-  static bool smoothRunning[6];
-  static unsigned long smoothStartMillis[6];
+void shiftDigitsOut(byte *displayDigits) {
   static unsigned long lastOut1 = 0;
   static unsigned long lastOut2 = 0;
-
-  // Handle blanking of individual digits
-  static bool digitWasBlanked[6];
-  for (int i = 0; i <= 5; i++) {
-    if (displayType[i] == BLANKED || (displayType[i] == BLINK && !blinkState)) {
-      displayDigits[i] = DIGIT_BLANK;
-      smoothRunning[i] = false;
-      prevNumberArray[i] = numberArray[i];
-      digitWasBlanked[i] = true;
-    }
-    else {
-      displayDigits[i] = digitData[numberArray[i]];
-      if (digitWasBlanked[i]) {               // Inhibits smoothing when digit goes
-        prevNumberArray[i] = numberArray[i];  // from BLANKED to NORMAL because that
-        digitWasBlanked[i] = false;           // would not look good.
-      }
-    }
-  }
-
-  // Smooth the changing of digits by briefly superimposing the
-  // number it is changing FROM onto the number it is changing TO.
-  // This smooths out the jerky looking changes caused by the
-  // Numitron's thermal inertia, i.e segments appear to go out
-  // quicker than they light up.
-  syncColourTime = false;
-  for (int i = 0; i <= 5; i++) {
-    if (numberArray[i] != prevNumberArray[i]) {
-      displayDigits[i] |= digitData[prevNumberArray[i]];
-      if (!smoothRunning[i]) {
-        smoothRunning[i] = true;
-        smoothStartMillis[i] = millis();
-      }
-      else {
-        if (millis() - smoothStartMillis[i] >= getTubeLag(ldrValue)) {
-          prevNumberArray[i] = numberArray[i];
-          smoothRunning[i] = false;
-        }
-      }
-      syncColourTime = true;
-    }
-  }
 
   // Add in the orange separator "colon" LEDs
   displayDigits[2] |= SEG_IND * led1State;
@@ -1725,9 +1690,7 @@ void digitsOff() {
 }
 
 // ************************************************************
-// Set a digit with the given value and turn the HVGen on
-// Assumes that all digits have previously been turned off
-// by a call to "digitOff"
+// Send the 48 output bits to the TLC5916 latches for display
 // ************************************************************
 void digitsOut(unsigned long highBits, unsigned long lowBits) {
   digitalWrite(LATCHPin, LOW);
@@ -1776,7 +1739,7 @@ void setBlankingPin() {
 }
 
 // ************************************************************
-// Display preset - apply leading zero blanking
+// Apply leading zero blanking
 // ************************************************************
 void applyBlanking() {
 
@@ -1786,6 +1749,49 @@ void applyBlanking() {
   }
   else {
     displayType[0] = NORMAL;
+  }
+}
+
+// ************************************************************
+// Blanking and Blinking of individual digits
+// ************************************************************
+void blankDigits(byte *digits, byte *prevNums, boolean *smoothRun) {
+  static bool digitWasBlanked[6];
+  for (int i = 0; i <= 5; i++) {
+    if (displayType[i] == BLANKED || (displayType[i] == BLINK && !blinkState)) {
+      digits[i] = DIGIT_BLANK;
+      smoothRun[i] = false;
+      prevNums[i] = numberArray[i];
+      digitWasBlanked[i] = true;
+    }
+    else if (digitWasBlanked[i]) {           // Inhibits smoothing when digit goes
+      prevNums[i] = numberArray[i];     // from BLANKED to NORMAL because that
+      digitWasBlanked[i] = false;       // would not look good.
+    }
+  }
+}
+
+// ************************************************************
+// Smoothing of changing digits
+// ************************************************************
+void smoothDigits(byte *digits, byte *prevNums, boolean *smoothRun) {
+  static unsigned long smoothStartMillis[6];
+  syncColourTime = false;
+  for (int i = 0; i <= 5; i++) {
+    if (numberArray[i] != prevNums[i]) {
+      digits[i] |= digitData[prevNums[i]];
+      if (!smoothRun[i]) {
+        smoothRun[i] = true;
+        smoothStartMillis[i] = millis();
+      }
+      else {
+        if (millis() - smoothStartMillis[i] >= getTubeLag(ldrValue)) {
+          prevNums[i] = numberArray[i];
+          smoothRun[i] = false;
+        }
+      }
+      syncColourTime = true;
+    }
   }
 }
 
