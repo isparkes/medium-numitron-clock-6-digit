@@ -1755,7 +1755,7 @@ void applyBlanking() {
 // ************************************************************
 // Blanking and Blinking of individual digits
 // ************************************************************
-void blankDigits(byte *digits, byte *prevNums, boolean *smoothRun) {
+void blankDigits(byte *digits, byte *prevNums, bool *smoothRun) {
   static bool digitWasBlanked[6];
   for (int i = 0; i <= 5; i++) {
     if (displayType[i] == BLANKED || (displayType[i] == BLINK && !blinkState)) {
@@ -1774,7 +1774,7 @@ void blankDigits(byte *digits, byte *prevNums, boolean *smoothRun) {
 // ************************************************************
 // Smoothing of changing digits
 // ************************************************************
-void smoothDigits(byte *digits, byte *prevNums, boolean *smoothRun) {
+void smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) {
   static unsigned long smoothStartMillis[6];
   syncColourTime = false;
   for (int i = 0; i <= 5; i++) {
