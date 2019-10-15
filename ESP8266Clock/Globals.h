@@ -77,6 +77,7 @@ byte statusModeL = STATUS_LED_MODE_ONLINE; // Left Status LED mode
 byte statusModeR = STATUS_LED_MODE_NTP; // Right Status LED mode
 byte backlightDimFactor = BACKLIGHT_DIM_FACTOR_DEFAULT;
 boolean testMode = false;
+String mdnsName = "";
 
 // ------------- Time management variables -------------
 

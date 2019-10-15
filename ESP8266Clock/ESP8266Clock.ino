@@ -50,7 +50,7 @@
 #include "HtmlServer.h"
 #include "VFDDefs.h"
 
-#define DEBUG_OFF
+#define DEBUG
 
 //**********************************************************************************
 //**********************************************************************************
@@ -195,9 +195,11 @@ void setup()
   }
 
   IPAddress apIP = WiFi.softAPIP();
-  IPAddress myIP = WiFi.localIP();
+  IPAddress myIP = WiFi.localIP();  
   debugMsg("AP IP address: " + formatIPAsString(apIP));
   debugMsg("IP address: " + formatIPAsString(myIP));
+
+  debugMsg("name: " + WiFi.hostname());  
 
   // Set the default TZ for the local time interpretation
   setenv("TZ", tzs.c_str(), 0);
@@ -206,7 +208,7 @@ void setup()
   WiFi.setAutoReconnect(true);
 
   // See if we can already get the time
-  getTimeFromTimeZoneServer();
+  getTimeFromNTP();
   setDiagnosticLED(DIAGS_NTP, STATUS_YELLOW);
   loadNumberArrayPOSTMessage(DIAGS_NTP);
   shiftDigitsOutDiags();
@@ -215,7 +217,7 @@ void setup()
   bool needUpdate = true;
   while (((millis() - startSeachMs) < 10000) && needUpdate) {
     delay(500);
-    getTimeFromTimeZoneServer();
+    getTimeFromNTP();
     if (lastUpdateFromServer > 0) {
       debugMsg("Got update from NTP, exiting loop");
       needUpdate = false;
@@ -235,8 +237,10 @@ void setup()
   // Enable OTA updates
   httpUpdater.setup(&server, "/update", "admin", "update");
 
-  if (mdns.begin("numitron", WiFi.localIP())) {
-    Serial.println("MDNS responder started");
+  if (mdns.begin(WiFi.hostname(), WiFi.localIP())) {
+    debugMsg("MDNS responder started as '" + WiFi.hostname() + "'");
+  } else {
+    debugMsg("MDNS failed to start");
   }
 
   setPIRPullup(usePIRPullup);
@@ -457,7 +461,7 @@ void performOncePerSecondProcessing() {
   nextUpdateFromServer--;
 
   if (nextUpdateFromServer < 0) {
-    getTimeFromTimeZoneServer();
+    getTimeFromNTP();
   }
 
   // Set the indicator states
@@ -2468,6 +2472,9 @@ boolean getConfigFromSpiffs() {
           statusModeR = json["statusModeR"];
           debugMsg("Loaded statusModeR: " + String(statusModeR));
 
+          mdnsName = json["mdns_name"].as<String>();
+          debugMsg("Loaded mDNS name: " + mdnsName);
+
           loaded = true;
         } else {
           debugMsg("failed to load json config");
@@ -2527,6 +2534,7 @@ void saveConfigToSpiffs() {
     json["backlightDimFactor"] = backlightDimFactor;
     json["statusModeL"] = statusModeL;
     json["statusModeR"] = statusModeR;
+    json["mdns_name"] = mdnsName;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -2668,6 +2676,7 @@ void factoryReset() {
   backlightDimFactor = BACKLIGHT_DIM_FACTOR_DEFAULT;
   statusModeL = STATUS_LED_MODE_ONLINE;
   statusModeR = STATUS_LED_MODE_NTP;
+  mdnsName = "numitron";
 
   saveConfigToSpiffs();
 }
@@ -3216,7 +3225,7 @@ void resetWiFiPageHandler() {
 void ntpUpdatePageHandler() {
   debugMsg("NTP Update page in");
 
-  getTimeFromTimeZoneServer();
+  getTimeFromNTP();
 
   server.sendHeader("Location", "/utility", true);
   server.send(302, "text/plain", "");
@@ -3293,7 +3302,7 @@ void localCSSHandler()
 // ************************************************************
 // Asynchronous NTP query
 // ************************************************************
-void getTimeFromTimeZoneServer() {
+void getTimeFromNTP() {
   debugMsg("Async NTP in");
 
   if (WiFi.status() != WL_CONNECTED) {
