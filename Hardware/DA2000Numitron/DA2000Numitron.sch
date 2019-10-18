@@ -218,42 +218,20 @@ Wire Wire Line
 	5700 4750 5700 4900
 Text Label 5300 4750 0    50   ~ 0
 DLS
-$Comp
-L Connector_Generic:Conn_01x05 J1
-U 1 1 5D632B88
-P 1450 6800
-F 0 "J1" H 1370 6375 50  0000 C CNN
-F 1 "Front Panel" H 1370 6466 50  0000 C CNN
-F 2 "NixieClockMaster:Header_MA05-1" H 1450 6800 50  0001 C CNN
-F 3 "~" H 1450 6800 50  0001 C CNN
-	1    1450 6800
-	-1   0    0    1   
-$EndComp
 Wire Wire Line
-	1650 7000 2000 7000
+	1750 7400 2100 7400
 Wire Wire Line
-	1650 6900 2000 6900
+	1750 7300 2100 7300
 Wire Wire Line
-	1650 6800 2000 6800
-Text Label 3200 6500 0    50   ~ 0
+	1750 7200 2100 7200
+Text Label 2100 7100 0    50   ~ 0
 5V
-Text Label 2000 6800 0    50   ~ 0
+Text Label 2100 7200 0    50   ~ 0
 PIR
-Text Label 2000 6900 0    50   ~ 0
+Text Label 2100 7300 0    50   ~ 0
 BTN
-Text Label 2000 7000 0    50   ~ 0
+Text Label 2100 7400 0    50   ~ 0
 GND
-$Comp
-L power:+5V #PWR0103
-U 1 1 5D678C71
-P 3150 6350
-F 0 "#PWR0103" H 3150 6200 50  0001 C CNN
-F 1 "+5V" H 3165 6523 50  0000 C CNN
-F 2 "" H 3150 6350 50  0001 C CNN
-F 3 "" H 3150 6350 50  0001 C CNN
-	1    3150 6350
-	1    0    0    -1  
-$EndComp
 $Comp
 L NixieClockMaster:DS1307+ U7
 U 1 1 5D68AD37
@@ -1952,21 +1930,21 @@ $EndComp
 $Comp
 L Connector_Generic:Conn_01x02 J3
 U 1 1 5D24A6F0
-P 1450 7700
-F 0 "J3" H 1370 7375 50  0000 C CNN
-F 1 "Power" H 1370 7466 50  0000 C CNN
-F 2 "NixieClockMaster:Header_MA02-1" H 1450 7700 50  0001 C CNN
-F 3 "~" H 1450 7700 50  0001 C CNN
-	1    1450 7700
+P 1400 7950
+F 0 "J3" H 1320 7625 50  0000 C CNN
+F 1 "Power" H 1320 7716 50  0000 C CNN
+F 2 "NixieClockMaster:Header_MA02-1" H 1400 7950 50  0001 C CNN
+F 3 "~" H 1400 7950 50  0001 C CNN
+	1    1400 7950
 	-1   0    0    1   
 $EndComp
 Wire Wire Line
-	1650 7600 2000 7600
+	1600 7850 1950 7850
 Wire Wire Line
-	1650 7700 2000 7700
-Text Label 2000 7700 0    50   ~ 0
+	1600 7950 1950 7950
+Text Label 1950 7950 0    50   ~ 0
 GND
-Text Label 2000 7600 0    50   ~ 0
+Text Label 1950 7850 0    50   ~ 0
 5V
 Wire Wire Line
 	2050 5700 2050 5550
@@ -2061,41 +2039,15 @@ F 3 "" H 15200 8150 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Connection ~ 14700 8400
-$Comp
-L Device:Jumper_NC_Dual JP1
-U 1 1 5D8D5E11
-P 2750 6500
-F 0 "JP1" H 2750 6739 50  0000 C CNN
-F 1 "Jumper_NC_Dual" H 2750 6648 50  0000 C CNN
-F 2 "NixieClockMaster:SOLDER-JUMPER_2-WAY" H 2750 6500 50  0001 C CNN
-F 3 "~" H 2750 6500 50  0001 C CNN
-	1    2750 6500
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	2750 6700 2750 6600
-Wire Wire Line
-	3000 6500 3150 6500
-Wire Wire Line
-	3150 6500 3150 6350
-Wire Wire Line
-	3200 6500 3150 6500
-Connection ~ 3150 6500
-Wire Wire Line
-	2750 6700 1650 6700
-Wire Wire Line
-	2500 6500 2150 6500
-Text Label 2150 6500 0    50   ~ 0
+Text Label 2100 6700 0    50   ~ 0
 3V3
 Wire Wire Line
 	2850 2050 3300 2050
 Text Label 3300 2050 2    50   ~ 0
 3V3
-Text Label 2000 6700 0    50   ~ 0
-PIR_VCC
 Wire Wire Line
-	1650 6600 2000 6600
-Text Label 2000 6600 0    50   ~ 0
+	1750 7000 2100 7000
+Text Label 2100 7000 0    50   ~ 0
 GPIO
 Text Label 3300 2150 2    50   ~ 0
 GPIO
@@ -2167,4 +2119,27 @@ Wire Notes Line
 	3850 3500 3850 450 
 Text Label 5350 7250 0    50   ~ 0
 3V3
+$Comp
+L Connector_Generic:Conn_01x08 J1
+U 1 1 5DB06BA4
+P 1550 7100
+F 0 "J1" H 1470 6475 50  0000 C CNN
+F 1 "Front Panel" H 1470 6566 50  0000 C CNN
+F 2 "NixieClockMaster:Header_MA08-1" H 1550 7100 50  0001 C CNN
+F 3 "~" H 1550 7100 50  0001 C CNN
+	1    1550 7100
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	1750 6900 2100 6900
+Wire Wire Line
+	1750 6800 2100 6800
+Wire Wire Line
+	1750 6700 2100 6700
+Wire Wire Line
+	1750 7100 2100 7100
+Text Label 2100 6900 0    50   ~ 0
+SCL
+Text Label 2100 6800 0    50   ~ 0
+SDA
 $EndSCHEMATC
