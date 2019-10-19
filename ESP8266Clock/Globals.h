@@ -10,7 +10,6 @@
 
 // ----------------------- Components ----------------------------
 
-AsyncUDP udp;   // ESPAsyncUDP.h
 DS1307 Clock;   // RTC, uses Analogue pins A4 (SDA) and A5 (SCL)
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(DIGIT_COUNT, LED_DOUT);
 ClockButton button1(inputPin1, CLOCK_BUTTON_ACTIVE_LO);
@@ -22,20 +21,7 @@ Transition *activeTransition = &transitionDummy;                  // Pointer to 
 
 // ------------------------ NTP ------------------------
 
-#define NTP_POOL_DEFAULT "pool.ntp.org"
-#define NTP_PACKET_SIZE 48
 #define TIME_ZONE_STRING_DEFAULT "CET-1CEST,M3.5.0,M10.5.0/3"
-#define NTP_UPDATE_INTERVAL_DEFAULT 7261
-#define NTP_UPDATE_INTERVAL_MIN 60
-#define NTP_UPDATE_INTERVAL_MAX 86400
-
-String ntpPool = NTP_POOL_DEFAULT;
-String tzs = TIME_ZONE_STRING_DEFAULT;
-unsigned long lastUpdateFromServer = 0;
-signed long nextUpdateFromServer = 0;
-String lastTimeFromServer = "";
-int ntpUpdateInterval = NTP_UPDATE_INTERVAL_DEFAULT;
-unsigned long ntpStarted = 0;
 
 // ------------------ Display Variables ----------------
 
