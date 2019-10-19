@@ -62,6 +62,8 @@ NtpAsync ntpAsync;
 //**********************************************************************************
 void setup()
 {
+  setPinModes();
+
   // Show Start message on tubes
   loadNumberArrayPOSTMessage(DIAGS_START);
   shiftDigitsOutDiags();
@@ -86,8 +88,6 @@ void setup()
 
   // Set up the LED output
   leds.Begin();
-
-  setPinModes();
 
   setDiagnosticLED(DIAGS_START, STATUS_GREEN);
   loadNumberArrayPOSTMessage(DIAGS_START);
@@ -128,7 +128,6 @@ void setup()
   // Clear down any spurious button action
   button1.reset();
 
-  testMode=false;
   if (testMode) {
     debugMsg("Doing test sequence");
     boolean oldUseLDR = useLDR;
