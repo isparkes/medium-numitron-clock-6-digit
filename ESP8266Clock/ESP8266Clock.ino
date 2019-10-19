@@ -37,7 +37,6 @@
 #include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna 2.3.4)
 #include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.14.0)
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
-#include <ESPAsyncUDP.h>        // https://github.com/me-no-dev/ESPAsyncUDP (master HEAD)
 
 // Other parts of the code, broken out for clarity
 #include "Globals.h"
@@ -51,7 +50,7 @@
 #include "NtpAsync.h"
 #include "VFDDefs.h"
 
-#define DEBUG
+#define DEBUG_OFF
 
 NtpAsync ntpAsync;
 
