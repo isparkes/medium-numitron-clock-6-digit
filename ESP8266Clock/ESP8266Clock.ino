@@ -122,7 +122,6 @@ void setup()
     setDiagnosticLED(DIAGS_SPIFFS, STATUS_GREEN);
   }
 
-
   // **********************************************************************
 
   // Clear down any spurious button action
@@ -479,9 +478,9 @@ void performOncePerMinuteProcessing() {
 
   debugMsg("nu: " + String(ntpAsync.getNextUpdate(nowMillis)));
 
-  if (!ntpAsync.ntpTimeValid(nowMillis)) {
-    getRTCTime(true);
-  }
+  // Set the internal time to the time from the RTC even if we are still in
+  // NTP valid time. This is more accurate than using the internal time source
+  getRTCTime(true);
 
   // Usage stats
   uptimeMins++;
@@ -2859,9 +2858,9 @@ void timeServerPageHandler() {
   // form header
   response_message += getFormHead("Select time server");
 
-  debugMsg("ntpPool is: " + ntpPool);
-  response_message += getTextInputWide("NTP Pool", "ntppool", ntpPool, false);
-  response_message += getNumberInput("Update interval:", "ntpupdate", NTP_UPDATE_INTERVAL_MIN, NTP_UPDATE_INTERVAL_MAX, ntpUpdateInterval, false);
+  debugMsg("ntpPool is: " + ntpAsync.getNtpPool());
+  response_message += getTextInputWide("NTP Pool", "ntppool", ntpAsync.getNtpPool(), false);
+  response_message += getNumberInput("Update interval:", "ntpupdate", NTP_UPDATE_INTERVAL_MIN, NTP_UPDATE_INTERVAL_MAX, ntpAsync.getUpdateInterval(), false);
   response_message += getTextInputWide("Time Zone String", "tzs", ntpAsync.getTZS(), false);
 
   response_message += getSubmitButton("Set");
