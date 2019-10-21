@@ -338,3 +338,25 @@ void setPinModes() {
   // NOTE: Grounding the input pin causes it to actuate
   pinMode(inputPin1, INPUT_PULLUP);
 }
+
+void hexCharacterStringToBytes(byte *byteArray, const char *hexString) {
+  byte byteIndex = 0;
+
+  for (byte charIndex = 0; charIndex < strlen(hexString); charIndex++)
+  {
+    byteArray[byteIndex++] = nibble(hexString[charIndex]);
+  }
+}
+
+byte nibble(char c) {
+  if (c >= '0' && c <= '9')
+    return c - '0';
+
+  if (c >= 'a' && c <= 'f')
+    return c - 'a' + 10;
+
+  if (c >= 'A' && c <= 'F')
+    return c - 'A' + 10;
+
+  return 0;  // Not a valid hexadecimal character
+}

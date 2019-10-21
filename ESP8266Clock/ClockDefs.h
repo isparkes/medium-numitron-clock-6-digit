@@ -21,7 +21,7 @@
 
 // -------------------------------------------------------------------------------
 // Software version shown in config menu
-#define SOFTWARE_VERSION    2
+#define SOFTWARE_VERSION    3
 
 // -------------------------------------------------------------------------------
 #define MIN_DIM_DEFAULT       400  // The default minimum dim count
@@ -136,7 +136,8 @@
 #define TEMP_IP_ADDR12                  3 // IP xxx.yyy.zzz.aaa: xxx.yyy
 #define TEMP_IP_ADDR34                  4 // IP xxx.yyy.zzz.aaa: zzz.aaa
 #define TEMP_IMPR                       5 // number of impressions per second
-#define TEMP_MODE_MAX                   5
+#define TEMP_ESP_ID                     6 // ESP ID for mdns
+#define TEMP_MODE_MAX                   6
 
 #define TEMP_DISPLAY_MODE_DUR_MS        5000
 

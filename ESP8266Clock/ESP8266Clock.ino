@@ -242,8 +242,8 @@ void setup()
   // Enable OTA updates
   httpUpdater.setup(&server, "/update", "admin", "update");
 
-  if (mdns.begin("numitron", WiFi.localIP())) {
-    Serial.println("MDNS responder started");
+  if (mdns.begin(WiFi.hostname(), WiFi.localIP())) {
+    debugMsg("MDNS responder started as http://" + WiFi.hostname() + ".local");
   }
 
   setPIRPullup(usePIRPullup);
@@ -988,6 +988,18 @@ void processCurrentMode(int displayMode) {
             }
           }
 
+          if (tempDisplayMode == TEMP_ESP_ID) {
+            if (getIsConnected()) {
+              String shortHostName = WiFi.hostname().substring(4, 10);
+              shortHostName.toLowerCase();
+              //debugMsg("ESPID: " + shortHostName);
+              loadNumberArrayESPID(shortHostName);
+            } else {
+              // we can't show the IP address if we have the RTC, just skip
+              tempDisplayMode++;
+            }
+          }
+
           if (tempDisplayMode == TEMP_IMPR) {
             loadNumberArrayConfInt(lastImpressionsPerSec, 0);
           }
@@ -1612,6 +1624,20 @@ void loadNumberArrayIP(byte byte1, byte byte2) {
   numberArray[2] = (byte1) % 10;
   numberArray[1] = (byte1 / 10) % 10;
   numberArray[0] = (byte1 / 100) % 10;
+}
+
+// ************************************************************
+// Show an integer configuration value
+// ************************************************************
+void loadNumberArrayESPID(String ID) {
+  byte byteArray[5];
+  hexCharacterStringToBytes(byteArray, ID.c_str());
+  numberArray[5] = byteArray[5];
+  numberArray[4] = byteArray[4];
+  numberArray[3] = byteArray[3];
+  numberArray[2] = byteArray[2];
+  numberArray[1] = byteArray[1];
+  numberArray[0] = byteArray[0];
 }
 
 // ************************************************************
