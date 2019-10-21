@@ -84,48 +84,48 @@
 #define HOUR_MODE_DEFAULT               false
 #define MODE_LEAD_BLANK                 8  // Mode "01" 1 = blanked
 #define LEAD_BLANK_DEFAULT              false
-#define MODE_DATE_FORMAT                9 // Mode "04"
-#define MODE_DAY_BLANKING               10 // Mode "05"
-#define MODE_HR_BLNK_START              11 // Mode "06" - skipped if not using hour blanking
-#define MODE_HR_BLNK_END                12 // Mode "07" - skipped if not using hour blanking
+#define MODE_DATE_FORMAT                9 // Mode "02"
+#define MODE_DAY_BLANKING               10 // Mode "03"
+#define MODE_HR_BLNK_START              11 // Mode "04" - skipped if not using hour blanking
+#define MODE_HR_BLNK_END                12 // Mode "05" - skipped if not using hour blanking
 
-#define MODE_USE_LDR                    13 // Mode "08" 1 = use LDR, 0 = don't (and have 100% brightness)
+#define MODE_USE_LDR                    13 // Mode "06" 1 = use LDR, 0 = don't (and have 100% brightness)
 #define MODE_USE_LDR_DEFAULT            true
 
-#define MODE_BLANK_MODE                 14 // Mode "09" 
+#define MODE_BLANK_MODE                 14 // Mode "07" 
 #define MODE_BLANK_MODE_DEFAULT         BLANK_MODE_BOTH
 
-#define MODE_SLOTS_MODE                 15 // Mode "14"
+#define MODE_SLOTS_MODE                 15 // Mode "08"
 
 // Separator LED mode
-#define MODE_LED_BLINK                  16 // Mode "15"
+#define MODE_LED_BLINK                  16 // Mode "09"
 
 // PIR
-#define MODE_PIR_TIMEOUT_UP             17// Mode "16"
-#define MODE_PIR_TIMEOUT_DOWN           18 // Mode "17"
+#define MODE_PIR_TIMEOUT_UP             17// Mode "11"
+#define MODE_PIR_TIMEOUT_DOWN           18 // Mode "11"
 
 // Back light
-#define MODE_BACKLIGHT_MODE             19 // Mode "18"
-#define MODE_RED_CNL                    20 // Mode "19"
-#define MODE_GRN_CNL                    21 // Mode "20"
-#define MODE_BLU_CNL                    22 // Mode "21"
-#define MODE_CYCLE_SPEED                23 // Mode "22"
+#define MODE_BACKLIGHT_MODE             19 // Mode "12"
+#define MODE_RED_CNL                    20 // Mode "13"
+#define MODE_GRN_CNL                    21 // Mode "14"
+#define MODE_BLU_CNL                    22 // Mode "15"
+#define MODE_CYCLE_SPEED                23 // Mode "16"
 
 // Minimum dimming value for old tubes
-#define MODE_MIN_DIM_UP                 24 // Mode "23"
-#define MODE_MIN_DIM_DOWN               25 // Mode "24"
+#define MODE_MIN_DIM_UP                 24 // Mode "17"
+#define MODE_MIN_DIM_DOWN               25 // Mode "18"
 
 // Use the PIR pin pullup resistor
-#define MODE_USE_PIR_PULLUP             26 // Mode "27" 1 = use Pullup
+#define MODE_USE_PIR_PULLUP             26 // Mode "19" 1 = use Pullup
 #define USE_PIR_PULLUP_DEFAULT          true
 
 // Software Version
-#define MODE_VERSION                    27 // Mode "28"
+#define MODE_VERSION                    27 // Mode "20"
 
 // Tube test - all six digits, so no flashing mode indicator
-#define MODE_TUBE_TEST                  30
+#define MODE_TUBE_TEST                  28
 
-#define MODE_MAX                        30
+#define MODE_MAX                        28
 
 // -------------------------------------------------------------------------------
 // Temporary display modes - accessed by a short press ( < 1S ) on the button when in MODE_TIME
