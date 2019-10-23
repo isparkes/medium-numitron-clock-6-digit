@@ -244,6 +244,7 @@ void setup()
 
   if (mdns.begin(WiFi.hostname(), WiFi.localIP())) {
     debugMsg("MDNS responder started as http://" + WiFi.hostname() + ".local");
+    mdns.addService("http", "tcp", 80);
   }
 
   setPIRPullup(usePIRPullup);
