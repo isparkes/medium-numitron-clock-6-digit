@@ -2440,20 +2440,23 @@ boolean getConfigFromSpiffs() {
           blankLeading = json["blankLeading"].as<bool>();
           debugMsg("Loaded lead zero blanking: " + String(blankLeading));
 
-          sensitivityLDR = json["sensitivityLDR"];
-          debugMsg("Loaded sensitivityLDR: " + String(sensitivityLDR));
-
           dateFormat = json["dateFormat"];
           debugMsg("Loaded date format: " + String(dateFormat));
+
+          dayBlanking = json["dayBlanking"];
+          debugMsg("Loaded dayBlanking: " + String(dayBlanking));
 
           thresholdBright = json["thresholdBright"];
           debugMsg("Loaded thresholdBright: " + String(thresholdBright));
 
-          sensorSmoothCountLDR = json["sensorSmoothCountLDR"];
-          debugMsg("Loaded sensorSmoothCountLDR: " + String(sensorSmoothCountLDR));
+          sensitivityLDR = json["sensitivityLDR"];
+          debugMsg("Loaded sensitivityLDR: " + String(sensitivityLDR));
 
           minDim = json["minDim"];
           debugMsg("Loaded minDim: " + String(minDim));
+
+          sensorSmoothCountLDR = json["sensorSmoothCountLDR"];
+          debugMsg("Loaded sensorSmoothCountLDR: " + String(sensorSmoothCountLDR));
 
           backlightMode = json["backlightMode"];
           debugMsg("Loaded backlight mode: " + String(backlightMode));
@@ -2466,6 +2469,9 @@ boolean getConfigFromSpiffs() {
 
           bluCnl = json["bluCnl"];
           debugMsg("Loaded bluCnl: " + String(bluCnl));
+
+          blankMode = json["blankMode"];
+          debugMsg("Loaded blankMode: " + String(blankMode));
 
           blankHourStart = json["blankHourStart"];
           debugMsg("Loaded blankHourStart: " + String(blankHourStart));
@@ -2481,9 +2487,6 @@ boolean getConfigFromSpiffs() {
 
           useLDR = json["useLDR"];
           debugMsg("Loaded useLDR: " + String(useLDR));
-
-          blankMode = json["blankMode"];
-          debugMsg("Loaded blankMode: " + String(blankMode));
 
           slotsMode = json["slotsMode"];
           debugMsg("Loaded slotsMode: " + String(slotsMode));
@@ -2561,12 +2564,12 @@ void saveConfigToSpiffs() {
     json["redCnl"] = redCnl;
     json["grnCnl"] = grnCnl;
     json["bluCnl"] = bluCnl;
+    json["blankMode"] = blankMode;
     json["blankHourStart"] = blankHourStart;
     json["blankHourEnd"] = blankHourEnd;
     json["cycleSpeed"] = cycleSpeed;
     json["pirTimeout"] = pirTimeout;
     json["useLDR"] = useLDR;
-    json["blankMode"] = blankMode;
     json["slotsMode"] = slotsMode;
     json["usePIRPullup"] = usePIRPullup;
     json["testMode"] = testMode;
