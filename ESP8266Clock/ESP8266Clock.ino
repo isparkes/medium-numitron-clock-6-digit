@@ -194,7 +194,7 @@ void setup()
   shiftDigitsOutDiags();
 
   boolean connected = false;
-  connected = wifiManager.autoConnect("ESPClock", "SetMeUp!");
+  connected = wifiManager.autoConnect(WiFi.hostname().c_str(), "SetMeUp!");
 
   if (connected) {
     debugMsg("Connected!");
