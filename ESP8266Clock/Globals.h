@@ -26,15 +26,12 @@ Transition *activeTransition = &transitionDummy;                  // Pointer to 
 // ------------------ Display Variables ----------------
 
 byte numberArray[DIGIT_COUNT]          = {0, 0, 0, 0, 0, 0};
-//byte currNumberArray[DIGIT_COUNT]      = {0, 0, 0, 0, 0, 0};
+//byte currNumberArray[DIGIT_COUNT]    = {0, 0, 0, 0, 0, 0};
 byte displayType[DIGIT_COUNT]          = {NORMAL, NORMAL, NORMAL, NORMAL};
-//byte fadeState[DIGIT_COUNT]            = {0, 0, 0, 0, 0, 0};
+//byte fadeState[DIGIT_COUNT]          = {0, 0, 0, 0, 0, 0};
 byte valueDisplayTime                  = 0;
-byte valueToShow[DIGIT_COUNT / 2]      = {0, 0, 0};
-byte valueDisplayType[DIGIT_COUNT / 2] = {NORMAL | NORMAL >> 4, NORMAL | NORMAL >> 4, NORMAL | NORMAL >> 4}; // All normal by default
-
-// Decimal point indicators
-boolean dpArray[6]         = {false, false, false, false, false, false};
+int valueToShow                        = 0;
+byte valueDisplayType[DIGIT_COUNT / 2] = {NORMAL | NORMAL << 4, NORMAL | NORMAL << 4, NORMAL | NORMAL << 4}; // All normal by default
 
 // ------------------- Config Variables ----------------
 

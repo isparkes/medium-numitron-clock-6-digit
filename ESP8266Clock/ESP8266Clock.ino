@@ -489,13 +489,10 @@ void performOncePerMinuteProcessing() {
     tubeOnTimeMins++;
   }
 
-  // AM/PM indicator
-  if (hourMode) {
-    dpArray[1] = (hour() > 12);
-  }
-
   // RTC - light up only if we have lost our RTC
-  dpArray[2] = onceHadAnRTC && !useRTC;
+  if (onceHadAnRTC && !useRTC) {
+    // debugMsg("lost access to RTC");
+  }
 
   if (getIsConnected()) {
     IPAddress ip = WiFi.localIP();
@@ -504,9 +501,6 @@ void performOncePerMinuteProcessing() {
     IPAddress ip = WiFi.localIP();
     debugMsg("Not connected IP: " + formatIPAsString(ip));
   }
-
-  // WiFi
-  dpArray[3] = (!getIsConnected());
 }
 
 // ************************************************************
@@ -693,19 +687,15 @@ void setLeds()
 // ************************************************************
 boolean checkPIR(unsigned long nowMillis) {
   if (pirConsecutiveCounts > (lastImpressionsPerSec / 2)) {
-    dpArray[5] = true;
     pirLastSeen = nowMillis;
     return false;
   } else {
-    dpArray[5] = false;
     if (!pirInstalled) debugMsg("Marking PIR as installed");
     pirInstalled = true;
     if (nowMillis > (pirLastSeen + (pirTimeout * 1000))) {
-      dpArray[4] = false;
       pirStatus = false;
       return true;
     } else {
-      dpArray[4] = true;
       pirStatus = true;
       return false;
     }
@@ -1044,15 +1034,27 @@ void processCurrentMode(int displayMode) {
               activeTransition->updateRegularDisplaySeconds(second());
             }
             else {
-              // Do normal time thing when we are not in slots
-              loadNumberArrayTime();
-              allNormal(APPLY_LEAD_0_BLANK);
+              // no slots mode, check if we are in valueDisplayMode
+              if (valueDisplayTime > 0) {
+                loadNumberArrayConfIntWide(valueToShow);
+                loadDisplaySetValueType();
+              } else {
+                // Do normal time thing when we are not in slots
+                loadNumberArrayTime();
+                allNormal(APPLY_LEAD_0_BLANK);
+              }
             }
           }
           else {
-            // no slots mode, just do normal time thing
-            loadNumberArrayTime();
-            allNormal(APPLY_LEAD_0_BLANK);
+            // no slots mode, check if we are in valueDisplayMode
+            if (valueDisplayTime > 0) {
+              loadNumberArrayConfIntWide(valueToShow);
+              loadDisplaySetValueType();
+            } else {
+              // no slots mode, just do normal time thing
+              loadNumberArrayTime();
+              allNormal(APPLY_LEAD_0_BLANK);
+            }
           }
         }
         break;
@@ -1423,18 +1425,6 @@ void loadNumberArrayTime() {
 }
 
 // ************************************************************
-// Show the value we got over I2C
-// ************************************************************
-void loadNumberArrayValue() {
-  numberArray[5] = valueToShow[2] & 0xf;
-  numberArray[4] = valueToShow[2] >> 4;
-  numberArray[3] = valueToShow[1] & 0xf;
-  numberArray[2] = valueToShow[1] >> 4;
-  numberArray[1] = valueToShow[0] & 0xf;
-  numberArray[0] = valueToShow[0] >> 4;
-}
-
-// ************************************************************
 // Break the time into displayable digits
 // ************************************************************
 void loadNumberArraySameValue(byte val) {
@@ -1597,6 +1587,17 @@ void loadNumberArrayConfInt(int confValue, int confNum) {
   numberArray[0] = (confValue / 1000) % 10;
 }
 
+// ************************************************************
+// Show an integer configuration value
+// ************************************************************
+void loadNumberArrayConfIntWide(int confValue) {
+  numberArray[5] = (confValue / 1) % 10;
+  numberArray[4] = (confValue / 10) % 10;
+  numberArray[3] = (confValue / 100) % 10;
+  numberArray[2] = (confValue / 1000) % 10;
+  numberArray[1] = (confValue / 10000) % 10;
+  numberArray[0] = (confValue / 100000) % 10;
+}
 // ************************************************************
 // Show a boolean configuration value
 // ************************************************************
@@ -1956,7 +1957,7 @@ void allBlanked() {
 // ************************************************************
 // Display preset
 // ************************************************************
-void loadDisplayConfigValue() {
+void loadDisplaySetValueType() {
   displayType[5] = valueDisplayType[2] & 0xf;
   displayType[4] = valueDisplayType[2] >> 4;
   displayType[5] = valueDisplayType[1] & 0xf;
@@ -3177,24 +3178,24 @@ void setDisplayValuePageHandler() {
   checkServerArgInt("format", "format", formatValid, valueFormat);
 
   if (valueValid) {
-    byte val1 = hex2bcd(valueTime % 100);
-    valueTime = valueTime / 100;
-    byte val0 = hex2bcd(valueTime % 100);
-    valueToShow[0] = val0;
-    valueToShow[1] = val1;
+    valueToShow = valueToDisplay % 1000000;
+    valueDisplayTime = 10;
   }
 
   if (timeValid) {
-    if (valueTime > 255)
-      valueTime = 255;
+    if (valueTime >= 255) {
+      valueDisplayTime = 255;
+    } else {
+      valueDisplayTime = valueTime;
+    }
   }
 
   if (formatValid) {
-    byte val1 = hex2bcd(valueFormat % 100);
+    valueDisplayType[2] = hex2bcd(valueFormat % 100);
     valueFormat = valueFormat / 100;
-    byte val0 = hex2bcd(valueFormat % 100);
-    valueDisplayType[0] = val0;
-    valueDisplayType[1] = val1;
+    valueDisplayType[1] = hex2bcd(valueFormat % 100);
+    valueFormat = valueFormat / 100;
+    valueDisplayType[0] = hex2bcd(valueFormat % 100);
   }
 
   String response_message = getHTMLHead(getIsConnected());
@@ -3204,11 +3205,11 @@ void setDisplayValuePageHandler() {
 
   if (valueValid) {
     response_message += "<div class=\"alert alert-success fade in\"><strong>";
-    response_message += resultMessage;
+    response_message += "display value was set!";
     response_message += "</strong></div></div>";
   } else {
     response_message += "<div class=\"alert alert-error fade in\"><strong>";
-    response_message += "You need to set at least the \"Time\" parameter! A valid command line is http://<clock.ip.addres>/setvalue?value=123456&time=60&format=333333";
+    response_message += "You need to set at least the \"value\" parameter! A valid command line is http://<clock.ip.addres>/setvalue?value=123456&time=60&format=333333";
     response_message += "</strong></div></div>";
   }
 
