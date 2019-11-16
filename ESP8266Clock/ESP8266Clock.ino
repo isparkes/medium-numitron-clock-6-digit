@@ -1786,15 +1786,32 @@ void shiftOut24(uint8_t _dataPin1,
 // ************************************************************
 void setBlankingPin() {
   if (!blankTubes) {
-    lastLDRValue = ldrValue;
+    // Fade in slowly
+    if (lastLDRValue > ldrValue) {
+      lastLDRValue-=getDeltaAdj(lastLDRValue,ldrValue);
+    }
   } else {
     // Fade out slowly
     if (lastLDRValue < 1023) {
-      lastLDRValue++;
+      lastLDRValue+=getDeltaAdj(1023,lastLDRValue);
     }
   }
 
   analogWrite(BLANKPin, lastLDRValue);
+}
+
+// ************************************************************
+// Make fade out / fade in happen a bit quicker
+// ************************************************************
+int getDeltaAdj(int val1, int val2) {
+  int delta = abs(val1 - val2);
+  if (delta > 100) {
+    return 10;
+  } else if (delta > 10) {
+    return 3;
+  } else {
+    return 1;
+  }
 }
 
 // ************************************************************
