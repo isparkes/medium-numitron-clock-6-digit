@@ -2,8 +2,8 @@
 #define oled_h
 
 #include <memory>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>       // v1.6.1
+#include <Adafruit_SSD1306.h>   // v2.0.1
 
 #define PIR_NOT_INSTALLED 0
 #define PIR_NO_MOVEMENT   1

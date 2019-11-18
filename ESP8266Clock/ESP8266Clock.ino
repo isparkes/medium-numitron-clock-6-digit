@@ -49,12 +49,10 @@
 #include "HtmlServer.h"
 #include "NtpAsync.h"
 #include "VFDDefs.h"
-#include "OLED.h"
 
 #define DEBUG_OFF
 
 NtpAsync ntpAsync;
-OLED oled;
 
 //**********************************************************************************
 //**********************************************************************************
@@ -99,10 +97,6 @@ void setup()
   Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
   debugMsg("I2C master started");
 
-  oled.setUp();
-  oled.clearDisplay();
-  oled.showScrollingMessage("Loading SPIFFS...");
-
   button1.reset();
 
   setDiagnosticLED(DIAGS_SPIFFS, STATUS_YELLOW);
@@ -115,10 +109,6 @@ void setup()
   if (button1.isButtonPressedNow()) {
     setDiagnosticLED(DIAGS_SPIFFS, STATUS_BLUE);
     factoryReset();
-    
-    oled.clearDisplay();
-    oled.showScrollingMessage("Doing factory reset");
-    
     delay(1000);
     ESP.restart();
   }
@@ -133,16 +123,10 @@ void setup()
 
   // **********************************************************************
 
-  oled.showScrollingMessage("SPIFFS loaded");
-  
   // Clear down any spurious button action
   button1.reset();
 
   if (testMode) {
-    oled.showScrollingMessage("Test Sequence");
-    oled.showScrollingMessage("To exit, press button");
-    oled.showScrollingMessage("when showing 88:88:88");
-
     debugMsg("Doing test sequence");
     boolean oldUseLDR = useLDR;
     byte oldBacklightMode = backlightMode;
@@ -176,6 +160,18 @@ void setup()
 
       loadNumberArraySameValue(secCount);
 
+      if (secCount % 2 == 0) {
+        ledLState = processStatusMode(STATUS_LED_MODE_OFF);
+        ledRState = processStatusMode(STATUS_LED_MODE_OFF);
+        led1State = true;
+        led2State = false;
+      } else {
+        ledLState = processStatusMode(STATUS_LED_MODE_ON);
+        ledRState = processStatusMode(STATUS_LED_MODE_ON);
+        led1State = false;
+        led2State = true;
+      }
+
       // debugMsg("Setting display: " + String(secCount));
       outputDisplay();
 
@@ -201,9 +197,7 @@ void setup()
   button1.reset();
 
   // **********************************************************************
-  
-  oled.showScrollingMessage("Getting WiFi");
-  
+
   wifiManager.setConfigPortalTimeout(CONFIG_PORTAL_TIMEOUT);
   wifiManager.setAPCallback(configModeCallback);
 
@@ -212,10 +206,6 @@ void setup()
   shiftDigitsOutDiags();
 
   boolean connected = false;
-  oled.showScrollingMessage("AP Mode");
-  oled.showScrollingMessage("Connect to 'ESPClock'");
-  oled.showScrollingMessage("Password 'SetMeUp!'");
-  
   connected = wifiManager.autoConnect(WiFi.hostname().c_str(), "SetMeUp!");
 
   if (connected) {
@@ -230,9 +220,6 @@ void setup()
   IPAddress myIP = WiFi.localIP();
   debugMsg("AP IP address: " + formatIPAsString(apIP));
   debugMsg("IP address: " + formatIPAsString(myIP));
-
-  oled.clearDisplay();
-  oled.showScrollingMessage("IP: " + formatIPAsString(myIP));
 
   // If we lose the connection, we try to recover it
   WiFi.setAutoReconnect(true);
@@ -493,8 +480,6 @@ void performOncePerSecondProcessing() {
   // Set the indicator states
   ledLState = processStatusMode(statusModeL);
   ledRState = processStatusMode(statusModeR);
-
-  oled.setTimeString(String(hour()) + ":" + String(minute()) + ":" + String(second()));
 }
 
 // ************************************************************
@@ -1785,37 +1770,16 @@ void shiftOut24(uint8_t _dataPin1,
 // completely off.
 // ************************************************************
 void setBlankingPin() {
-  if (blankTubes) {
+  if (!blankTubes) {
+    lastLDRValue = ldrValue;
+  } else {
     // Fade out slowly
     if (lastLDRValue < 1023) {
-      lastLDRValue+=getDeltaAdj(1023,lastLDRValue);
+      lastLDRValue++;
     }
-  } else {
-    lastLDRValue-=getDeltaAdj(lastLDRValue,ldrValue);
   }
 
   analogWrite(BLANKPin, lastLDRValue);
-}
-
-// ************************************************************
-// Make fade out / fade in happen a bit quicker
-// ************************************************************
-int getDeltaAdj(int val1, int val2) {
-  int delta = val1 - val2;
-  int signVal = 0;
-  if (delta < 0) {
-    signVal = -1;
-    delta = -delta;
-  } else {
-    signVal = 1;
-  }
-  if (delta > 100) {
-    return 10*signVal;
-  } else if (delta > 10) {
-    return 3*signVal;
-  } else {
-    return signVal;
-  }
 }
 
 // ************************************************************
