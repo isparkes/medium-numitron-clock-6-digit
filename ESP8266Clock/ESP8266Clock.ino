@@ -50,7 +50,7 @@
 #include "NtpAsync.h"
 #include "VFDDefs.h"
 
-#define DEBUG_OFF
+#define DEBUG
 
 NtpAsync ntpAsync;
 
@@ -114,9 +114,14 @@ void setup()
   }
 
   if (!getConfigFromSpiffs()) {
-    debugMsg("No config found - resetting everything");
-    factoryReset();
-    setDiagnosticLED(DIAGS_SPIFFS, STATUS_BLUE);
+    if (testMountSpiffs()) {
+      debugMsg("No config found - resetting everything");
+      factoryReset();
+      setDiagnosticLED(DIAGS_SPIFFS, STATUS_BLUE);
+    } else {
+      // we couldn't mount SPIFFS because no SPIFFS is available
+      setDiagnosticLED(DIAGS_SPIFFS, STATUS_RED);
+    }
   } else {
     setDiagnosticLED(DIAGS_SPIFFS, STATUS_GREEN);
   }
@@ -128,6 +133,7 @@ void setup()
 
   if (testMode) {
     debugMsg("Doing test sequence");
+    delay(1000);
     boolean oldUseLDR = useLDR;
     byte oldBacklightMode = backlightMode;
 
@@ -141,11 +147,10 @@ void setup()
     allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
     setBlankingPin();
 
-    int secCount = 0;
-    int lastSecCount = 0;
     lastCheckMillis = millis();
 
     boolean inLoop = true;
+    int secCount = 0;
 
     while (inLoop) {
       // Otherwise we get SOFT WDT
@@ -161,10 +166,17 @@ void setup()
       loadNumberArraySameValue(secCount);
 
       if (secCount % 2 == 0) {
-        ledLState = processStatusMode(STATUS_LED_MODE_OFF);
-        ledRState = processStatusMode(STATUS_LED_MODE_OFF);
-        led1State = true;
-        led2State = false;
+        if (secCount == 8) {
+          ledLState = processStatusMode(STATUS_LED_MODE_ON);
+          ledRState = processStatusMode(STATUS_LED_MODE_ON);
+          led1State = true;
+          led2State = true;
+        } else {
+          ledLState = processStatusMode(STATUS_LED_MODE_OFF);
+          ledRState = processStatusMode(STATUS_LED_MODE_OFF);
+          led1State = true;
+          led2State = false;
+        }
       } else {
         ledLState = processStatusMode(STATUS_LED_MODE_ON);
         ledRState = processStatusMode(STATUS_LED_MODE_ON);
@@ -175,11 +187,7 @@ void setup()
       // debugMsg("Setting display: " + String(secCount));
       outputDisplay();
 
-      // debugMsg("Setting LEDs");
-      if (lastSecCount != secCount) {
-        setLeds();
-        lastSecCount = secCount;
-      }
+      setLeds();
 
       // debugMsg("Checing test mode exit condition");
       button1.checkButton(nowMillis);
@@ -2408,6 +2416,19 @@ int getTubeLag(int currentLDR) {
 //*                               SPIFFS functions                                 *
 //**********************************************************************************
 //**********************************************************************************
+
+// ************************************************************
+// Test SPIFFS
+// ************************************************************
+boolean testMountSpiffs() {
+  boolean mounted = false;
+  if (SPIFFS.begin()) {
+    mounted = true;
+    SPIFFS.end();
+  }
+
+  return mounted;
+}
 
 // ************************************************************
 // Retrieve the config from the SPIFFS
