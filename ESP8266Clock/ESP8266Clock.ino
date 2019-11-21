@@ -849,14 +849,19 @@ void setNextMode(int displayMode) {
         displayConfig();
         break;
       }
-    case MODE_PIR_TIMEOUT_UP:
-    case MODE_PIR_TIMEOUT_DOWN: {
-        loadNumberArrayConfInt(pirTimeout, displayMode);
+    case MODE_SLOTS_MODE: {
+        loadNumberArrayConfInt(slotsMode, displayMode);
         displayConfig();
         break;
       }
-    case MODE_SLOTS_MODE: {
-        loadNumberArrayConfInt(slotsMode, displayMode);
+    case MODE_LED_BLINK: {
+        loadNumberArrayConfInt(ledMode, displayMode);
+        displayConfig();
+        break;
+      }
+    case MODE_PIR_TIMEOUT_UP:
+    case MODE_PIR_TIMEOUT_DOWN: {
+        loadNumberArrayConfInt(pirTimeout, displayMode);
         displayConfig();
         break;
       }
@@ -1206,6 +1211,28 @@ void processCurrentMode(int displayMode) {
         displayConfig();
         break;
       }
+    case MODE_SLOTS_MODE: {
+        if (button1.isButtonPressedAndReleased()) {
+          slotsMode++;
+          if (slotsMode > SLOTS_MODE_MAX) {
+            slotsMode = SLOTS_MODE_MIN;
+          }
+        }
+        loadNumberArrayConfInt(slotsMode, displayMode);
+        displayConfig();
+        break;
+      }
+    case MODE_LED_BLINK: {
+        if (button1.isButtonPressedAndReleased()) {
+          ledMode++;
+          if (ledMode > LED_MODE_MAX) {
+            ledMode = LED_MODE_MIN;
+          }
+        }
+        loadNumberArrayConfInt(ledMode, displayMode);
+        displayConfig();
+        break;
+      }
     case MODE_PIR_TIMEOUT_UP: {
         if (button1.isButtonPressedAndReleased()) {
           pirTimeout += 10;
@@ -1225,17 +1252,6 @@ void processCurrentMode(int displayMode) {
           }
         }
         loadNumberArrayConfInt(pirTimeout, displayMode);
-        displayConfig();
-        break;
-      }
-    case MODE_SLOTS_MODE: {
-        if (button1.isButtonPressedAndReleased()) {
-          slotsMode++;
-          if (slotsMode > SLOTS_MODE_MAX) {
-            slotsMode = SLOTS_MODE_MIN;
-          }
-        }
-        loadNumberArrayConfInt(slotsMode, displayMode);
         displayConfig();
         break;
       }
