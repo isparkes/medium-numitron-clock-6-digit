@@ -41,6 +41,9 @@ String NtpAsync::getTZS() {
 // ************************************************************
 void NtpAsync::setUpdateInterval(int updateInterval) {
   _ntpUpdateInterval = updateInterval;
+  
+  // We changed the update interval, we need to force an update
+  resetNextUpdate();
 }
 
 // ************************************************************
@@ -68,6 +71,8 @@ String NtpAsync::getNtpPool() {
 // get the number of millis until the next update is due in seconds
 // ************************************************************
 signed int NtpAsync::getNextUpdate(unsigned long nowMillis) {
+  checkMillisOverflow(nowMillis);
+  
   // deal with the startup case - we always want to update 
   if (_lastUpdateFromServer == 0) {
     return -1;
@@ -102,6 +107,7 @@ String NtpAsync::getLastTimeFromServer() {
 // see if the NTP we got is still to be condsidered valid
 // ************************************************************
 bool NtpAsync::ntpTimeValid(unsigned long nowMillis) {
+  checkMillisOverflow(nowMillis);
   return _lastUpdateFromServer != 0 && ((nowMillis - _lastUpdateFromServer) < (2000 * _ntpUpdateInterval));
 }
 
@@ -244,4 +250,14 @@ void NtpAsync::setDebugCallback(DebugCallback dbcb) {
 void NtpAsync::setNewTimeCallback(NewTimeCallback ntcb) {
   _ntcb = ntcb;
   debugMsg("Time update callback set");
+}
+
+// ************************************************************
+// Check if we have had a time overflow and reset if so
+// ************************************************************
+void NtpAsync::checkMillisOverflow(unsigned long nowMillis) {
+  if (nowMillis < _lastUpdateFromServer) {
+    // Overflow, reset
+    resetNextUpdate();
+  }
 }

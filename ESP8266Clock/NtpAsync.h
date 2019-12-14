@@ -64,8 +64,8 @@ class NtpAsync
     DebugCallback _dbcb;
     NewTimeCallback _ntcb;
 
-    // print a debug message to the callback
-    void debugMsg(String message);
+    void debugMsg(String message);                        // print a debug message to the callback
+    void checkMillisOverflow(unsigned long nowMillis);    // handle millis overflow
 };
 
 #endif
