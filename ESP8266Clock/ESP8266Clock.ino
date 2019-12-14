@@ -2254,14 +2254,13 @@ void setTubesAndLEDSBlankMode() {
 }
 
 // ************************************************************
-// Set the diagnostic LED colour:
-// stepNumber 0..5
-// state: 0 = red, 1 = orange, 2 = green, 3 = blue
+// Set the diagnostic LED colour - progressively setting the
+// LEDs to dignostic colours
 // ************************************************************
 void setDiagnosticLED(byte stepNumber, byte state) {
   for (int i = 0 ; i < DIGIT_COUNT ; i++) {
     if (i > stepNumber) {
-      ledR[i] = ledG[i] = ledB[i] = 0;
+      ledR[i] = ledG[i] = ledB[i] = 0x1f;
     } else if (i == stepNumber) {
       if (state == STATUS_RED) {
         ledR[i] = 0xff;
