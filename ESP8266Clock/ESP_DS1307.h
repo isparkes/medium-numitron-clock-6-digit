@@ -13,12 +13,7 @@
 #define SAT 6
 #define SUN 7
 
-class DS1307
-{
-private:
-    uint8_t decToBcd(uint8_t val);
-    uint8_t bcdToDec(uint8_t val);
-
+class DS1307 {
 public:
     void begin();
     void startClock(void);
@@ -36,6 +31,9 @@ public:
     uint8_t dayOfMonth;
     uint8_t month;
     uint16_t year;
+private:
+    uint8_t decToBcd(uint8_t val);
+    uint8_t bcdToDec(uint8_t val);
 };
 
 #endif

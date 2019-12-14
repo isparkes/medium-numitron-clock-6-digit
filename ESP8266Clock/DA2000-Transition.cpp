@@ -25,10 +25,10 @@ void Transition::start(unsigned long now) {
   // else we are already running!
 }
 
-boolean Transition::runEffect(unsigned long now) {
+boolean Transition::runEffect(unsigned long now, boolean blankLeading) {
   switch (_selectedEffect) {
     case SLOTS_MODE_WIPE_WIPE:
-      return wipeInWipeOut(now);
+      return wipeInWipeOut(now, blankLeading);
       break;
     case SLOTS_MODE_BANG_BANG:
       return bangInBangOut(now);
@@ -51,7 +51,7 @@ void Transition::updateRegularDisplaySeconds(int seconds) {
   _regularDisplay[4] = seconds / 10;
 }
 
-boolean Transition::wipeInWipeOut(unsigned long now)
+boolean Transition::wipeInWipeOut(unsigned long now, boolean blankLeading)
 {
   if (now < _end) {
     int msCount = now - _started;

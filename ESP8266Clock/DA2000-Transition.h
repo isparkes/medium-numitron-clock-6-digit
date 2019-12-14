@@ -7,7 +7,6 @@
 
 extern byte numberArray[];
 extern byte displayType[];
-extern boolean blankLeading;
 
 class Transition
 {
@@ -19,7 +18,7 @@ class Transition
     void setRegularValues();
     void setAlternateValues();
     void saveCurrentDisplayType();
-    boolean runEffect(unsigned long);
+    boolean runEffect(unsigned long, boolean blankLeading);
     
   private:
     int _effectInDuration;
@@ -33,7 +32,7 @@ class Transition
     byte _alternateDisplay[DIGIT_COUNT] = {0, 0, 0, 0, 0, 0};
     byte _savedDisplayType[DIGIT_COUNT] = {NORMAL, NORMAL, NORMAL, NORMAL, NORMAL, NORMAL};
     
-    boolean wipeInWipeOut(unsigned long);
+    boolean wipeInWipeOut(unsigned long, boolean blankLeading);
     boolean bangInBangOut(unsigned long);
     void loadRegularValues();
     void loadAlternateValues();

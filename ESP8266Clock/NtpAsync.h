@@ -7,8 +7,6 @@
 #include <ESP8266WiFi.h>
 #include <DNSServer.h>          //https://github.com/esp8266/Arduino/tree/master/libraries/DNSServer
 
-// AsyncUDP _udp;
-
 typedef void (*DebugCallback) (String);
 typedef void (*NewTimeCallback) ();
 

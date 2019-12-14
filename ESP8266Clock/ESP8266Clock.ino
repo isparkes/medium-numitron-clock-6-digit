@@ -48,11 +48,22 @@
 #include "ESP_DS1307.h"
 #include "HtmlServer.h"
 #include "NtpAsync.h"
+#include "SPIFFS.h"
 #include "VFDDefs.h"
 
 #define DEBUG
 
+// NTP Component
 NtpAsync ntpAsync;
+
+// SPIFFS component
+SPIFFS_CLOCK spiffs;
+
+// Config from SPIFFS
+spiffs_config_t current_config;
+
+// Stats from SPIFFS
+spiffs_stats_t current_stats;
 
 //**********************************************************************************
 //**********************************************************************************
@@ -83,6 +94,9 @@ void setup()
   DebugCallback dbcb = debugMsg;
   ntpAsync.setDebugCallback(dbcb);
   ntpAsync.setDebugOutput(true);
+  
+  spiffs.setDebugCallback(dbcb);
+  spiffs.setDebugOutput(true);
 #endif
 
   // Set up the LED output
@@ -113,8 +127,8 @@ void setup()
     ESP.restart();
   }
 
-  if (!getConfigFromSpiffs()) {
-    if (testMountSpiffs()) {
+  if (!spiffs.getConfigFromSpiffs(&current_config)) {
+    if (spiffs.testMountSpiffs()) {
       debugMsg("No config found - resetting everything");
       factoryReset();
       setDiagnosticLED(DIAGS_SPIFFS, STATUS_BLUE);
@@ -131,17 +145,17 @@ void setup()
   // Clear down any spurious button action
   button1.reset();
 
-  if (testMode) {
+  if (current_config.testMode) {
     debugMsg("Doing test sequence");
     delay(1000);
-    boolean oldUseLDR = useLDR;
-    byte oldBacklightMode = backlightMode;
+    boolean oldUseLDR = current_config.useLDR;
+    byte oldbacklightMode = current_config.backlightMode;
 
     // turn off LDR
-    useLDR = false;
+    current_config.useLDR = false;
 
     // set backlights to change with the displayed digits
-    backlightMode = BACKLIGHT_COLOUR_TIME;
+    current_config.backlightMode = BACKLIGHT_COLOUR_TIME;
 
     // All the digits on full
     allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
@@ -193,13 +207,13 @@ void setup()
       button1.checkButton(nowMillis);
       if (button1.isButtonPressedNow() && (secCount == 8)) {
         inLoop = false;
-        testMode = false;
-        saveConfigToSpiffs();
+        current_config.testMode = false;
+        spiffs.saveConfigToSpiffs(&current_config);
       }
     }
 
-    useLDR = oldUseLDR;
-    backlightMode = oldBacklightMode;
+    current_config.useLDR = oldUseLDR;
+    current_config.backlightMode = oldbacklightMode;
   }
 
   button1.reset();
@@ -267,7 +281,7 @@ void setup()
     mdns.addService("http", "tcp", 80);
   }
 
-  setPIRPullup(usePIRPullup);
+  setPIRPullup(current_config.usePIRPullup);
 
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
@@ -293,7 +307,7 @@ void setup()
 
   // don't blank anything right now
   blanked = false;
-  setTubesAndLEDSBlankMode();
+  setTubesAndLEDSblankMode();
 
   loadNumberArrayPOSTMessage(DIAGS_DEBUG);
   shiftDigitsOutDiags();
@@ -304,7 +318,7 @@ void setup()
 #endif
 
   debugMsg("Exit startup in 1 second");
-  getStatsFromSpiffs();
+  spiffs.getStatsFromSpiffs(&current_stats);
   delay(1000);
 }
 
@@ -371,7 +385,7 @@ void loop()
     currentMode = MODE_MIN;
 
     // Store the latest config if we exit the config mode
-    saveConfigToSpiffs();
+    spiffs.saveConfigToSpiffs(&current_config);
 
     // Preset the display
     allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
@@ -384,7 +398,7 @@ void loop()
       currentMode = MODE_MIN;
 
       // Store the latest config if we exit the config mode
-      saveConfigToSpiffs();
+      spiffs.saveConfigToSpiffs(&current_config);
 
       // Preset the display
       allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
@@ -470,7 +484,7 @@ void performOncePerSecondProcessing() {
     blanked = false;
   }
 
-  setTubesAndLEDSBlankMode();
+  setTubesAndLEDSblankMode();
 
   // Decrement the value display counter
   // 0xff means "forever", so don't decrement it
@@ -486,8 +500,8 @@ void performOncePerSecondProcessing() {
   }
 
   // Set the indicator states
-  ledLState = processStatusMode(statusModeL);
-  ledRState = processStatusMode(statusModeR);
+  ledLState = processStatusMode(current_config.statusModeL);
+  ledRState = processStatusMode(current_config.statusModeR);
 }
 
 // ************************************************************
@@ -503,10 +517,10 @@ void performOncePerMinuteProcessing() {
   getRTCTime(true);
 
   // Usage stats
-  uptimeMins++;
+  current_stats.uptimeMins++;
 
   if (!blankTubes) {
-    tubeOnTimeMins++;
+    current_stats.tubeOnTimeMins++;
   }
 
   // RTC - light up only if we have lost our RTC
@@ -536,7 +550,7 @@ void performOncePerHourProcessing() {
 // ************************************************************
 void performOncePerDayProcessing() {
   debugMsg("---> OncePerDayProcessing");
-  saveStatsToSpiffs();
+  spiffs.saveStatsToSpiffs(&current_stats);
 }
 
 // ************************************************************
@@ -553,15 +567,15 @@ void setLeds()
   }
 
   // Fixed backlight dim setting
-  float fixedDim = (float) backlightDimFactor / (float) 100;
+  float fixedDim = (float) current_config.backlightDimFactor / (float) 100;
 
-  // calculate the PWM factor, goes between minDim% and 100%
+  // calculate the PWM factor, goes between current_config.minDim% and 100%
   float dimFactor = (float) (1023 - ldrValue) / (float) 1023.0 * fixedDim;
 
   // Calculate the brightness factor based on the "pulse"
   float pwmFactor = (float) secsDelta / (float) 1000.0;
 
-  switch (ledMode) {
+  switch (current_config.ledMode) {
     case LED_RAILROAD:
       {
         if (upOrDown) {
@@ -637,16 +651,16 @@ void setLeds()
                 getLEDAdjusted(0, 1, 1));
   } else {
     // RGB Backlight PWM led output
-    switch (backlightMode) {
+    switch (current_config.backlightMode) {
       case BACKLIGHT_FIXED:
-        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], 1, fixedDim),
-                    getLEDAdjusted(rgb_backlight_curve[grnCnl], 1, fixedDim),
-                    getLEDAdjusted(rgb_backlight_curve[bluCnl], 1, fixedDim));
+        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], 1, fixedDim),
+                    getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], 1, fixedDim),
+                    getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], 1, fixedDim));
         break;
       case BACKLIGHT_PULSE:
-        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], pwmFactor, fixedDim),
-                    getLEDAdjusted(rgb_backlight_curve[grnCnl], pwmFactor, fixedDim),
-                    getLEDAdjusted(rgb_backlight_curve[bluCnl], pwmFactor, fixedDim));
+        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], pwmFactor, fixedDim),
+                    getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], pwmFactor, fixedDim),
+                    getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], pwmFactor, fixedDim));
         break;
       case BACKLIGHT_CYCLE:
         cycleColours3(colors);
@@ -655,14 +669,14 @@ void setLeds()
                     getLEDAdjusted(colors[2], 1, fixedDim));
         break;
       case BACKLIGHT_FIXED_DIM:
-        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], 1, dimFactor),
-                    getLEDAdjusted(rgb_backlight_curve[grnCnl], 1, dimFactor),
-                    getLEDAdjusted(rgb_backlight_curve[bluCnl], 1, dimFactor));
+        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], 1, dimFactor),
+                    getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], 1, dimFactor),
+                    getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], 1, dimFactor));
         break;
       case BACKLIGHT_PULSE_DIM:
-        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[redCnl], pwmFactor, dimFactor),
-                    getLEDAdjusted(rgb_backlight_curve[grnCnl], pwmFactor, dimFactor),
-                    getLEDAdjusted(rgb_backlight_curve[bluCnl], pwmFactor, dimFactor));
+        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], pwmFactor, dimFactor),
+                    getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], pwmFactor, dimFactor),
+                    getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], pwmFactor, dimFactor));
         break;
       case BACKLIGHT_CYCLE_DIM:
         cycleColours3(colors);
@@ -712,7 +726,7 @@ boolean checkPIR(unsigned long nowMillis) {
   } else {
     if (!pirInstalled) debugMsg("Marking PIR as installed");
     pirInstalled = true;
-    if (nowMillis > (pirLastSeen + (pirTimeout * 1000))) {
+    if (nowMillis > (pirLastSeen + (current_config.pirTimeout * 1000))) {
       pirStatus = false;
       return true;
     } else {
@@ -760,7 +774,7 @@ void outputLEDBuffer() {
 void setNextMode(int displayMode) {
   // turn off blanking
   blanked = false;
-  setTubesAndLEDSBlankMode();
+  setTubesAndLEDSblankMode();
 
   switch (displayMode) {
     case MODE_TIME: {
@@ -803,109 +817,109 @@ void setNextMode(int displayMode) {
         break;
       }
     case MODE_12_24: {
-        loadNumberArrayConfBool(hourMode, displayMode);
+        loadNumberArrayConfBool(current_config.hourMode, displayMode);
         displayConfig();
         break;
       }
     case MODE_LEAD_BLANK: {
-        loadNumberArrayConfBool(blankLeading, displayMode);
+        loadNumberArrayConfBool(current_config.blankLeading, displayMode);
         displayConfig();
         break;
       }
     case MODE_DATE_FORMAT: {
-        loadNumberArrayConfInt(dateFormat, displayMode);
+        loadNumberArrayConfInt(current_config.dateFormat, displayMode);
         displayConfig();
         break;
       }
     case MODE_DAY_BLANKING: {
-        loadNumberArrayConfInt(dayBlanking, displayMode);
+        loadNumberArrayConfInt(current_config.dayBlanking, displayMode);
         displayConfig();
         break;
       }
     case MODE_HR_BLNK_START: {
-        if ((dayBlanking == DAY_BLANKING_NEVER) ||
-            (dayBlanking == DAY_BLANKING_WEEKEND) ||
-            (dayBlanking == DAY_BLANKING_WEEKDAY) ||
-            (dayBlanking == DAY_BLANKING_ALWAYS)) {
+        if ((current_config.dayBlanking == DAY_BLANKING_NEVER) ||
+            (current_config.dayBlanking == DAY_BLANKING_WEEKEND) ||
+            (current_config.dayBlanking == DAY_BLANKING_WEEKDAY) ||
+            (current_config.dayBlanking == DAY_BLANKING_ALWAYS)) {
           // Skip past the start and end hour if the blanking mode says it is not relevant
           setNewNextMode(MODE_USE_LDR);
         }
-        loadNumberArrayConfInt(blankHourStart, displayMode);
+        loadNumberArrayConfInt(current_config.blankHourStart, displayMode);
         displayConfig();
         break;
       }
     case MODE_HR_BLNK_END: {
-        loadNumberArrayConfInt(blankHourEnd, displayMode);
+        loadNumberArrayConfInt(current_config.blankHourEnd, displayMode);
         displayConfig();
         break;
       }
     case MODE_USE_LDR: {
-        loadNumberArrayConfBool(useLDR, displayMode);
+        loadNumberArrayConfBool(current_config.useLDR, displayMode);
         displayConfig();
         break;
       }
     case MODE_BLANK_MODE: {
-        loadNumberArrayConfInt(blankMode, displayMode);
+        loadNumberArrayConfInt(current_config.blankMode, displayMode);
         displayConfig();
         break;
       }
     case MODE_SLOTS_MODE: {
-        loadNumberArrayConfInt(slotsMode, displayMode);
+        loadNumberArrayConfInt(current_config.slotsMode, displayMode);
         displayConfig();
         break;
       }
     case MODE_LED_BLINK: {
-        loadNumberArrayConfInt(ledMode, displayMode);
+        loadNumberArrayConfInt(current_config.ledMode, displayMode);
         displayConfig();
         break;
       }
     case MODE_PIR_TIMEOUT_UP:
     case MODE_PIR_TIMEOUT_DOWN: {
-        loadNumberArrayConfInt(pirTimeout, displayMode);
+        loadNumberArrayConfInt(current_config.pirTimeout, displayMode);
         displayConfig();
         break;
       }
     case MODE_BACKLIGHT_MODE: {
-        loadNumberArrayConfInt(backlightMode, displayMode);
+        loadNumberArrayConfInt(current_config.backlightMode, displayMode);
         displayConfig();
         break;
       }
     case MODE_RED_CNL: {
-        if ((backlightMode == BACKLIGHT_CYCLE) || (backlightMode == BACKLIGHT_CYCLE_DIM))  {
+        if ((current_config.backlightMode == BACKLIGHT_CYCLE) || (current_config.backlightMode == BACKLIGHT_CYCLE_DIM))  {
           // Skip if we are in cycle mode
           setNewNextMode(MODE_CYCLE_SPEED);
         }
-        loadNumberArrayConfInt(redCnl, displayMode);
+        loadNumberArrayConfInt(current_config.redCnl, displayMode);
         displayConfig();
         break;
       }
     case MODE_GRN_CNL: {
-        loadNumberArrayConfInt(grnCnl, displayMode);
+        loadNumberArrayConfInt(current_config.grnCnl, displayMode);
         displayConfig();
         break;
       }
     case MODE_BLU_CNL: {
-        loadNumberArrayConfInt(bluCnl, displayMode);
+        loadNumberArrayConfInt(current_config.bluCnl, displayMode);
         displayConfig();
         break;
       }
     case MODE_CYCLE_SPEED: {
-        if ((backlightMode != BACKLIGHT_CYCLE) && (backlightMode != BACKLIGHT_CYCLE_DIM))  {
+        if ((current_config.backlightMode != BACKLIGHT_CYCLE) && (current_config.backlightMode != BACKLIGHT_CYCLE_DIM))  {
           // Show only if we are in cycle mode
           setNewNextMode(MODE_MIN_DIM_UP);
         }
-        loadNumberArrayConfInt(cycleSpeed, displayMode);
+        loadNumberArrayConfInt(current_config.cycleSpeed, displayMode);
         displayConfig();
         break;
       }
     case MODE_MIN_DIM_UP:
     case MODE_MIN_DIM_DOWN: {
-        loadNumberArrayConfInt(minDim, displayMode);
+        loadNumberArrayConfInt(current_config.minDim, displayMode);
         displayConfig();
         break;
       }
     case MODE_USE_PIR_PULLUP: {
-        loadNumberArrayConfBool(usePIRPullup, displayMode);
+        loadNumberArrayConfBool(current_config.usePIRPullup, displayMode);
         displayConfig();
         break;
       }
@@ -951,7 +965,7 @@ void processCurrentMode(int displayMode) {
               blankSuppressedMillis = 3600000 * 4;
             }
             blanked = false;
-            setTubesAndLEDSBlankMode();
+            setTubesAndLEDSblankMode();
           } else {
             // Always start from the first mode, or increment the temp mode if we are already in a display
             if (tempDisplayModeDuration > 0) {
@@ -971,7 +985,7 @@ void processCurrentMode(int displayMode) {
 
         if (tempDisplayModeDuration > 0) {
           blanked = false;
-          setTubesAndLEDSBlankMode();
+          setTubesAndLEDSblankMode();
           if (tempDisplayMode == TEMP_MODE_DATE) {
             loadNumberArrayDate();
           }
@@ -1024,11 +1038,11 @@ void processCurrentMode(int displayMode) {
 
         } else {
 
-          if (slotsMode > SLOTS_MODE_MIN) {
+          if (current_config.slotsMode > SLOTS_MODE_MIN) {
 
             // Which slots transition are we using?
             if (!msgDisplaying) {
-              switch (slotsMode) {
+              switch (current_config.slotsMode) {
                 case SLOTS_MODE_WIPE_WIPE: {
                     activeTransition = &transitionWipe;
                     break;
@@ -1054,7 +1068,7 @@ void processCurrentMode(int displayMode) {
             }
 
             // Continue slots transition
-            msgDisplaying = activeTransition->runEffect(nowMillis);
+            msgDisplaying = activeTransition->runEffect(nowMillis, current_config.blankLeading);
             if (msgDisplaying) {
               activeTransition->updateRegularDisplaySeconds(second());
             }
@@ -1134,222 +1148,222 @@ void processCurrentMode(int displayMode) {
       }
     case MODE_12_24: {
         if (button1.isButtonPressedAndReleased()) {
-          hourMode = ! hourMode;
+          current_config.hourMode = ! current_config.hourMode;
         }
-        loadNumberArrayConfBool(hourMode, displayMode);
+        loadNumberArrayConfBool(current_config.hourMode, displayMode);
         displayConfig();
         break;
       }
     case MODE_LEAD_BLANK: {
         if (button1.isButtonPressedAndReleased()) {
-          blankLeading = !blankLeading;
+          current_config.blankLeading = !current_config.blankLeading;
         }
-        loadNumberArrayConfBool(blankLeading, displayMode);
+        loadNumberArrayConfBool(current_config.blankLeading, displayMode);
         displayConfig();
         break;
       }
     case MODE_DATE_FORMAT: {
         if (button1.isButtonPressedAndReleased()) {
-          dateFormat++;
-          if (dateFormat > DATE_FORMAT_MAX) {
-            dateFormat = DATE_FORMAT_MIN;
+          current_config.dateFormat++;
+          if (current_config.dateFormat > DATE_FORMAT_MAX) {
+            current_config.dateFormat = DATE_FORMAT_MIN;
           }
         }
-        loadNumberArrayConfInt(dateFormat, displayMode);
+        loadNumberArrayConfInt(current_config.dateFormat, displayMode);
         displayConfig();
         break;
       }
     case MODE_DAY_BLANKING: {
         if (button1.isButtonPressedAndReleased()) {
-          dayBlanking++;
-          if (dayBlanking > DAY_BLANKING_MAX) {
-            dayBlanking = DAY_BLANKING_MIN;
+          current_config.dayBlanking++;
+          if (current_config.dayBlanking > DAY_BLANKING_MAX) {
+            current_config.dayBlanking = DAY_BLANKING_MIN;
           }
         }
-        loadNumberArrayConfInt(dayBlanking, displayMode);
+        loadNumberArrayConfInt(current_config.dayBlanking, displayMode);
         displayConfig();
         break;
       }
     case MODE_HR_BLNK_START: {
         if (button1.isButtonPressedAndReleased()) {
-          blankHourStart++;
-          if (blankHourStart > HOURS_MAX) {
-            blankHourStart = 0;
+          current_config.blankHourStart++;
+          if (current_config.blankHourStart > HOURS_MAX) {
+            current_config.blankHourStart = 0;
           }
         }
-        loadNumberArrayConfInt(blankHourStart, displayMode);
+        loadNumberArrayConfInt(current_config.blankHourStart, displayMode);
         displayConfig();
         break;
       }
     case MODE_HR_BLNK_END: {
         if (button1.isButtonPressedAndReleased()) {
-          blankHourEnd++;
-          if (blankHourEnd > HOURS_MAX) {
-            blankHourEnd = 0;
+          current_config.blankHourEnd++;
+          if (current_config.blankHourEnd > HOURS_MAX) {
+            current_config.blankHourEnd = 0;
           }
         }
-        loadNumberArrayConfInt(blankHourEnd, displayMode);
+        loadNumberArrayConfInt(current_config.blankHourEnd, displayMode);
         displayConfig();
         break;
       }
     case MODE_BLANK_MODE: {
         if (button1.isButtonPressedAndReleased()) {
-          blankMode++;
-          if (blankMode > BLANK_MODE_MAX) {
-            blankMode = BLANK_MODE_MIN;
+          current_config.blankMode++;
+          if (current_config.blankMode > BLANK_MODE_MAX) {
+            current_config.blankMode = BLANK_MODE_MIN;
           }
         }
-        loadNumberArrayConfInt(blankMode, displayMode);
+        loadNumberArrayConfInt(current_config.blankMode, displayMode);
         displayConfig();
         break;
       }
     case MODE_USE_LDR: {
         if (button1.isButtonPressedAndReleased()) {
-          useLDR = !useLDR;
+          current_config.useLDR = !current_config.useLDR;
         }
-        loadNumberArrayConfBool(useLDR, displayMode);
+        loadNumberArrayConfBool(current_config.useLDR, displayMode);
         displayConfig();
         break;
       }
     case MODE_SLOTS_MODE: {
         if (button1.isButtonPressedAndReleased()) {
-          slotsMode++;
-          if (slotsMode > SLOTS_MODE_MAX) {
-            slotsMode = SLOTS_MODE_MIN;
+          current_config.slotsMode++;
+          if (current_config.slotsMode > SLOTS_MODE_MAX) {
+            current_config.slotsMode = SLOTS_MODE_MIN;
           }
         }
-        loadNumberArrayConfInt(slotsMode, displayMode);
+        loadNumberArrayConfInt(current_config.slotsMode, displayMode);
         displayConfig();
         break;
       }
     case MODE_LED_BLINK: {
         if (button1.isButtonPressedAndReleased()) {
-          ledMode++;
-          if (ledMode > LED_MODE_MAX) {
-            ledMode = LED_MODE_MIN;
+          current_config.ledMode++;
+          if (current_config.ledMode > LED_MODE_MAX) {
+            current_config.ledMode = LED_MODE_MIN;
           }
         }
-        loadNumberArrayConfInt(ledMode, displayMode);
+        loadNumberArrayConfInt(current_config.ledMode, displayMode);
         displayConfig();
         break;
       }
     case MODE_PIR_TIMEOUT_UP: {
         if (button1.isButtonPressedAndReleased()) {
-          pirTimeout += 10;
-          if (pirTimeout > PIR_TIMEOUT_MAX) {
-            pirTimeout = PIR_TIMEOUT_MIN;
+          current_config.pirTimeout += 10;
+          if (current_config.pirTimeout > PIR_TIMEOUT_MAX) {
+            current_config.pirTimeout = PIR_TIMEOUT_MIN;
           }
         }
-        loadNumberArrayConfInt(pirTimeout, displayMode);
+        loadNumberArrayConfInt(current_config.pirTimeout, displayMode);
         displayConfig();
         break;
       }
     case MODE_PIR_TIMEOUT_DOWN: {
         if (button1.isButtonPressedAndReleased()) {
-          pirTimeout -= 10;
-          if (pirTimeout < PIR_TIMEOUT_MIN) {
-            pirTimeout = PIR_TIMEOUT_MAX;
+          current_config.pirTimeout -= 10;
+          if (current_config.pirTimeout < PIR_TIMEOUT_MIN) {
+            current_config.pirTimeout = PIR_TIMEOUT_MAX;
           }
         }
-        loadNumberArrayConfInt(pirTimeout, displayMode);
+        loadNumberArrayConfInt(current_config.pirTimeout, displayMode);
         displayConfig();
         break;
       }
     case MODE_BACKLIGHT_MODE: {
         if (button1.isButtonPressedAndReleased()) {
-          backlightMode++;
-          if (backlightMode > BACKLIGHT_MAX) {
-            backlightMode = BACKLIGHT_MIN;
+          current_config.backlightMode++;
+          if (current_config.backlightMode > BACKLIGHT_MAX) {
+            current_config.backlightMode = BACKLIGHT_MIN;
           }
         }
-        loadNumberArrayConfInt(backlightMode, displayMode);
+        loadNumberArrayConfInt(current_config.backlightMode, displayMode);
         displayConfig();
         break;
       }
     case MODE_RED_CNL: {
-        if ((backlightMode == BACKLIGHT_CYCLE) || (backlightMode == BACKLIGHT_CYCLE_DIM) || (backlightMode == BACKLIGHT_COLOUR_TIME) || (backlightMode == BACKLIGHT_COLOUR_TIME_DIM))  {
+        if ((current_config.backlightMode == BACKLIGHT_CYCLE) || (current_config.backlightMode == BACKLIGHT_CYCLE_DIM) || (current_config.backlightMode == BACKLIGHT_COLOUR_TIME) || (current_config.backlightMode == BACKLIGHT_COLOUR_TIME_DIM))  {
           // Skip if we are in cycle mode
           nextMode++;
           currentMode++;
         }
 
         if (button1.isButtonPressedAndReleased()) {
-          redCnl++;
-          if (redCnl > COLOUR_CNL_MAX) {
-            redCnl = COLOUR_CNL_MIN;
+          current_config.redCnl++;
+          if (current_config.redCnl > COLOUR_CNL_MAX) {
+            current_config.redCnl = COLOUR_CNL_MIN;
           }
         }
-        loadNumberArrayConfInt(redCnl, displayMode);
+        loadNumberArrayConfInt(current_config.redCnl, displayMode);
         displayConfig();
         break;
       }
     case MODE_GRN_CNL: {
-        if ((backlightMode == BACKLIGHT_CYCLE) || (backlightMode == BACKLIGHT_CYCLE_DIM) || (backlightMode == BACKLIGHT_COLOUR_TIME) || (backlightMode == BACKLIGHT_COLOUR_TIME_DIM))  {
+        if ((current_config.backlightMode == BACKLIGHT_CYCLE) || (current_config.backlightMode == BACKLIGHT_CYCLE_DIM) || (current_config.backlightMode == BACKLIGHT_COLOUR_TIME) || (current_config.backlightMode == BACKLIGHT_COLOUR_TIME_DIM))  {
           // Skip if we are in cycle mode
           nextMode++;
           currentMode++;
         }
 
         if (button1.isButtonPressedAndReleased()) {
-          grnCnl++;
-          if (grnCnl > COLOUR_CNL_MAX) {
-            grnCnl = COLOUR_CNL_MIN;
+          current_config.grnCnl++;
+          if (current_config.grnCnl > COLOUR_CNL_MAX) {
+            current_config.grnCnl = COLOUR_CNL_MIN;
           }
         }
-        loadNumberArrayConfInt(grnCnl, displayMode);
+        loadNumberArrayConfInt(current_config.grnCnl, displayMode);
         displayConfig();
         break;
       }
     case MODE_BLU_CNL: {
         if (button1.isButtonPressedAndReleased()) {
-          bluCnl++;
-          if (bluCnl > COLOUR_CNL_MAX) {
-            bluCnl = COLOUR_CNL_MIN;
+          current_config.bluCnl++;
+          if (current_config.bluCnl > COLOUR_CNL_MAX) {
+            current_config.bluCnl = COLOUR_CNL_MIN;
           }
         }
-        loadNumberArrayConfInt(bluCnl, displayMode);
+        loadNumberArrayConfInt(current_config.bluCnl, displayMode);
         displayConfig();
         break;
       }
     case MODE_CYCLE_SPEED: {
         if (button1.isButtonPressedAndReleased()) {
-          cycleSpeed = cycleSpeed + 2;
-          if (cycleSpeed > CYCLE_SPEED_MAX) {
-            cycleSpeed = CYCLE_SPEED_MIN;
+          current_config.cycleSpeed = current_config.cycleSpeed + 2;
+          if (current_config.cycleSpeed > CYCLE_SPEED_MAX) {
+            current_config.cycleSpeed = CYCLE_SPEED_MIN;
           }
         }
-        loadNumberArrayConfInt(cycleSpeed, displayMode);
+        loadNumberArrayConfInt(current_config.cycleSpeed, displayMode);
         displayConfig();
         break;
       }
     case MODE_MIN_DIM_UP: {
         if (button1.isButtonPressedAndReleased()) {
-          minDim += 10;
-          if (minDim > MIN_DIM_MAX) {
-            minDim = MIN_DIM_MAX;
+          current_config.minDim += 10;
+          if (current_config.minDim > MIN_DIM_MAX) {
+            current_config.minDim = MIN_DIM_MAX;
           }
         }
-        loadNumberArrayConfInt(minDim, displayMode);
+        loadNumberArrayConfInt(current_config.minDim, displayMode);
         displayConfig();
         break;
       }
     case MODE_MIN_DIM_DOWN: {
         if (button1.isButtonPressedAndReleased()) {
-          minDim -= 10;
-          if (minDim < MIN_DIM_MIN) {
-            minDim = MIN_DIM_MIN;
+          current_config.minDim -= 10;
+          if (current_config.minDim < MIN_DIM_MIN) {
+            current_config.minDim = MIN_DIM_MIN;
           }
         }
-        loadNumberArrayConfInt(minDim, displayMode);
+        loadNumberArrayConfInt(current_config.minDim, displayMode);
         displayConfig();
         break;
       }
     case MODE_USE_PIR_PULLUP: {
         if (button1.isButtonPressedAndReleased()) {
-          usePIRPullup = !usePIRPullup;
+          current_config.usePIRPullup = !current_config.usePIRPullup;
         }
-        loadNumberArrayConfBool(usePIRPullup, displayMode);
-        digitalWrite(pirPin, usePIRPullup);
+        loadNumberArrayConfBool(current_config.usePIRPullup, displayMode);
+        digitalWrite(pirPin, current_config.usePIRPullup);
         displayConfig();
         break;
       }
@@ -1383,7 +1397,7 @@ byte getLEDAdjusted(float rawValue, float ledPWMVal, float dimFactor) {
 // ************************************************************
 void cycleColours3(int colors[3]) {
   cycleCount++;
-  if (cycleCount > cycleSpeed) {
+  if (cycleCount > current_config.cycleSpeed) {
     cycleCount = 0;
 
     if (changeSteps == 0) {
@@ -1451,7 +1465,7 @@ void loadNumberArrayTime() {
   numberArray[4] = second() / 10;
   numberArray[3] = minute() % 10;
   numberArray[2] = minute() / 10;
-  if (hourMode) {
+  if (current_config.hourMode) {
     numberArray[1] = hourFormat12() % 10;
     numberArray[0] = hourFormat12() / 10;
   } else {
@@ -1556,7 +1570,7 @@ void loadNumberArrayPOSTMessage(byte val) {
 // Break the time into displayable digits
 // ************************************************************
 void loadNumberArrayDate() {
-  switch (dateFormat) {
+  switch (current_config.dateFormat) {
     case DATE_FORMAT_YYMMDD:
       numberArray[5] = day() % 10;
       numberArray[4] = day() / 10;
@@ -1812,7 +1826,7 @@ void setBlankingPin() {
 void applyBlanking() {
 
   // We only want to blank the hours tens digit
-  if (blankLeading && numberArray[0] == 0) {
+  if (current_config.blankLeading && numberArray[0] == 0) {
     displayType[0] = BLANKED;
   }
   else {
@@ -1867,7 +1881,7 @@ void smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) {
 // highlight years taking into account the date format
 // ************************************************************
 void highlightYearsDateFormat() {
-  switch (dateFormat) {
+  switch (current_config.dateFormat) {
     case DATE_FORMAT_YYMMDD:
       highlight0and1();
       break;
@@ -1884,7 +1898,7 @@ void highlightYearsDateFormat() {
 // highlight years taking into account the date format
 // ************************************************************
 void highlightMonthsDateFormat() {
-  switch (dateFormat) {
+  switch (current_config.dateFormat) {
     case DATE_FORMAT_YYMMDD:
       highlight2and3();
       break;
@@ -1901,7 +1915,7 @@ void highlightMonthsDateFormat() {
 // highlight days taking into account the date format
 // ************************************************************
 void highlightDaysDateFormat() {
-  switch (dateFormat) {
+  switch (current_config.dateFormat) {
     case DATE_FORMAT_YYMMDD:
       highlight4and5();
       break;
@@ -2169,7 +2183,7 @@ boolean checkBlanking() {
   // Check day blanking, but only when we are in
   // normal time mode
   if (currentMode == MODE_TIME) {
-    switch (dayBlanking) {
+    switch (current_config.dayBlanking) {
       case DAY_BLANKING_NEVER:
         return false;
       case DAY_BLANKING_HOURS:
@@ -2209,12 +2223,12 @@ String getPIRStateDisplay() {
 // If we are currently blanked based on hours
 // ************************************************************
 boolean getHoursBlanked() {
-  if (blankHourStart > blankHourEnd) {
+  if (current_config.blankHourStart > current_config.blankHourEnd) {
     // blanking before midnight
-    return ((hour() >= blankHourStart) || (hour() < blankHourEnd));
-  } else if (blankHourStart < blankHourEnd) {
+    return ((hour() >= current_config.blankHourStart) || (hour() < current_config.blankHourEnd));
+  } else if (current_config.blankHourStart < current_config.blankHourEnd) {
     // dim at or after midnight
-    return ((hour() >= blankHourStart) && (hour() < blankHourEnd));
+    return ((hour() >= current_config.blankHourStart) && (hour() < current_config.blankHourEnd));
   } else {
     // no dimming if Start = End
     return false;
@@ -2225,9 +2239,9 @@ boolean getHoursBlanked() {
 // Set the tubes and LEDs blanking variables based on blanking mode and
 // blank mode settings
 // ************************************************************
-void setTubesAndLEDSBlankMode() {
+void setTubesAndLEDSblankMode() {
   if (blanked) {
-    switch (blankMode) {
+    switch (current_config.blankMode) {
       case BLANK_MODE_TUBES:
         {
           blankTubes = true;
@@ -2391,24 +2405,24 @@ void setRTCTime() {
 // total darkness is around 900.
 // ******************************************************************
 int getDimmingFromLDR() {
-  if (useLDR) {
+  if (current_config.useLDR) {
     int rawLDR = analogRead(LDRPin);
 
     // If we are below the threshold value, set full brightness
-    int rawSensorVal = rawLDR - thresholdBright;
+    int rawSensorVal = rawLDR - current_config.thresholdBright;
 
     if (rawSensorVal < 0) rawSensorVal = 0;
 
-    double sensorFactor = (float) sensitivityLDR / 100.0;
+    double sensorFactor = (float) current_config.sensitivityLDR / 100.0;
 
     double sensorVal = (float) rawSensorVal * sensorFactor;
 
     double sensorDiff = rawSensorVal - sensorLDRSmoothed;
-    sensorLDRSmoothed += (sensorDiff / (double) sensorSmoothCountLDR);
+    sensorLDRSmoothed += (sensorDiff / (double) current_config.sensorSmoothCountLDR);
 
     int returnValue = sensorLDRSmoothed;
 
-    if (returnValue > (1023 - minDim)) returnValue = (1023 - minDim);
+    if (returnValue > (1023 - current_config.minDim)) returnValue = (1023 - current_config.minDim);
 
     return returnValue;
   } else {
@@ -2426,350 +2440,53 @@ int getTubeLag(int currentLDR) {
   return returnValue;
 }
 
-//**********************************************************************************
-//**********************************************************************************
-//*                               SPIFFS functions                                 *
-//**********************************************************************************
-//**********************************************************************************
-
-// ************************************************************
-// Test SPIFFS
-// ************************************************************
-boolean testMountSpiffs() {
-  boolean mounted = false;
-  if (SPIFFS.begin()) {
-    mounted = true;
-    SPIFFS.end();
-  }
-
-  return mounted;
-}
-
-// ************************************************************
-// Retrieve the config from the SPIFFS
-// ************************************************************
-boolean getConfigFromSpiffs() {
-  boolean loaded = false;
-  if (SPIFFS.begin()) {
-    debugMsg("mounted file system");
-    if (SPIFFS.exists("/config.json")) {
-      //file exists, reading and loading
-      debugMsg("reading config file");
-      File configFile = SPIFFS.open("/config.json", "r");
-      if (configFile) {
-        debugMsg("opened config file");
-        size_t size = configFile.size();
-        // Allocate a buffer to store contents of the file.
-        std::unique_ptr<char[]> buf(new char[size]);
-
-        configFile.readBytes(buf.get(), size);
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject& json = jsonBuffer.parseObject(buf.get());
-        json.printTo(Serial);
-        debugMsg("\n");
-
-        if (json.success()) {
-          debugMsg("parsed json");
-
-          String ntpPool = json["ntp_pool"].as<String>();
-          debugMsg("Loaded NTP pool: " + ntpPool);
-          ntpAsync.setNtpPool(ntpPool);
-
-          int ntpUpdateInterval = json["ntp_update_interval"].as<int>();
-          debugMsg("Loaded NTP update interval: " + String(ntpUpdateInterval));
-          ntpAsync.setUpdateInterval(ntpUpdateInterval);
-
-          String tzs = json["time_zone_string"].as<String>();
-          debugMsg("Loaded time zone string: " + tzs);
-          ntpAsync.setTZS(tzs);
-
-          hourMode = json["hourMode"].as<bool>();
-          debugMsg("Loaded 12/24H mode: " + String(hourMode));
-
-          blankLeading = json["blankLeading"].as<bool>();
-          debugMsg("Loaded lead zero blanking: " + String(blankLeading));
-
-          dateFormat = json["dateFormat"];
-          debugMsg("Loaded date format: " + String(dateFormat));
-
-          dayBlanking = json["dayBlanking"];
-          debugMsg("Loaded dayBlanking: " + String(dayBlanking));
-
-          thresholdBright = json["thresholdBright"];
-          debugMsg("Loaded thresholdBright: " + String(thresholdBright));
-
-          sensitivityLDR = json["sensitivityLDR"];
-          debugMsg("Loaded sensitivityLDR: " + String(sensitivityLDR));
-
-          minDim = json["minDim"];
-          debugMsg("Loaded minDim: " + String(minDim));
-
-          sensorSmoothCountLDR = json["sensorSmoothCountLDR"];
-          debugMsg("Loaded sensorSmoothCountLDR: " + String(sensorSmoothCountLDR));
-
-          backlightMode = json["backlightMode"];
-          debugMsg("Loaded backlight mode: " + String(backlightMode));
-
-          redCnl = json["redCnl"];
-          debugMsg("Loaded redCnl: " + String(redCnl));
-
-          grnCnl = json["grnCnl"];
-          debugMsg("Loaded grnCnl: " + String(grnCnl));
-
-          bluCnl = json["bluCnl"];
-          debugMsg("Loaded bluCnl: " + String(bluCnl));
-
-          blankMode = json["blankMode"];
-          debugMsg("Loaded blankMode: " + String(blankMode));
-
-          blankHourStart = json["blankHourStart"];
-          debugMsg("Loaded blankHourStart: " + String(blankHourStart));
-
-          blankHourEnd = json["blankHourEnd"];
-          debugMsg("Loaded blankHourEnd: " + String(blankHourEnd));
-
-          cycleSpeed = json["cycleSpeed"];
-          debugMsg("Loaded cycleSpeed: " + String(cycleSpeed));
-
-          pirTimeout = json["pirTimeout"];
-          debugMsg("Loaded pirTimeout: " + String(pirTimeout));
-
-          useLDR = json["useLDR"];
-          debugMsg("Loaded useLDR: " + String(useLDR));
-
-          slotsMode = json["slotsMode"];
-          debugMsg("Loaded slotsMode: " + String(slotsMode));
-
-          usePIRPullup = json["usePIRPullup"];
-          debugMsg("Loaded usePIRPullup: " + String(usePIRPullup));
-
-          testMode = json["testMode"].as<bool>();
-          debugMsg("Loaded testMode: " + String(testMode));
-
-          ledMode = json["ledMode"];
-          debugMsg("Loaded ledMode: " + String(ledMode));
-
-          boolean webAuthentication = json["webAuthentication"].as<bool>();
-          debugMsg("Loaded webAuthentication: " + String(webAuthentication));
-          setWebAuthentication(webAuthentication);
-
-          String webUserName = json["webUsername"].as<String>();
-          debugMsg("Loaded webUsername: " + webUserName);
-          setWebUserName(webUserName);
-
-          String webPassword = json["webPassword"].as<String>();
-          debugMsg("Loaded webPassword: " + webPassword);
-          setWebPassword(webPassword);
-
-          backlightDimFactor = json["backlightDimFactor"];
-          debugMsg("Loaded backlightDimFactor: " + String(backlightDimFactor));
-
-          statusModeL = json["statusModeL"];
-          debugMsg("Loaded statusModeL: " + String(statusModeL));
-
-          statusModeR = json["statusModeR"];
-          debugMsg("Loaded statusModeR: " + String(statusModeR));
-
-          loaded = true;
-        } else {
-          debugMsg("failed to load json config");
-        }
-        debugMsg("Closing config file");
-        configFile.close();
-      }
-    }
-  } else {
-    debugMsg("failed to mount FS");
-  }
-
-  SPIFFS.end();
-  return loaded;
-}
-
-// ************************************************************
-// Save config back to the SPIFFS
-// ************************************************************
-void saveConfigToSpiffs() {
-  if (SPIFFS.begin()) {
-    debugMsg("mounted file system");
-    debugMsg("saving config");
-
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& json = jsonBuffer.createObject();
-    json["ntp_pool"] = ntpAsync.getNtpPool();
-    json["ntp_update_interval"] = ntpAsync.getUpdateInterval();
-    json["time_zone_string"] = ntpAsync.getTZS();
-    json["hourMode"] = hourMode;
-    json["blankLeading"] = blankLeading;
-    json["dateFormat"] = dateFormat;
-    json["dayBlanking"] = dayBlanking;
-
-    json["thresholdBright"] = thresholdBright;
-    json["sensitivityLDR"] = sensitivityLDR;
-    json["minDim"] = minDim;
-    json["sensorSmoothCountLDR"] = sensorSmoothCountLDR;
-
-    json["backlightMode"] = backlightMode;
-    json["redCnl"] = redCnl;
-    json["grnCnl"] = grnCnl;
-    json["bluCnl"] = bluCnl;
-    json["blankMode"] = blankMode;
-    json["blankHourStart"] = blankHourStart;
-    json["blankHourEnd"] = blankHourEnd;
-    json["cycleSpeed"] = cycleSpeed;
-    json["pirTimeout"] = pirTimeout;
-    json["useLDR"] = useLDR;
-    json["slotsMode"] = slotsMode;
-    json["usePIRPullup"] = usePIRPullup;
-    json["testMode"] = testMode;
-    json["ledMode"] = ledMode;
-    json["webAuthentication"] = getWebAuthentication();
-    json["webUsername"] = getWebUserName();
-    json["webPassword"] = getWebPassword();
-    json["backlightDimFactor"] = backlightDimFactor;
-    json["statusModeL"] = statusModeL;
-    json["statusModeR"] = statusModeR;
-
-    File configFile = SPIFFS.open("/config.json", "w");
-    if (!configFile) {
-      debugMsg("failed to open config file for writing");
-      configFile.close();
-      return;
-    }
-
-    json.printTo(Serial);
-    debugMsg("\n");
-
-    json.printTo(configFile);
-    configFile.close();
-    debugMsg("Saved config");
-    //end save
-  } else {
-    debugMsg("failed to mount FS");
-  }
-  SPIFFS.end();
-}
-
-// ************************************************************
-// Get the statistics from the SPIFFS
-// ************************************************************
-boolean getStatsFromSpiffs() {
-  boolean loaded = false;
-  if (SPIFFS.begin()) {
-    debugMsg("mounted file system");
-    if (SPIFFS.exists("/stats.json")) {
-      //file exists, reading and loading
-      debugMsg("reading stats file");
-      File statsFile = SPIFFS.open("/stats.json", "r");
-      if (statsFile) {
-        debugMsg("opened stats file");
-        size_t size = statsFile.size();
-        // Allocate a buffer to store contents of the file.
-        std::unique_ptr<char[]> buf(new char[size]);
-
-        statsFile.readBytes(buf.get(), size);
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject& json = jsonBuffer.parseObject(buf.get());
-        json.printTo(Serial);
-        debugMsg("\n");
-
-        if (json.success()) {
-          debugMsg("parsed stats json");
-
-          uptimeMins = json.get<unsigned long>("uptime");
-          debugMsg("Loaded uptime: " + String(uptimeMins));
-
-          tubeOnTimeMins = json.get<unsigned long>("tubeontime");
-          debugMsg("Loaded tubeontime: " + String(tubeOnTimeMins));
-
-          loaded = true;
-        } else {
-          debugMsg("failed to load json config");
-        }
-        debugMsg("Closing stats file");
-        statsFile.close();
-      }
-    }
-  } else {
-    debugMsg("failed to mount FS");
-  }
-
-  SPIFFS.end();
-  return loaded;
-}
-
-// ************************************************************
-// Save the statistics back to the SPIFFS
-// ************************************************************
-void saveStatsToSpiffs() {
-  if (SPIFFS.begin()) {
-    debugMsg("mounted file system");
-    debugMsg("saving stats");
-
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& json = jsonBuffer.createObject();
-    json.set("uptime", uptimeMins);
-    json.set("tubeontime", tubeOnTimeMins);
-
-    File statsFile = SPIFFS.open("/stats.json", "w");
-    if (!statsFile) {
-      debugMsg("failed to open stats file for writing");
-      statsFile.close();
-      return;
-    }
-
-    json.printTo(Serial);
-    debugMsg("\n");
-
-    json.printTo(statsFile);
-    statsFile.close();
-    debugMsg("Saved stats");
-    //end save
-  } else {
-    debugMsg("failed to mount FS");
-  }
-  SPIFFS.end();
-}
-
 // ************************************************************
 // Reset configuration values back to what they once were
 // ************************************************************
 void factoryReset() {
   ntpAsync.resetDefaults();
-  hourMode = HOUR_MODE_DEFAULT;
-  blankLeading = LEAD_BLANK_DEFAULT;
-  dateFormat = DATE_FORMAT_DEFAULT;
-  dayBlanking = DAY_BLANKING_DEFAULT;
+  spiffs_config_t* cc = &current_config;
+  cc->ntpPool = ntpAsync.getNtpPool();
+  cc->ntpUpdateInterval = ntpAsync.getUpdateInterval();
+  cc->tzs = ntpAsync.getTZS();
 
-  thresholdBright = SENSOR_THRSH_DEFAULT;
-  sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
-  sensitivityLDR = SENSOR_SENSIT_DEFAULT;
-  minDim = MIN_DIM_DEFAULT;
+  cc->hourMode = HOUR_MODE_DEFAULT;
+  cc->blankLeading = LEAD_BLANK_DEFAULT;
+  cc->dateFormat = DATE_FORMAT_DEFAULT;
+  cc->dayBlanking = DAY_BLANKING_DEFAULT;
 
-  dateFormat = DATE_FORMAT_DEFAULT;
-  dayBlanking = DAY_BLANKING_DEFAULT;
-  backlightMode = BACKLIGHT_DEFAULT;
-  redCnl = COLOUR_RED_CNL_DEFAULT;
-  grnCnl = COLOUR_GRN_CNL_DEFAULT;
-  bluCnl = COLOUR_BLU_CNL_DEFAULT;
-  blankHourStart = 0;
-  blankHourEnd = 7;
-  cycleSpeed = CYCLE_SPEED_DEFAULT;
-  pirTimeout = PIR_TIMEOUT_DEFAULT;
-  useLDR = USE_LDR_DEFAULT;
-  blankMode = BLANK_MODE_DEFAULT;
-  slotsMode = SLOTS_MODE_DEFAULT;
-  usePIRPullup = USE_PIR_PULLUP_DEFAULT;
-  ledMode = LED_BLINK_DEFAULT;
-  testMode = true;
+  cc->thresholdBright = SENSOR_THRSH_DEFAULT;
+  cc->sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
+  cc->sensitivityLDR = SENSOR_SENSIT_DEFAULT;
+  cc->minDim = MIN_DIM_DEFAULT;
+
+  cc->dateFormat = DATE_FORMAT_DEFAULT;
+  cc->dayBlanking = DAY_BLANKING_DEFAULT;
+  cc->backlightMode = BACKLIGHT_DEFAULT;
+  cc->redCnl = COLOUR_RED_CNL_DEFAULT;
+  cc->grnCnl = COLOUR_GRN_CNL_DEFAULT;
+  cc->bluCnl = COLOUR_BLU_CNL_DEFAULT;
+  cc->blankHourStart = 0;
+  cc->blankHourEnd = 7;
+  cc->cycleSpeed = CYCLE_SPEED_DEFAULT;
+  cc->pirTimeout = PIR_TIMEOUT_DEFAULT;
+  cc->useLDR = USE_LDR_DEFAULT;
+  cc->blankMode = BLANK_MODE_DEFAULT;
+  cc->slotsMode = SLOTS_MODE_DEFAULT;
+  cc->usePIRPullup = USE_PIR_PULLUP_DEFAULT;
+  cc->ledMode = LED_BLINK_DEFAULT;
+  cc->testMode = true;
   setWebAuthentication(WEB_AUTH_DEFAULT);
+  cc->webAuthentication = getWebAuthentication();
   setWebUserName(WEB_USERNAME_DEFAULT);
+  cc->webUsername = getWebUserName();
   setWebPassword(WEB_PASSWORD_DEFAULT);
-  backlightDimFactor = BACKLIGHT_DIM_FACTOR_DEFAULT;
-  statusModeL = STATUS_LED_MODE_ONLINE;
-  statusModeR = STATUS_LED_MODE_NTP;
+  cc->webPassword = getWebPassword();
+  cc->backlightDimFactor = BACKLIGHT_DIM_FACTOR_DEFAULT;
+  cc->statusModeL = STATUS_LED_MODE_ONLINE;
+  cc->statusModeR = STATUS_LED_MODE_NTP;
 
-  saveConfigToSpiffs();
+  spiffs.saveConfigToSpiffs(cc);
 }
 
 // ************************************************************
@@ -2779,10 +2496,10 @@ void factoryReset() {
 void saveToSpiffsIfChanged(boolean changed) {
   if (changed) {
     debugMsg("Config options changed, saving them");
-    saveConfigToSpiffs();
+    spiffs.saveConfigToSpiffs(&current_config);
 
     // Save the stats while we are at it
-    saveStatsToSpiffs();
+    spiffs.saveStatsToSpiffs(&current_stats);
   }
 }
 
@@ -2867,7 +2584,7 @@ void rootPageHandler() {
   String currentTime = String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second());
   response_message += getTableHead2Col("Clock information", "Name", "Value");
 
-  if (useLDR) {
+  if (current_config.useLDR) {
     response_message += getTableRow2Col("LDR Value", sensorLDRSmoothed);
   } else {
     response_message += getTableRow2Col("LDR Value", "LDR disabled");
@@ -2882,8 +2599,8 @@ void rootPageHandler() {
     response_message += getTableRow2Col("RTC Time", getRTCTime(false));
   }
   response_message += getTableRow2Col("Impressions/Sec", lastImpressionsPerSec);
-  response_message += getTableRow2Col("Total Clock On Hrs", secsToReadableString(uptimeMins * 60));
-  response_message += getTableRow2Col("Total Tube On Hrs", secsToReadableString(tubeOnTimeMins * 60));
+  response_message += getTableRow2Col("Total Clock On Hrs", secsToReadableString(current_stats.uptimeMins * 60));
+  response_message += getTableRow2Col("Total Tube On Hrs", secsToReadableString(current_stats.tubeOnTimeMins * 60));
   response_message += getTableFoot();
 
   // ******************** ESP8266 Info table ***************************
@@ -2926,6 +2643,9 @@ void timeServerPageHandler() {
     ntpAsync.setTZS(tzs);
     ntpAsync.setNtpPool(ntpPool);
     ntpAsync.setUpdateInterval(ntpUpdateInterval);
+    current_config.ntpPool = ntpAsync.getNtpPool();
+    current_config.tzs = ntpAsync.getTZS();
+    current_config.ntpUpdateInterval = ntpAsync.getUpdateInterval();
   }
   saveToSpiffsIfChanged(changed);
 
@@ -2984,29 +2704,29 @@ void clockConfigPageHandler() {
 
   boolean changed = false;
 
-  checkServerArgBoolean("12h24hMode", "12/24h mode", "12h", "24h", changed, hourMode);
-  checkServerArgBoolean("blankLeading", "Leading zero", "blank", "show", changed, blankLeading);
-  checkServerArgBoolean("useLDR", "Use LDR", "on", "off", changed, useLDR);
-  checkServerArgInt("minDim", "minDim", changed, minDim);
-  checkServerArgInt("thresholdBright", "thresholdBright", changed, thresholdBright);
-  checkServerArgInt("sensitivityLDR", "sensitivityLDR", changed, sensitivityLDR);
-  checkServerArgByte("dateFormat", "dateFormat", changed, dateFormat);
-  checkServerArgByte("dayBlanking", "dayBlanking", changed, dayBlanking);
-  checkServerArgByte("blankHourStart", "blankHourStart", changed, blankHourStart);
-  checkServerArgByte("blankHourEnd", "blankHourEnd", changed, blankHourEnd);
-  checkServerArgByte("backlightMode", "backlightMode", changed, backlightMode);
-  checkServerArgByte("redCnl", "redCnl", changed, redCnl);
-  checkServerArgByte("grnCnl", "grnCnl", changed, grnCnl);
-  checkServerArgByte("bluCnl", "bluCnl", changed, bluCnl);
-  checkServerArgByte("backlightDimFactor", "backlightDimFactor", changed, backlightDimFactor);
-  checkServerArgByte("cycleSpeed", "cycleSpeed", changed, cycleSpeed);
-  checkServerArgByte("blankMode", "blankMode", changed, blankMode);
-  checkServerArgByte("slotsMode", "slotsMode", changed, slotsMode);
-  checkServerArgInt("pirTimeout", "pirTimeout", changed, pirTimeout);
-  checkServerArgBoolean("usePIRPullup", "Use PIR pullup", "on", "off", changed, usePIRPullup);
-  checkServerArgByte("ledMode", "ledMode", changed, ledMode);
-  checkServerArgByte("statusModeL", "statusModeL", changed, statusModeL);
-  checkServerArgByte("statusModeR", "statusModeR", changed, statusModeR);
+  checkServerArgBoolean("12h24hMode", "12/24h mode", "12h", "24h", changed, current_config.hourMode);
+  checkServerArgBoolean("blankLeading", "Leading zero", "blank", "show", changed, current_config.blankLeading);
+  checkServerArgBoolean("useLDR", "Use LDR", "on", "off", changed, current_config.useLDR);
+  checkServerArgInt("minDim", "minDim", changed, current_config.minDim);
+  checkServerArgInt("thresholdBright", "thresholdBright", changed, current_config.thresholdBright);
+  checkServerArgInt("sensitivityLDR", "sensitivityLDR", changed, current_config.sensitivityLDR);
+  checkServerArgByte("dateFormat", "dateFormat", changed, current_config.dateFormat);
+  checkServerArgByte("dayBlanking", "dayBlanking", changed, current_config.dayBlanking);
+  checkServerArgByte("blankHourStart", "blankHourStart", changed, current_config.blankHourStart);
+  checkServerArgByte("blankHourEnd", "blankHourEnd", changed, current_config.blankHourEnd);
+  checkServerArgByte("backlightMode", "backlightMode", changed, current_config.backlightMode);
+  checkServerArgByte("redCnl", "redCnl", changed, current_config.redCnl);
+  checkServerArgByte("grnCnl", "grnCnl", changed, current_config.grnCnl);
+  checkServerArgByte("bluCnl", "bluCnl", changed, current_config.bluCnl);
+  checkServerArgByte("backlightDimFactor", "backlightDimFactor", changed, current_config.backlightDimFactor);
+  checkServerArgByte("cycleSpeed", "cycleSpeed", changed, current_config.cycleSpeed);
+  checkServerArgByte("blankMode", "blankMode", changed, current_config.blankMode);
+  checkServerArgByte("slotsMode", "slotsMode", changed, current_config.slotsMode);
+  checkServerArgInt("pirTimeout", "pirTimeout", changed, current_config.pirTimeout);
+  checkServerArgBoolean("usePIRPullup", "Use PIR pullup", "on", "off", changed, current_config.usePIRPullup);
+  checkServerArgByte("ledMode", "ledMode", changed, current_config.ledMode);
+  checkServerArgByte("statusModeL", "statusModeL", changed, current_config.statusModeL);
+  checkServerArgByte("statusModeR", "statusModeR", changed, current_config.statusModeR);
   boolean localWebAuth = getWebAuthentication();
   String localWebUserName = getWebUserName();
   String localWebPassword = getWebPassword();
@@ -3027,7 +2747,7 @@ void clockConfigPageHandler() {
 
   // 12/24 mode
   response_message += getRadioGroupHeader("12H/24H mode:");
-  if (hourMode) {
+  if (current_config.hourMode) {
     response_message += getRadioButton("12h24hMode", " 12H", "12h", true);
     response_message += getRadioButton("12h24hMode", " 24H", "24h", false);
   } else {
@@ -3038,7 +2758,7 @@ void clockConfigPageHandler() {
 
   // blank leading
   response_message += getRadioGroupHeader("Blank leading zero:");
-  if (blankLeading) {
+  if (current_config.blankLeading) {
     response_message += getRadioButton("blankLeading", "Blank", "blank", true);
     response_message += getRadioButton("blankLeading", "Show", "show", false);
   } else {
@@ -3049,7 +2769,7 @@ void clockConfigPageHandler() {
 
   // LDR
   response_message += getRadioGroupHeader("Use LDR:");
-  if (useLDR) {
+  if (current_config.useLDR) {
     response_message += getRadioButton("useLDR", "On", "on", true);
     response_message += getRadioButton("useLDR", "Off", "off", false);
   } else {
@@ -3059,119 +2779,119 @@ void clockConfigPageHandler() {
   response_message += getRadioGroupFooter();
 
   // Min dim
-  response_message += getNumberInput("Min Dim:", "minDim", MIN_DIM_MIN, MIN_DIM_MAX, minDim, false);
+  response_message += getNumberInput("Min Dim:", "minDim", MIN_DIM_MIN, MIN_DIM_MAX, current_config.minDim, false);
 
   // LDR threshold
-  response_message += getNumberInput("LDR Threshold:", "thresholdBright", SENSOR_THRSH_MIN, SENSOR_THRSH_MAX, thresholdBright, false);
+  response_message += getNumberInput("LDR Threshold:", "thresholdBright", SENSOR_THRSH_MIN, SENSOR_THRSH_MAX, current_config.thresholdBright, false);
   
   // LDR Sensitivity
-  response_message += getNumberInput("LDR Sensitivity:", "sensitivityLDR", SENSOR_SENSIT_MIN, SENSOR_SENSIT_MAX, sensitivityLDR, false);
+  response_message += getNumberInput("LDR Sensitivity:", "sensitivityLDR", SENSOR_SENSIT_MIN, SENSOR_SENSIT_MAX, current_config.sensitivityLDR, false);
 
   // Date format
   response_message += getDropDownHeader("Date format:", "dateFormat", false);
-  response_message += getDropDownOption("0", "YY-MM-DD", (dateFormat == DATE_FORMAT_YYMMDD));
-  response_message += getDropDownOption("1", "MM-DD-YY", (dateFormat == DATE_FORMAT_MMDDYY));
-  response_message += getDropDownOption("2", "DD-MM-YY", (dateFormat == DATE_FORMAT_DDMMYY));
+  response_message += getDropDownOption("0", "YY-MM-DD", (current_config.dateFormat == DATE_FORMAT_YYMMDD));
+  response_message += getDropDownOption("1", "MM-DD-YY", (current_config.dateFormat == DATE_FORMAT_MMDDYY));
+  response_message += getDropDownOption("2", "DD-MM-YY", (current_config.dateFormat == DATE_FORMAT_DDMMYY));
   response_message += getDropDownFooter();
 
   // Day blanking
   response_message += getDropDownHeader("Day blanking:", "dayBlanking", true);
-  response_message += getDropDownOption("0", "Never blank", (dayBlanking == 0));
-  response_message += getDropDownOption("1", "Blank all day on weekends", (dayBlanking == 1));
-  response_message += getDropDownOption("2", "Blank all day on week days", (dayBlanking == 2));
-  response_message += getDropDownOption("3", "Blank always", (dayBlanking == 3));
-  response_message += getDropDownOption("4", "Blank during selected hours every day", (dayBlanking == 4));
-  response_message += getDropDownOption("5", "Blank during selected hours on week days and all day on weekends", (dayBlanking == 5));
-  response_message += getDropDownOption("6", "Blank during selected hours on weekends and all day on week days", (dayBlanking == 6));
-  response_message += getDropDownOption("7", "Blank during selected hours on weekends only", (dayBlanking == 7));
-  response_message += getDropDownOption("8", "Blank during selected hours on week days only", (dayBlanking == 8));
+  response_message += getDropDownOption("0", "Never blank", (current_config.dayBlanking == 0));
+  response_message += getDropDownOption("1", "Blank all day on weekends", (current_config.dayBlanking == 1));
+  response_message += getDropDownOption("2", "Blank all day on week days", (current_config.dayBlanking == 2));
+  response_message += getDropDownOption("3", "Blank always", (current_config.dayBlanking == 3));
+  response_message += getDropDownOption("4", "Blank during selected hours every day", (current_config.dayBlanking == 4));
+  response_message += getDropDownOption("5", "Blank during selected hours on week days and all day on weekends", (current_config.dayBlanking == 5));
+  response_message += getDropDownOption("6", "Blank during selected hours on weekends and all day on week days", (current_config.dayBlanking == 6));
+  response_message += getDropDownOption("7", "Blank during selected hours on weekends only", (current_config.dayBlanking == 7));
+  response_message += getDropDownOption("8", "Blank during selected hours on week days only", (current_config.dayBlanking == 8));
   response_message += getDropDownFooter();
 
   // Blank Mode
   response_message += getDropDownHeader("Blank Mode:", "blankMode", true);
-  response_message += getDropDownOption("0", "Blank tubes only", (blankMode == 0));
-  response_message += getDropDownOption("1", "Blank LEDs only", (blankMode == 1));
-  response_message += getDropDownOption("2", "Blank tubes and LEDs", (blankMode == 2));
+  response_message += getDropDownOption("0", "Blank tubes only", (current_config.blankMode == 0));
+  response_message += getDropDownOption("1", "Blank LEDs only", (current_config.blankMode == 1));
+  response_message += getDropDownOption("2", "Blank tubes and LEDs", (current_config.blankMode == 2));
   response_message += getDropDownFooter();
 
-  boolean hoursDisabled = (dayBlanking < 4);
+  boolean hoursDisabled = (current_config.dayBlanking < 4);
 
   // Blank hours from
-  response_message += getNumberInput("Blank from:", "blankHourStart", 0, 23, blankHourStart, hoursDisabled);
+  response_message += getNumberInput("Blank from:", "blankHourStart", 0, 23, current_config.blankHourStart, hoursDisabled);
 
   // Blank hours to
-  response_message += getNumberInput("Blank to:", "blankHourEnd", 0, 23, blankHourEnd, hoursDisabled);
+  response_message += getNumberInput("Blank to:", "blankHourEnd", 0, 23, current_config.blankHourEnd, hoursDisabled);
 
   // Back light
   response_message += getDropDownHeader("Back light:", "backlightMode", true);
-  response_message += getDropDownOption("0", "Fixed RGB backlight, no dimming", (backlightMode == 0));
-  response_message += getDropDownOption("1", "Pulsing RGB backlight, no dimming", (backlightMode == 1));
-  response_message += getDropDownOption("2", "Cycling RGB backlight, no dimming", (backlightMode == 2));
-  response_message += getDropDownOption("3", "Fixed RGB backlight, dims with ambient light", (backlightMode == 3));
-  response_message += getDropDownOption("4", "Pulsing RGB backlight, dims with ambient light", (backlightMode == 4));
-  response_message += getDropDownOption("5", "Cycling RGB backlight, dims with ambient light", (backlightMode == 5));
-  response_message += getDropDownOption("6", "'Colourtime' backlight", (backlightMode == 6));
-  response_message += getDropDownOption("7", "'Colourtime' backlight, dims with ambient light", (backlightMode == 7));
+  response_message += getDropDownOption("0", "Fixed RGB backlight, no dimming", (current_config.backlightMode == 0));
+  response_message += getDropDownOption("1", "Pulsing RGB backlight, no dimming", (current_config.backlightMode == 1));
+  response_message += getDropDownOption("2", "Cycling RGB backlight, no dimming", (current_config.backlightMode == 2));
+  response_message += getDropDownOption("3", "Fixed RGB backlight, dims with ambient light", (current_config.backlightMode == 3));
+  response_message += getDropDownOption("4", "Pulsing RGB backlight, dims with ambient light", (current_config.backlightMode == 4));
+  response_message += getDropDownOption("5", "Cycling RGB backlight, dims with ambient light", (current_config.backlightMode == 5));
+  response_message += getDropDownOption("6", "'Colourtime' backlight", (current_config.backlightMode == 6));
+  response_message += getDropDownOption("7", "'Colourtime' backlight, dims with ambient light", (current_config.backlightMode == 7));
   response_message += getDropDownFooter();
 
-  boolean activeLEDs = (backlightMode == 0) || (backlightMode == 1) || (backlightMode == 3) || (backlightMode == 4);
+  boolean activeLEDs = (current_config.backlightMode == 0) || (current_config.backlightMode == 1) || (current_config.backlightMode == 3) || (current_config.backlightMode == 4);
 
   // RGB channels
-  response_message += getNumberInput("Red intensity:", "redCnl", 0, 15, redCnl, !activeLEDs);
-  response_message += getNumberInput("Green intensity:", "grnCnl", 0, 15, grnCnl, !activeLEDs);
-  response_message += getNumberInput("Blue intensity:", "bluCnl", 0, 15, bluCnl, !activeLEDs);
+  response_message += getNumberInput("Red intensity:", "redCnl", 0, 15, current_config.redCnl, !activeLEDs);
+  response_message += getNumberInput("Green intensity:", "grnCnl", 0, 15, current_config.grnCnl, !activeLEDs);
+  response_message += getNumberInput("Blue intensity:", "bluCnl", 0, 15, current_config.bluCnl, !activeLEDs);
 
   // Separator dim factor
-  response_message += getNumberInput("Backlight Dim:", "backlightDimFactor", BACKLIGHT_DIM_FACTOR_MIN, BACKLIGHT_DIM_FACTOR_MAX, backlightDimFactor, false);
+  response_message += getNumberInput("Backlight Dim:", "backlightDimFactor", BACKLIGHT_DIM_FACTOR_MIN, BACKLIGHT_DIM_FACTOR_MAX, current_config.backlightDimFactor, false);
 
-  boolean activeCycle = (backlightMode == 2) || (backlightMode == 5);
+  boolean activeCycle = (current_config.backlightMode == 2) || (current_config.backlightMode == 5);
 
   // Cycle speed
-  response_message += getNumberInput("Backlight Cycle Speed:", "cycleSpeed", CYCLE_SPEED_MIN, CYCLE_SPEED_MAX, cycleSpeed, !activeCycle);
+  response_message += getNumberInput("Backlight Cycle Speed:", "cycleSpeed", CYCLE_SPEED_MIN, CYCLE_SPEED_MAX, current_config.cycleSpeed, !activeCycle);
 
   // Slots Mode
   response_message += getDropDownHeader("Date Slots:", "slotsMode", true);
-  response_message += getDropDownOption("0", "Don't use slots mode", (slotsMode == 0));
-  response_message += getDropDownOption("1", "Wipe In, Wipe Out", (slotsMode == 1));
-  response_message += getDropDownOption("2", "Bang In, Bang Out", (slotsMode == 2));
+  response_message += getDropDownOption("0", "Don't use slots mode", (current_config.slotsMode == 0));
+  response_message += getDropDownOption("1", "Wipe In, Wipe Out", (current_config.slotsMode == 1));
+  response_message += getDropDownOption("2", "Bang In, Bang Out", (current_config.slotsMode == 2));
   response_message += getDropDownFooter();
 
   // LED mode
   response_message += getDropDownHeader("LED Mode:", "ledMode", true);
-  response_message += getDropDownOption("0", "RailRoad", (ledMode == LED_RAILROAD));
-  response_message += getDropDownOption("1", "Slow flash", (ledMode == LED_BLINK_SLOW));
-  response_message += getDropDownOption("2", "Fast flash", (ledMode == LED_BLINK_FAST));
-  response_message += getDropDownOption("3", "Double flash", (ledMode == LED_BLINK_DBL));
-  response_message += getDropDownOption("4", "Always On", (ledMode == LED_ON));
-  response_message += getDropDownOption("5", "Always Off", (ledMode == LED_OFF));
+  response_message += getDropDownOption("0", "RailRoad", (current_config.ledMode == LED_RAILROAD));
+  response_message += getDropDownOption("1", "Slow flash", (current_config.ledMode == LED_BLINK_SLOW));
+  response_message += getDropDownOption("2", "Fast flash", (current_config.ledMode == LED_BLINK_FAST));
+  response_message += getDropDownOption("3", "Double flash", (current_config.ledMode == LED_BLINK_DBL));
+  response_message += getDropDownOption("4", "Always On", (current_config.ledMode == LED_ON));
+  response_message += getDropDownOption("5", "Always Off", (current_config.ledMode == LED_OFF));
   response_message += getDropDownFooter();
 
   // Status LED mode Left
   response_message += getDropDownHeader("Left Status LED Mode:", "statusModeL", true);
-  response_message += getDropDownOption("0", "NTP", (statusModeL == STATUS_LED_MODE_NTP));
-  response_message += getDropDownOption("1", "Connected", (statusModeL == STATUS_LED_MODE_ONLINE));
-  response_message += getDropDownOption("2", "AM/PM", (statusModeL == STATUS_LED_MODE_AM_PM));
-  response_message += getDropDownOption("3", "PIR", (statusModeL == STATUS_LED_MODE_PIR));
-  response_message += getDropDownOption("4", "Off", (statusModeL == STATUS_LED_MODE_OFF));
-  response_message += getDropDownOption("5", "On", (statusModeL == STATUS_LED_MODE_ON));
+  response_message += getDropDownOption("0", "NTP", (current_config.statusModeL == STATUS_LED_MODE_NTP));
+  response_message += getDropDownOption("1", "Connected", (current_config.statusModeL == STATUS_LED_MODE_ONLINE));
+  response_message += getDropDownOption("2", "AM/PM", (current_config.statusModeL == STATUS_LED_MODE_AM_PM));
+  response_message += getDropDownOption("3", "PIR", (current_config.statusModeL == STATUS_LED_MODE_PIR));
+  response_message += getDropDownOption("4", "Off", (current_config.statusModeL == STATUS_LED_MODE_OFF));
+  response_message += getDropDownOption("5", "On", (current_config.statusModeL == STATUS_LED_MODE_ON));
   response_message += getDropDownFooter();
 
   // Status LED mode Right
   response_message += getDropDownHeader("Right Status LED Mode:", "statusModeR", true);
-  response_message += getDropDownOption("0", "NTP", (statusModeR == STATUS_LED_MODE_NTP));
-  response_message += getDropDownOption("1", "Connected", (statusModeR == STATUS_LED_MODE_ONLINE));
-  response_message += getDropDownOption("2", "AM/PM", (statusModeR == STATUS_LED_MODE_AM_PM));
-  response_message += getDropDownOption("3", "PIR", (statusModeR == STATUS_LED_MODE_PIR));
-  response_message += getDropDownOption("4", "Off", (statusModeR == STATUS_LED_MODE_OFF));
-  response_message += getDropDownOption("5", "On", (statusModeR == STATUS_LED_MODE_ON));
+  response_message += getDropDownOption("0", "NTP", (current_config.statusModeR == STATUS_LED_MODE_NTP));
+  response_message += getDropDownOption("1", "Connected", (current_config.statusModeR == STATUS_LED_MODE_ONLINE));
+  response_message += getDropDownOption("2", "AM/PM", (current_config.statusModeR == STATUS_LED_MODE_AM_PM));
+  response_message += getDropDownOption("3", "PIR", (current_config.statusModeR == STATUS_LED_MODE_PIR));
+  response_message += getDropDownOption("4", "Off", (current_config.statusModeR == STATUS_LED_MODE_OFF));
+  response_message += getDropDownOption("5", "On", (current_config.statusModeR == STATUS_LED_MODE_ON));
   response_message += getDropDownFooter();
 
   // PIR timeout
-  response_message += getNumberInput("PIR timeout:", "pirTimeout", PIR_TIMEOUT_MIN, PIR_TIMEOUT_MAX, pirTimeout, false);
+  response_message += getNumberInput("PIR timeout:", "pirTimeout", PIR_TIMEOUT_MIN, PIR_TIMEOUT_MAX, current_config.pirTimeout, false);
 
   // PIR pullup
   response_message += getRadioGroupHeader("Use PIR pullup:");
-  if (usePIRPullup) {
+  if (current_config.usePIRPullup) {
     response_message += getRadioButton("usePIRPullup", "On", "on", true);
     response_message += getRadioButton("usePIRPullup", "Off", "off", false);
   } else {
