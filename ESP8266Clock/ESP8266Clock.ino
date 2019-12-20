@@ -90,11 +90,11 @@ void setup()
   debugMsg("");
   debugMsg("--------------------- START ---------------------");
   wifiManager.setDebugOutput(true);
-  
+
   DebugCallback dbcb = debugMsg;
   ntpAsync.setDebugCallback(dbcb);
   ntpAsync.setDebugOutput(true);
-  
+
   spiffs.setDebugCallback(dbcb);
   spiffs.setDebugOutput(true);
 #endif
@@ -1699,7 +1699,7 @@ void outputDisplay() {
   byte digits[6];
   static byte prevNumberArray[6];
   static bool smoothRunning[6];
-  
+
   // Deal with blink, calculate if we are on or off
   static uint16_t blinkCounter = BLINK_COUNT_OFF;
   blinkCounter--;
@@ -1709,11 +1709,11 @@ void outputDisplay() {
   }
 
   // Decode numbers to 7-segment digits
-  for (int i=0; i<=5; i++) digits[i] = digitData[numberArray[i]];
-  
-  blankDigits(digits, prevNumberArray, smoothRunning);  
+  for (int i = 0; i <= 5; i++) digits[i] = digitData[numberArray[i]];
+
+  blankDigits(digits, prevNumberArray, smoothRunning);
   smoothDigits(digits, prevNumberArray, smoothRunning);
-  
+
   shiftDigitsOut(digits);
   setBlankingPin();
 }
@@ -1740,7 +1740,18 @@ void shiftDigitsOut(byte *displayDigits) {
   // Mix in the digits
   unsigned long out1 = displayDigits[5] | (displayDigits[4] << 8) | (displayDigits[3] << 16);
   unsigned long out2 = displayDigits[2] | (displayDigits[1] << 8) | (displayDigits[0] << 16);
+  
 
+  // Digit pre-heat
+  if (preheatStrength < 5) {
+    preheatCounter++;
+    if (preheatCounter > preheatStrength) {
+      preheatCounter = 0;
+      out1 |= 0x7f7f7f;
+      out2 |= 0x7f7f7f;
+    }
+  }
+  
   // If nothing has changed don't bother updating tubes - it would be redundant
   if (out1 != lastOut1 || out2 != lastOut2) {
     lastOut1 = out1;
@@ -1759,16 +1770,6 @@ void shiftDigitsOutDiags() {
   unsigned long out1 = numberArray[5] | (numberArray[4] << 8) | (numberArray[3] << 16);
   unsigned long out2 = numberArray[2] | (numberArray[1] << 8) | (numberArray[0] << 16);
   digitsOut(out1, out2);
-}
-
-// ************************************************************
-// Turn all digits off
-// ************************************************************
-void digitsOff() {
-  digitalWrite(LATCHPin, LOW);
-  shiftOut24(DATAPin, CLOCKPin, MSBFIRST, 0);
-  shiftOut24(DATAPin, CLOCKPin, MSBFIRST, 0);
-  digitalWrite(LATCHPin, HIGH);
 }
 
 // ************************************************************
@@ -1846,7 +1847,7 @@ void blankDigits(byte *digits, byte *prevNums, bool *smoothRun) {
       prevNums[i] = numberArray[i];
       digitWasBlanked[i] = true;
     }
-    else if (digitWasBlanked[i]) {           // Inhibits smoothing when digit goes
+    else if (digitWasBlanked[i]) {      // Inhibits smoothing when digit goes
       prevNums[i] = numberArray[i];     // from BLANKED to NORMAL because that
       digitWasBlanked[i] = false;       // would not look good.
     }
@@ -2635,7 +2636,7 @@ void timeServerPageHandler() {
   String ntpPool = ntpAsync.getNtpPool();
   String tzs = ntpAsync.getTZS();
   int ntpUpdateInterval = ntpAsync.getUpdateInterval();
-  
+
   checkServerArgString("ntppool", "NTP Pool", changed, ntpPool);
   checkServerArgInt("ntpupdate", "NTP update interval", changed, ntpUpdateInterval);
   checkServerArgString("tzs", "Time Zone String", changed, tzs);
@@ -2736,6 +2737,7 @@ void clockConfigPageHandler() {
   setWebAuthentication(localWebAuth);
   setWebUserName(localWebUserName);
   setWebPassword(localWebPassword);
+  checkServerArgByte("preheatStrength", "preheatStrength", changed, preheatStrength);
   saveToSpiffsIfChanged(changed);
 
   // -----------------------------------------------------------------------------
@@ -2783,7 +2785,7 @@ void clockConfigPageHandler() {
 
   // LDR threshold
   response_message += getNumberInput("LDR Threshold:", "thresholdBright", SENSOR_THRSH_MIN, SENSOR_THRSH_MAX, current_config.thresholdBright, false);
-  
+
   // LDR Sensitivity
   response_message += getNumberInput("LDR Sensitivity:", "sensitivityLDR", SENSOR_SENSIT_MIN, SENSOR_SENSIT_MAX, current_config.sensitivityLDR, false);
 
@@ -2913,6 +2915,15 @@ void clockConfigPageHandler() {
 
   response_message += getTextInput("User Name", "webUsername", getWebUserName(), !getWebAuthentication());
   response_message += getTextInput("Password", "webPassword", getWebPassword(), !getWebAuthentication());
+
+  // preheat mode
+  response_message += getDropDownHeader("Digit pre-heat:", "preheatStrength", true);
+  response_message += getDropDownOption("1", "Very Strong", (preheatStrength == 1));
+  response_message += getDropDownOption("2", "Strong", (preheatStrength == 2));
+  response_message += getDropDownOption("3", "Weak", (preheatStrength == 3));
+  response_message += getDropDownOption("4", "Very Weak", (preheatStrength == 4));
+  response_message += getDropDownOption("5", "Off", (preheatStrength == 5));
+  response_message += getDropDownFooter();
 
   // form footer
   response_message += getSubmitButton("Set");

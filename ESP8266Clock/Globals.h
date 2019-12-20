@@ -30,6 +30,8 @@ byte displayType[DIGIT_COUNT]          = {NORMAL, NORMAL, NORMAL, NORMAL};
 byte valueDisplayTime                  = 0;
 int valueToShow                        = 0;
 byte valueDisplayType[DIGIT_COUNT / 2] = {NORMAL | NORMAL << 4, NORMAL | NORMAL << 4, NORMAL | NORMAL << 4}; // All normal by default
+byte preheatCounter                    = 0;
+byte preheatStrength                   = 3;
 
 // ------------- Time management variables -------------
 
