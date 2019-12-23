@@ -119,13 +119,15 @@
 #define MODE_USE_PIR_PULLUP             26 // Mode "19" 1 = use Pullup
 #define USE_PIR_PULLUP_DEFAULT          true
 
+#define MODE_PREHEAT                    27 // Mode "20"
+
 // Software Version
-#define MODE_VERSION                    27 // Mode "20"
+#define MODE_VERSION                    28 // Mode "21"
 
 // Tube test - all six digits, so no flashing mode indicator
-#define MODE_TUBE_TEST                  28
+#define MODE_TUBE_TEST                  29
 
-#define MODE_MAX                        28
+#define MODE_MAX                        29
 
 // -------------------------------------------------------------------------------
 // Temporary display modes - accessed by a short press ( < 1S ) on the button when in MODE_TIME

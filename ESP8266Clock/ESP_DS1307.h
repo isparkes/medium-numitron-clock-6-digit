@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 
+// ----------------------- Defines -----------------------
+
 #define DS1307_I2C_ADDRESS 0x68
 
 #define MON 1
@@ -12,6 +14,10 @@
 #define FRI 5
 #define SAT 6
 #define SUN 7
+
+// ----------------------------------------------------------------------------------------------------
+// ------------------------------------------- RTC Component ------------------------------------------
+// ----------------------------------------------------------------------------------------------------
 
 class DS1307 {
 public:
@@ -35,5 +41,9 @@ private:
     uint8_t decToBcd(uint8_t val);
     uint8_t bcdToDec(uint8_t val);
 };
+
+// ----------------- Exported Variables ------------------
+
+static DS1307 Clock;   // RTC, uses Analogue pins A4 (SDA) and A5 (SCL)
 
 #endif

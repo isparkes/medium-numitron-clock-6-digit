@@ -47,15 +47,12 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
 
           spiffs_config->ntpPool = json["ntp_pool"].as<String>();
           debugMsg("Loaded NTP pool: " + spiffs_config->ntpPool);
-//          ntpAsync.setNtpPool(ntpPool);
 
           spiffs_config->ntpUpdateInterval = json["ntp_update_interval"].as<int>();
           debugMsg("Loaded NTP update interval: " + String(spiffs_config->ntpUpdateInterval));
-//          ntpAsync.setUpdateInterval(ntpUpdateInterval);
 
           spiffs_config->tzs = json["time_zone_string"].as<String>();
           debugMsg("Loaded time zone string: " + spiffs_config->tzs);
-//          ntpAsync.setTZS(tzs);
 
           spiffs_config->hourMode = json["hourMode"].as<bool>();
           debugMsg("Loaded 12/24H mode: " + String(spiffs_config->hourMode));
@@ -125,15 +122,12 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
 
           spiffs_config->webAuthentication = json["webAuthentication"].as<bool>();
           debugMsg("Loaded webAuthentication: " + String(spiffs_config->webAuthentication));
-//          setWebAuthentication(webAuthentication);
 
           spiffs_config->webUsername = json["webUsername"].as<String>();
           debugMsg("Loaded webUsername: " + spiffs_config->webUsername);
-//          setWebUserName(webUserName);
 
           spiffs_config->webPassword = json["webPassword"].as<String>();
           debugMsg("Loaded webPassword: " + spiffs_config->webPassword);
-//          setWebPassword(webPassword);
 
           spiffs_config->backlightDimFactor = json["backlightDimFactor"];
           debugMsg("Loaded backlightDimFactor: " + String(spiffs_config->backlightDimFactor));

@@ -7,10 +7,12 @@
 #include <ESP8266WiFi.h>
 #include <DNSServer.h>          //https://github.com/esp8266/Arduino/tree/master/libraries/DNSServer
 
+// ------------------------ Types ------------------------
+
 typedef void (*DebugCallback) (String);
 typedef void (*NewTimeCallback) ();
 
-// ------------------------ NTP ------------------------
+// ----------------------- Defines -----------------------
 
 #define NTP_POOL_DEFAULT "pool.ntp.org"
 #define NTP_PACKET_SIZE 48
@@ -18,6 +20,10 @@ typedef void (*NewTimeCallback) ();
 #define NTP_UPDATE_INTERVAL_DEFAULT 7261
 #define NTP_UPDATE_INTERVAL_MIN 60
 #define NTP_UPDATE_INTERVAL_MAX 86400
+
+// ----------------------------------------------------------------------------------------------------
+// ------------------------------------------ NTP Component -------------------------------------------
+// ----------------------------------------------------------------------------------------------------
 
 class NtpAsync
 {
@@ -65,5 +71,9 @@ class NtpAsync
     void debugMsg(String message);                        // print a debug message to the callback
     void checkMillisOverflow(unsigned long nowMillis);    // handle millis overflow
 };
+
+// ----------------- Exported Variables ------------------
+
+static NtpAsync ntpAsync;
 
 #endif

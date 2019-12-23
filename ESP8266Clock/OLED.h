@@ -5,6 +5,8 @@
 #include <Adafruit_GFX.h>       // v1.6.1
 #include <Adafruit_SSD1306.h>   // v2.0.1
 
+// ----------------------- Defines -----------------------
+
 #define PIR_NOT_INSTALLED 0
 #define PIR_NO_MOVEMENT   1
 #define PIR_MOVEMENT      2
@@ -21,6 +23,10 @@
 #define STATUS_BOX_Y  52
 #define STATUS_BOX_W 127
 #define STATUS_BOX_H  12
+
+// ----------------------------------------------------------------------------------------------------
+// ------------------------------------------ OLED Component ------------------------------------------
+// ----------------------------------------------------------------------------------------------------
 
 class OLED
 {
@@ -54,5 +60,9 @@ class OLED
     void drawAMInd();
     void drawTimeInd();
 };
+
+// ----------------- Exported Variables ------------------
+
+static OLED oled;
 
 #endif

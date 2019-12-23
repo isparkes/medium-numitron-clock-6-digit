@@ -10,7 +10,6 @@
 
 // ----------------------- Components ----------------------------
 
-DS1307 Clock;   // RTC, uses Analogue pins A4 (SDA) and A5 (SCL)
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(DIGIT_COUNT, LED_DOUT);
 ClockButton button1(inputPin1, CLOCK_BUTTON_ACTIVE_LO);
 
@@ -18,10 +17,6 @@ Transition transitionWipe(800, 700, 2800, SLOTS_MODE_WIPE_WIPE);  // Wipe In / W
 Transition transitionBang(400, 400, 3200, SLOTS_MODE_BANG_BANG);  // Bang In / Bang Out (DA2000-Transition.h)  
 Transition transitionDummy(0, 0, 0, SLOTS_MODE_NONE);             // Dummy transition for null pointer prevention
 Transition *activeTransition = &transitionDummy;                  // Pointer to selected transition object
-
-// ------------------------ NTP ------------------------
-
-#define TIME_ZONE_STRING_DEFAULT "CET-1CEST,M3.5.0,M10.5.0/3"
 
 // ------------------ Display Variables ----------------
 

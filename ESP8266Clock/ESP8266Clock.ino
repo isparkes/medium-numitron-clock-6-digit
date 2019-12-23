@@ -53,9 +53,6 @@
 
 #define DEBUG
 
-// NTP Component
-NtpAsync ntpAsync;
-
 //**********************************************************************************
 //**********************************************************************************
 //*                                    Setup                                       *
@@ -129,6 +126,14 @@ void setup()
     }
   } else {
     setDiagnosticLED(DIAGS_SPIFFS, STATUS_GREEN);
+
+    setWebAuthentication(current_config.webAuthentication);
+    setWebUserName(current_config.webUsername);
+    setWebPassword(current_config.webPassword);
+    
+    ntpAsync.setTZS(current_config.tzs);
+    ntpAsync.setNtpPool(current_config.ntpPool);
+    ntpAsync.setUpdateInterval(current_config.ntpUpdateInterval);
   }
 
   // **********************************************************************
@@ -914,6 +919,11 @@ void setNextMode(int displayMode) {
         displayConfig();
         break;
       }
+    case MODE_PREHEAT: {
+        loadNumberArrayConfInt(current_config.preheatStrength, displayMode);
+        displayConfig();
+        break;
+      }
     case MODE_VERSION: {
         loadNumberArrayConfInt(SOFTWARE_VERSION, displayMode);
         displayConfig();
@@ -1355,6 +1365,16 @@ void processCurrentMode(int displayMode) {
         }
         loadNumberArrayConfBool(current_config.usePIRPullup, displayMode);
         digitalWrite(pirPin, current_config.usePIRPullup);
+        displayConfig();
+        break;
+      }
+    case MODE_PREHEAT: {
+        if (button1.isButtonPressedAndReleased()) {
+          current_config.preheatStrength++;
+          if (current_config.preheatStrength > PREHEAT_MAX) {
+          }
+        }
+        loadNumberArrayConfInt(current_config.preheatStrength, displayMode);
         displayConfig();
         break;
       }
@@ -2625,20 +2645,14 @@ void timeServerPageHandler() {
   debugMsg("Time page in");
 
   boolean changed = false;
-  String ntpPool = ntpAsync.getNtpPool();
-  String tzs = ntpAsync.getTZS();
-  int ntpUpdateInterval = ntpAsync.getUpdateInterval();
 
-  checkServerArgString("ntppool", "NTP Pool", changed, ntpPool);
-  checkServerArgInt("ntpupdate", "NTP update interval", changed, ntpUpdateInterval);
-  checkServerArgString("tzs", "Time Zone String", changed, tzs);
+  checkServerArgString("ntppool", "NTP Pool", changed, current_config.ntpPool);
+  checkServerArgInt("ntpupdate", "NTP update interval", changed, current_config.ntpUpdateInterval);
+  checkServerArgString("tzs", "Time Zone String", changed, current_config.tzs);
   if (changed) {
-    ntpAsync.setTZS(tzs);
-    ntpAsync.setNtpPool(ntpPool);
-    ntpAsync.setUpdateInterval(ntpUpdateInterval);
-    current_config.ntpPool = ntpAsync.getNtpPool();
-    current_config.tzs = ntpAsync.getTZS();
-    current_config.ntpUpdateInterval = ntpAsync.getUpdateInterval();
+    ntpAsync.setTZS(current_config.tzs);
+    ntpAsync.setNtpPool(current_config.ntpPool);
+    ntpAsync.setUpdateInterval(current_config.ntpUpdateInterval);
   }
   saveToSpiffsIfChanged(changed);
 
@@ -2720,15 +2734,16 @@ void clockConfigPageHandler() {
   checkServerArgByte("ledMode", "ledMode", changed, current_config.ledMode);
   checkServerArgByte("statusModeL", "statusModeL", changed, current_config.statusModeL);
   checkServerArgByte("statusModeR", "statusModeR", changed, current_config.statusModeR);
-  boolean localWebAuth = getWebAuthentication();
-  String localWebUserName = getWebUserName();
-  String localWebPassword = getWebPassword();
-  checkServerArgBoolean("webAuthentication", "Web Authentication", "on", "off", changed, localWebAuth);
-  checkServerArgString("webUsername", "webUsername", changed, localWebUserName);
-  checkServerArgString("webPassword", "webPassword", changed, localWebPassword);
-  setWebAuthentication(localWebAuth);
-  setWebUserName(localWebUserName);
-  setWebPassword(localWebPassword);
+  boolean webConfigChanged = false;
+  checkServerArgBoolean("webAuthentication", "Web Authentication", "on", "off", webConfigChanged, current_config.webAuthentication);
+  checkServerArgString("webUsername", "webUsername", webConfigChanged, current_config.webUsername);
+  checkServerArgString("webPassword", "webPassword", webConfigChanged, current_config.webPassword);
+  if (webConfigChanged) {
+    changed = true;
+    setWebAuthentication(current_config.webAuthentication);
+    setWebUserName(current_config.webUsername);
+    setWebPassword(current_config.webPassword);
+  }
   checkServerArgByte("preheatStrength", "preheatStrength", changed, current_config.preheatStrength);
   saveToSpiffsIfChanged(changed);
 
@@ -2896,7 +2911,7 @@ void clockConfigPageHandler() {
 
   // web auth mode
   response_message += getRadioGroupHeader("Web Authentication:");
-  if (getWebAuthentication()) {
+  if (current_config.webAuthentication) {
     response_message += getRadioButton("webAuthentication", " On", "on", true);
     response_message += getRadioButton("webAuthentication", " Off", "off", false);
   } else {
@@ -2905,8 +2920,8 @@ void clockConfigPageHandler() {
   }
   response_message += getRadioGroupFooter();
 
-  response_message += getTextInput("User Name", "webUsername", getWebUserName(), !getWebAuthentication());
-  response_message += getTextInput("Password", "webPassword", getWebPassword(), !getWebAuthentication());
+  response_message += getTextInput("User Name", "webUsername", current_config.webUsername, !current_config.webAuthentication);
+  response_message += getTextInput("Password", "webPassword", current_config.webPassword, !current_config.webAuthentication);
 
   // preheat mode
   response_message += getDropDownHeader("Digit pre-heat:", "preheatStrength", true);
