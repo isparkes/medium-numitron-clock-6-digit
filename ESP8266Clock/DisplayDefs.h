@@ -91,6 +91,15 @@ const byte colourTimeB[] = {   0,   0,   0,   0,  51, 192, 255, 255, 255, 153};
 #define STATUS_LED_MODE_ON     5
 #define STATUS_LED_MODE_MAX    5
 
+#define PREHEAT_MIN            1
+#define PREHEAT_V_STRONG       1
+#define PREHEAT_STRONG         2
+#define PREHEAT_WEAK           3
+#define PREHEAT_V_WEAK         4
+#define PREHEAT_OFF            5
+#define PREHEAT_DEFAULT        PREHEAT_WEAK
+#define PREHEAT_MAX            5
+
 #define DIGIT_COUNT 6
 
 #endif

@@ -56,15 +56,6 @@
 // NTP Component
 NtpAsync ntpAsync;
 
-// SPIFFS component
-SPIFFS_CLOCK spiffs;
-
-// Config from SPIFFS
-spiffs_config_t current_config;
-
-// Stats from SPIFFS
-spiffs_stats_t current_stats;
-
 //**********************************************************************************
 //**********************************************************************************
 //*                                    Setup                                       *
@@ -255,7 +246,7 @@ void setup()
   long startSeachMs = millis();
   bool needUpdate = true;
   while (((millis() - startSeachMs) < 10000) && needUpdate) {
-    delay(500);
+    delay(1000);
     ntpAsync.getTimeFromNTP();
     if (ntpAsync.ntpTimeValid(millis()) > 0) {
       debugMsg("Got update from NTP, exiting loop");
@@ -1743,9 +1734,9 @@ void shiftDigitsOut(byte *displayDigits) {
   
 
   // Digit pre-heat
-  if (preheatStrength < 5) {
+  if (current_config.preheatStrength < PREHEAT_OFF) {
     preheatCounter++;
-    if (preheatCounter > preheatStrength) {
+    if (preheatCounter > current_config.preheatStrength) {
       preheatCounter = 0;
       out1 |= 0x7f7f7f;
       out2 |= 0x7f7f7f;
@@ -2486,6 +2477,7 @@ void factoryReset() {
   cc->backlightDimFactor = BACKLIGHT_DIM_FACTOR_DEFAULT;
   cc->statusModeL = STATUS_LED_MODE_ONLINE;
   cc->statusModeR = STATUS_LED_MODE_NTP;
+  cc->preheatStrength = PREHEAT_DEFAULT;
 
   spiffs.saveConfigToSpiffs(cc);
 }
@@ -2737,7 +2729,7 @@ void clockConfigPageHandler() {
   setWebAuthentication(localWebAuth);
   setWebUserName(localWebUserName);
   setWebPassword(localWebPassword);
-  checkServerArgByte("preheatStrength", "preheatStrength", changed, preheatStrength);
+  checkServerArgByte("preheatStrength", "preheatStrength", changed, current_config.preheatStrength);
   saveToSpiffsIfChanged(changed);
 
   // -----------------------------------------------------------------------------
@@ -2918,11 +2910,11 @@ void clockConfigPageHandler() {
 
   // preheat mode
   response_message += getDropDownHeader("Digit pre-heat:", "preheatStrength", true);
-  response_message += getDropDownOption("1", "Very Strong", (preheatStrength == 1));
-  response_message += getDropDownOption("2", "Strong", (preheatStrength == 2));
-  response_message += getDropDownOption("3", "Weak", (preheatStrength == 3));
-  response_message += getDropDownOption("4", "Very Weak", (preheatStrength == 4));
-  response_message += getDropDownOption("5", "Off", (preheatStrength == 5));
+  response_message += getDropDownOption("1", "Very Strong", (current_config.preheatStrength == PREHEAT_V_STRONG));
+  response_message += getDropDownOption("2", "Strong", (current_config.preheatStrength == PREHEAT_STRONG));
+  response_message += getDropDownOption("3", "Weak", (current_config.preheatStrength == PREHEAT_WEAK));
+  response_message += getDropDownOption("4", "Very Weak", (current_config.preheatStrength == PREHEAT_V_WEAK));
+  response_message += getDropDownOption("5", "Off", (current_config.preheatStrength == PREHEAT_OFF));
   response_message += getDropDownFooter();
 
   // form footer

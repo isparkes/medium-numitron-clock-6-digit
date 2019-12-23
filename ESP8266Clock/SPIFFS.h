@@ -6,6 +6,8 @@
 
 #include "ClockDefs.h"
 
+// ------------------------ Types ------------------------
+
 typedef void (*DebugCallback) (String);
 
 // Used for holding the config set
@@ -44,12 +46,17 @@ typedef struct {
   boolean webAuthentication;
   String webUsername;
   String webPassword;
+  byte preheatStrength;
 } spiffs_config_t;
 
 typedef struct {
   unsigned long uptimeMins = 0;
   unsigned long tubeOnTimeMins = 0;
 } spiffs_stats_t;
+
+// ----------------------------------------------------------------------------------------------------
+// ------------------------------------- SPIFFS Clock Component ---------------------------------------
+// ----------------------------------------------------------------------------------------------------
 
 class SPIFFS_CLOCK
 {
@@ -72,5 +79,16 @@ class SPIFFS_CLOCK
 
     void debugMsg(String message);                        // print a debug message to the callback
 };
+
+// ----------------- Exported Variables ------------------
+
+// Config from SPIFFS
+static spiffs_config_t current_config;
+
+// Stats from SPIFFS
+static spiffs_stats_t current_stats;
+
+// SPIFFS component
+static SPIFFS_CLOCK spiffs;
 
 #endif
