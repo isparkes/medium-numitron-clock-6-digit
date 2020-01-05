@@ -205,6 +205,10 @@ void setup()
         inLoop = false;
         current_config.testMode = false;
         spiffs.saveConfigToSpiffs(&current_config);
+
+        // reset the LEDs after the test pattern
+        setDiagnosticLED(DIAGS_START, STATUS_GREEN);
+        setDiagnosticLED(DIAGS_SPIFFS, STATUS_GREEN);
       }
     }
 
@@ -1509,7 +1513,7 @@ void loadNumberArrayPOSTMessage(byte val) {
         numberArray[2] = LETTER_A;
         numberArray[3] = LETTER_r;
         numberArray[4] = LETTER_t;
-        numberArray[5] = DIGIT_BLANK;
+        numberArray[5] = LETTER__;
         break;
       }
     case DIAGS_SPIFFS:
