@@ -505,7 +505,6 @@ Connection ~ 3600 8750
 Wire Wire Line
 	3600 9550 4300 9550
 Connection ~ 3600 9550
-NoConn ~ 6000 9150
 Wire Wire Line
 	1900 9150 1500 9150
 Text Label 1500 9150 0    50   ~ 0
@@ -2142,4 +2141,31 @@ Text Label 2100 6900 0    50   ~ 0
 SCL
 Text Label 2100 6800 0    50   ~ 0
 SDA
+$Comp
+L Connector_Generic:Conn_01x03 J4
+U 1 1 5E52C576
+P 2850 7100
+F 0 "J4" H 2770 6775 50  0000 C CNN
+F 1 "Conn_01x03" H 2770 6866 50  0000 C CNN
+F 2 "NixieClockMaster:Header_MA03-1" H 2850 7100 50  0001 C CNN
+F 3 "~" H 2850 7100 50  0001 C CNN
+	1    2850 7100
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	3050 7000 3400 7000
+Wire Wire Line
+	3050 7200 3400 7200
+Text Label 3400 7200 0    50   ~ 0
+GND
+Text Label 3400 7000 0    50   ~ 0
+5V
+Wire Wire Line
+	3050 7100 3400 7100
+Text Label 3400 7100 0    50   ~ 0
+LED_OUT
+Text Label 6100 9150 0    50   ~ 0
+LED_OUT
+Wire Wire Line
+	6000 9150 6100 9150
 $EndSCHEMATC
