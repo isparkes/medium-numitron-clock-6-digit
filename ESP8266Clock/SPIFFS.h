@@ -47,6 +47,7 @@ typedef struct {
   String webUsername;
   String webPassword;
   byte preheatStrength;
+  byte extDimFactor;
 } spiffs_config_t;
 
 typedef struct {

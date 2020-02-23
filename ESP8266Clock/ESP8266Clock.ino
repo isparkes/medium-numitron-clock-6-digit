@@ -34,7 +34,6 @@
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
 #include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis 1.5.0)
-#include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna 2.3.4)
 #include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.14.0)
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
 
@@ -47,6 +46,7 @@
 #include "ClockDefs.h"
 #include "ESP_DS1307.h"
 #include "HtmlServer.h"
+#include "LEDManager.h"
 #include "NtpAsync.h"
 #include "SPIFFS.h"
 #include "VFDDefs.h"
@@ -88,7 +88,8 @@ void setup()
 #endif
 
   // Set up the LED output
-  leds.Begin();
+  ledManager.setUp();
+  ledManager.recalculateVariables();
 
   setDiagnosticLED(DIAGS_START, STATUS_GREEN);
   loadNumberArrayPOSTMessage(DIAGS_START);
@@ -419,6 +420,7 @@ void loop()
   }
 
   ldrValue = getDimmingFromLDR();
+  ledManager.setLDRValue(ldrValue);
   outputDisplay();
 
   // Update the tick and backlight LEDs
@@ -566,15 +568,8 @@ void setLeds()
     secsDelta = 1000 - (nowMillis - lastCheckMillis);
   }
 
-  // Fixed backlight dim setting
-  float fixedDim = (float) current_config.backlightDimFactor / (float) 100;
-
-  // calculate the PWM factor, goes between current_config.minDim% and 100%
-  float dimFactor = (float) (1023 - ldrValue) / (float) 1023.0 * fixedDim;
-
-  // Calculate the brightness factor based on the "pulse"
-  float pwmFactor = (float) secsDelta / (float) 1000.0;
-
+  // --------------------------------------- separators --------------------------------------
+  
   switch (current_config.ledMode) {
     case LED_RAILROAD:
       {
@@ -645,67 +640,10 @@ void setLeds()
       }
   }
 
-  if (blankLEDs) {
-    setAllLEDs( getLEDAdjusted(0, 1, 1),
-                getLEDAdjusted(0, 1, 1),
-                getLEDAdjusted(0, 1, 1));
-  } else {
-    // RGB Backlight PWM led output
-    switch (current_config.backlightMode) {
-      case BACKLIGHT_FIXED:
-        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], 1, fixedDim),
-                    getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], 1, fixedDim),
-                    getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], 1, fixedDim));
-        break;
-      case BACKLIGHT_PULSE:
-        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], pwmFactor, fixedDim),
-                    getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], pwmFactor, fixedDim),
-                    getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], pwmFactor, fixedDim));
-        break;
-      case BACKLIGHT_CYCLE:
-        cycleColours3(colors);
-        setAllLEDs( getLEDAdjusted(colors[0], 1, fixedDim),
-                    getLEDAdjusted(colors[1], 1, fixedDim),
-                    getLEDAdjusted(colors[2], 1, fixedDim));
-        break;
-      case BACKLIGHT_FIXED_DIM:
-        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], 1, dimFactor),
-                    getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], 1, dimFactor),
-                    getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], 1, dimFactor));
-        break;
-      case BACKLIGHT_PULSE_DIM:
-        setAllLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], pwmFactor, dimFactor),
-                    getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], pwmFactor, dimFactor),
-                    getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], pwmFactor, dimFactor));
-        break;
-      case BACKLIGHT_CYCLE_DIM:
-        cycleColours3(colors);
-        setAllLEDs( getLEDAdjusted(colors[0], 1, dimFactor),
-                    getLEDAdjusted(colors[1], 1, dimFactor),
-                    getLEDAdjusted(colors[2], 1, dimFactor));
-        break;
-      case BACKLIGHT_COLOUR_TIME:
-        if (!syncColourTime) {
-          for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-            ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, fixedDim);
-            ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], 1, fixedDim);
-            ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], 1, fixedDim);
-          }
-        }
-        outputLEDBuffer();
-        break;
-      case BACKLIGHT_COLOUR_TIME_DIM:
-        if (!syncColourTime) {
-          for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-            ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], 1, dimFactor);
-            ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], 1, dimFactor);
-            ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], 1, dimFactor);
-          }
-        }
-        outputLEDBuffer();
-        break;
-    }
-  }
+  // output the backlight/underlight LEDs
+  ledManager.setLDRValue(ldrValue);
+  ledManager.setPulseValue(secsDelta);  
+  ledManager.processLedStatus();
 }
 
 // ************************************************************
@@ -741,30 +679,6 @@ boolean checkPIR(unsigned long nowMillis) {
 // ************************************************************
 boolean checkPIRInstalled() {
   return pirInstalled;
-}
-
-// ************************************************************
-// Set back light LEDs to the same colour
-// ************************************************************
-void setAllLEDs(byte red, byte green, byte blue) {
-  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-    ledR[i] = red;
-    ledG[i] = green;
-    ledB[i] = blue;
-  }
-  outputLEDBuffer();
-}
-
-// ************************************************************
-// Put the led buffers out
-// ************************************************************
-void outputLEDBuffer() {
-  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-    int idx = (DIGIT_COUNT - 1) - i;
-    RgbColor color(ledR[i], ledG[i], ledB[i]);
-    leds.SetPixelColor(idx, color);
-  }
-  leds.Show();
 }
 
 // ************************************************************
@@ -1395,77 +1309,6 @@ void processCurrentMode(int displayMode) {
   }
 }
 
-// ************************************************************
-// output a PWM LED channel, adjusting for dimming and PWM
-// brightness:
-// rawValue: The raw brightness value between 0 - 255
-// ledPWMVal: The pwm factor between 0 - 1
-// dimFactor: The dimming value between 0 - 1
-// ************************************************************
-byte getLEDAdjusted(float rawValue, float ledPWMVal, float dimFactor) {
-  byte dimmedPWMVal = (byte)(rawValue * ledPWMVal * dimFactor);
-  return dim_curve[dimmedPWMVal];
-}
-
-// ************************************************************
-// Colour cycling 3: one colour dominates
-// ************************************************************
-void cycleColours3(int colors[3]) {
-  cycleCount++;
-  if (cycleCount > current_config.cycleSpeed) {
-    cycleCount = 0;
-
-    if (changeSteps == 0) {
-      changeSteps = random(256);
-      currentColour = random(3);
-    }
-
-    changeSteps--;
-
-    switch (currentColour) {
-      case 0:
-        if (colors[0] < 255) {
-          colors[0]++;
-          if (colors[1] > 0) {
-            colors[1]--;
-          }
-          if (colors[2] > 0) {
-            colors[2]--;
-          }
-        } else {
-          changeSteps = 0;
-        }
-        break;
-      case 1:
-        if (colors[1] < 255) {
-          colors[1]++;
-          if (colors[0] > 0) {
-            colors[0]--;
-          }
-          if (colors[2] > 0) {
-            colors[2]--;
-          }
-        } else {
-          changeSteps = 0;
-        }
-        break;
-      case 2:
-        if (colors[2] < 255) {
-          colors[2]++;
-          if (colors[0] > 0) {
-            colors[0]--;
-          }
-          if (colors[1] > 0) {
-            colors[1]--;
-          }
-        } else {
-          changeSteps = 0;
-        }
-        break;
-    }
-  }
-}
-
 //**********************************************************************************
 //**********************************************************************************
 //*                             Utility functions                                  *
@@ -1874,7 +1717,7 @@ void blankDigits(byte *digits, byte *prevNums, bool *smoothRun) {
 // ************************************************************
 void smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) {
   static unsigned long smoothStartMillis[6];
-  syncColourTime = false;
+  ledManager.setSyncColourTime(false);
   for (int i = 0; i <= 5; i++) {
     if (numberArray[i] != prevNums[i]) {
       digits[i] |= digitData[prevNums[i]];
@@ -1888,7 +1731,7 @@ void smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) {
           smoothRun[i] = false;
         }
       }
-      syncColourTime = true;
+      ledManager.setSyncColourTime(true);
     }
   }
 }
@@ -2281,40 +2124,8 @@ void setTubesAndLEDSblankMode() {
     blankTubes = false;
     blankLEDs = false;
   }
-}
 
-// ************************************************************
-// Set the diagnostic LED colour - progressively setting the
-// LEDs to dignostic colours
-// ************************************************************
-void setDiagnosticLED(byte stepNumber, byte state) {
-  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-    if (i > stepNumber) {
-      ledR[i] = ledG[i] = ledB[i] = 0x1f;
-    } else if (i == stepNumber) {
-      if (state == STATUS_RED) {
-        ledR[i] = 0xff;
-        ledG[i] = 0;
-        ledB[i] = 0;
-      } else if (state == STATUS_YELLOW) {
-        ledR[i] = 0xff;
-        ledG[i] = 0x7f;
-        ledB[i] = 0x0f;
-      } else if (state == STATUS_GREEN) {
-        ledR[i] = 0;
-        ledG[i] = 0xff;
-        ledB[i] = 0;
-      } else if (state == STATUS_BLUE) {
-        ledR[i] = 0;
-        ledG[i] = 0;
-        ledB[i] = 0xff;
-      }
-    }
-  }
-  outputLEDBuffer();
-
-  // A little pause for effect
-  delay(500);
+  ledManager.setBlanked(blankLEDs);
 }
 
 // ************************************************************
@@ -2346,6 +2157,14 @@ void newTimeUpdateReceived() {
   debugMsg("Got a new time update");
   setTimeFromServer(ntpAsync.getLastTimeFromServer());
   setRTCTime();
+}
+
+// ************************************************************
+// Shim to ledManager function - adds a delay
+// ************************************************************
+void setDiagnosticLED(byte stepNumber, byte state) {
+  ledManager.setDiagnosticLED(stepNumber, state);
+  delay(500);
 }
 
 //**********************************************************************************
@@ -2504,6 +2323,7 @@ void factoryReset() {
   cc->statusModeL = STATUS_LED_MODE_ONLINE;
   cc->statusModeR = STATUS_LED_MODE_NTP;
   cc->preheatStrength = PREHEAT_DEFAULT;
+  cc->extDimFactor = EXT_DIM_FACTOR_DEFAULT;
 
   spiffs.saveConfigToSpiffs(cc);
 }
@@ -2732,6 +2552,7 @@ void clockConfigPageHandler() {
   checkServerArgByte("grnCnl", "grnCnl", changed, current_config.grnCnl);
   checkServerArgByte("bluCnl", "bluCnl", changed, current_config.bluCnl);
   checkServerArgByte("backlightDimFactor", "backlightDimFactor", changed, current_config.backlightDimFactor);
+  checkServerArgByte("extDimFactor", "extDimFactor", changed, current_config.extDimFactor);
   checkServerArgByte("cycleSpeed", "cycleSpeed", changed, current_config.cycleSpeed);
   checkServerArgByte("blankMode", "blankMode", changed, current_config.blankMode);
   checkServerArgByte("slotsMode", "slotsMode", changed, current_config.slotsMode);
@@ -2752,6 +2573,7 @@ void clockConfigPageHandler() {
   }
   checkServerArgByte("preheatStrength", "preheatStrength", changed, current_config.preheatStrength);
   saveToSpiffsIfChanged(changed);
+  ledManager.recalculateVariables();
 
   // -----------------------------------------------------------------------------
   String response_message = getHTMLHead(getIsConnected());
@@ -2856,8 +2678,11 @@ void clockConfigPageHandler() {
   response_message += getNumberInput("Green intensity:", "grnCnl", 0, 15, current_config.grnCnl, !activeLEDs);
   response_message += getNumberInput("Blue intensity:", "bluCnl", 0, 15, current_config.bluCnl, !activeLEDs);
 
-  // Separator dim factor
+  // backlight dim factor
   response_message += getNumberInput("Backlight Dim:", "backlightDimFactor", BACKLIGHT_DIM_FACTOR_MIN, BACKLIGHT_DIM_FACTOR_MAX, current_config.backlightDimFactor, false);
+
+  // external backlight dim factor
+  response_message += getNumberInput("Underlight Dim:", "extDimFactor", EXT_DIM_FACTOR_MIN, EXT_DIM_FACTOR_MAX, current_config.extDimFactor, false);
 
   boolean activeCycle = (current_config.backlightMode == 2) || (current_config.backlightMode == 5);
 

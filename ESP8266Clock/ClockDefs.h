@@ -174,29 +174,6 @@
 #define BLANK_MODE_DEFAULT              2
 
 // -------------------------------------------------------------------------------
-#define BACKLIGHT_MIN                   0
-#define BACKLIGHT_FIXED                 0   // Just define a colour and stick to it
-#define BACKLIGHT_PULSE                 1   // pulse the defined colour
-#define BACKLIGHT_CYCLE                 2   // cycle through random colours
-#define BACKLIGHT_FIXED_DIM             3   // A defined colour, but dims with bulb dimming
-#define BACKLIGHT_PULSE_DIM             4   // pulse the defined colour, dims with bulb dimming
-#define BACKLIGHT_CYCLE_DIM             5   // cycle through random colours, dims with bulb dimming
-#define BACKLIGHT_COLOUR_TIME           6   // use "ColourTime" - different colours for each digit value
-#define BACKLIGHT_COLOUR_TIME_DIM       7   // use "ColourTime" - dims with bulb dimming
-#define BACKLIGHT_MAX                   7
-#define BACKLIGHT_DEFAULT               4
-
-// -------------------------------------------------------------------------------
-#define CYCLE_SPEED_MIN                 4
-#define CYCLE_SPEED_MAX                 64
-#define CYCLE_SPEED_DEFAULT             10
-
-// -------------------------------------------------------------------------------
-#define ANTI_GHOST_MIN                  0
-#define ANTI_GHOST_MAX                  50
-#define ANTI_GHOST_DEFAULT              0
-
-// -------------------------------------------------------------------------------
 #define PIR_TIMEOUT_MIN                 60    // 1 minute in seconds
 #define PIR_TIMEOUT_MAX                 3600  // 1 hour in seconds
 #define PIR_TIMEOUT_DEFAULT             300   // 5 minutes in seconds
@@ -218,6 +195,11 @@
 #define BACKLIGHT_DIM_FACTOR_DEFAULT    100
 
 // -------------------------------------------------------------------------------
+#define EXT_DIM_FACTOR_MIN              10
+#define EXT_DIM_FACTOR_MAX              100
+#define EXT_DIM_FACTOR_DEFAULT          100
+
+// -------------------------------------------------------------------------------
 // RTC address
 #define RTC_I2C_ADDRESS                 0x68
 
@@ -226,7 +208,7 @@
 #define APPLY_LEAD_0_BLANK              true
 
 // -------------------------------------------------------------------------------
-#define PixelCount                      6
+//#define PIXEL_COUNT                     12
 #define DIGIT_COUNT                     6
 
 // -------------------------------------------------------------------------------

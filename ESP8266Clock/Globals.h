@@ -10,7 +10,6 @@
 
 // ----------------------- Components ----------------------------
 
-NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(DIGIT_COUNT, LED_DOUT);
 ClockButton button1(inputPin1, CLOCK_BUTTON_ACTIVE_LO);
 
 Transition transitionWipe(800, 700, 2800, SLOTS_MODE_WIPE_WIPE);  // Wipe In / Wipe Out (DA2000-Transition.h)  
@@ -43,15 +42,6 @@ boolean triggeredThisSec = false;
 unsigned int tempDisplayModeDuration;      // time for the end of the temporary display
 int  tempDisplayMode;
 
-// ---------------- Backlight management ---------------
-
-int colors[3];
-byte cycleCount = 0;
-byte ledR[DIGIT_COUNT];
-byte ledG[DIGIT_COUNT];
-byte ledB[DIGIT_COUNT];
-boolean syncColourTime;
-
 // ------------------ Usage statistics -----------------
 
 int impressionsPerSec = 0;
@@ -61,6 +51,9 @@ int lastImpressionsPerSec = 0;
 
 byte useRTC = false;  // true if we detect an RTC
 boolean onceHadAnRTC = false;
+
+// ----------------- Digit handlng -------------------
+boolean syncColourTime;
 
 // ----------------- Motion detector -------------------
 
@@ -96,9 +89,5 @@ boolean led1State;
 boolean led2State;
 boolean ledLState;
 boolean ledRState;
-
-// Strategy 3
-int changeSteps = 0;
-byte currentColour = 0;
 
 #endif
