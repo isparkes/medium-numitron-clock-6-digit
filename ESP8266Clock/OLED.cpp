@@ -80,9 +80,16 @@ void OLED::setNTPStatus(bool newStatus)
   _display->display();
 }
 
-void OLED::setPIRStatus(byte newStatus)
+void OLED::setPIRStatus(bool newStatus)
 {
   pirStatus = newStatus;
+  drawPIRInd();
+  _display->display();
+}
+
+void OLED::setPIRInstalled(bool newStatus)
+{
+  pirInstalled = newStatus;
   drawPIRInd();
   _display->display();
 }
@@ -122,19 +129,14 @@ void OLED::drawNTPInd() {
 
 void OLED::drawPIRInd() {
   _display->setCursor(PIR_IND_X,STATUS_LINE_Y);
-  switch (pirStatus) {
-    case PIR_NOT_INSTALLED: {
-      _display->print("-");
-      break;
-    }
-    case PIR_NO_MOVEMENT: {
-      _display->print("p");
-      break;
-    }
-    case PIR_MOVEMENT: {
+  if (pirInstalled) {
+    if (pirStatus) {
       _display->print("P");
-      break;
+    } else {
+      _display->print("p");
     }
+  } else {
+    _display->print("-");
   }
 }
 

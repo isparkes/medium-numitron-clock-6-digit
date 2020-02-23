@@ -35,7 +35,8 @@ class OLED
     void showStatusLine();
     void setWiFiStatus(bool newStatus);
     void setNTPStatus(bool newStatus);
-    void setPIRStatus(byte newStatus);
+    void setPIRStatus(bool newStatus);
+    void setPIRInstalled(bool newStatus);
     void setBlankStatus(bool newStatus);
     void setAMStatus(bool newStatus);
     void clearDisplay();
@@ -45,7 +46,8 @@ class OLED
   private:
     bool wifiStatus = false;
     bool ntpStatus = false;
-    byte pirStatus = PIR_NOT_INSTALLED;
+    byte pirStatus = false;
+    byte pirInstalled = false;
     bool blankStatus = false;
     bool ampm = false;
     String timeText = "xx:xx:xx";
