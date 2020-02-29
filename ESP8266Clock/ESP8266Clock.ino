@@ -89,7 +89,6 @@ void setup()
 
   // Set up the LED output
   ledManager.setUp();
-  ledManager.recalculateVariables();
 
   setDiagnosticLED(DIAGS_START, STATUS_GREEN);
   loadNumberArrayPOSTMessage(DIAGS_START);
@@ -135,6 +134,8 @@ void setup()
     ntpAsync.setTZS(current_config.tzs);
     ntpAsync.setNtpPool(current_config.ntpPool);
     ntpAsync.setUpdateInterval(current_config.ntpUpdateInterval);
+
+    ledManager.recalculateVariables();
   }
 
   // **********************************************************************

@@ -26,11 +26,6 @@ const int DIM_VALUE = DIGIT_DISPLAY_COUNT / 5;
 // added to allow display to show when we enter AP MODE - not a Diags step!
 #define AP_MODE           6
 
-#define STATUS_RED    0
-#define STATUS_YELLOW 1
-#define STATUS_GREEN  2
-#define STATUS_BLUE   3
-
 #define LED_MODE_MIN        0
 #define LED_RAILROAD        0
 #define LED_BLINK_SLOW      1

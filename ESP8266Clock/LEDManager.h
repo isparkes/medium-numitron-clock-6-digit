@@ -2,11 +2,8 @@
 #define ledmanager_h
 
 #include "Arduino.h"
-#include "ClockDefs.h"
-#include "SPIFFS.h"
-#include "DisplayDefs.h"
-
 #include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna 2.3.4)
+#include "SPIFFS.h"
 
 // -------------------------------------------------------------------------------
 #define BACKLIGHT_MIN                   0
@@ -34,6 +31,15 @@
 
 #define NO_PULSE                        false
 #define PULSED                          true
+
+#define PIXEL_COUNT                     6
+
+#define LED_DOUT                        3     // RX defined by DMA output of library
+
+#define STATUS_RED    0
+#define STATUS_YELLOW 1
+#define STATUS_GREEN  2
+#define STATUS_BLUE   3
 
 extern byte numberArray[];
 
@@ -71,6 +77,7 @@ class LEDManager
     byte _cycleCount = 0;
     byte _cycleSpeed = CYCLE_SPEED_DEFAULT;
     boolean _syncColourTime = false;
+    spiffs_config_t *cc = &current_config;
 
     // Strategy 3
     int changeSteps = 0;
@@ -78,9 +85,16 @@ class LEDManager
     
     int colors[3];
     byte cycleCount = 0;
-    byte ledR[DIGIT_COUNT];
-    byte ledG[DIGIT_COUNT];
-    byte ledB[DIGIT_COUNT];
+
+    // Back lights
+    byte ledRb[PIXEL_COUNT];
+    byte ledGb[PIXEL_COUNT];
+    byte ledBb[PIXEL_COUNT];
+
+    // Under lights
+    byte ledRu[PIXEL_COUNT];
+    byte ledGu[PIXEL_COUNT];
+    byte ledBu[PIXEL_COUNT];
 
     void setBacklightLEDs(byte red, byte green, byte blue);
     void setUnderlightLEDs(byte red, byte green, byte blue);
@@ -111,7 +125,7 @@ const byte dim_curve[] = {
   193, 196, 200, 203, 207, 211, 214, 218, 222, 226, 230, 234, 238, 242, 248, 255,
 };
 
-const byte rgb_backlight_curve[] = {0, 16, 32, 48, 64, 80, 99, 112, 128, 144, 160, 176, 192, 208, 224, 240, 255};
+const byte rgb_backlight_curve[] = {0, 16, 32, 48, 64, 80, 99, 112, 128, 144, 160, 176, 192, 216, 240, 255};
 
 // Used to define "colourTime" colours
 //                             0    1    2    3    4    5    6    7    8    9

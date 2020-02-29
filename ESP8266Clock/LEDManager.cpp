@@ -1,6 +1,7 @@
 #include "LEDManager.h"
 
-NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(DIGIT_COUNT, LED_DOUT);
+// 6 Backlights and 6 underlights
+static NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(PIXEL_COUNT * 2, LED_DOUT);
 
 void LEDManager::setUp()
 {
@@ -9,11 +10,11 @@ void LEDManager::setUp()
 }
 
 // ************************************************************
-// recalculae "slow moving" parameters
+// recalculate "slow moving" parameters
 // ************************************************************
 void LEDManager::recalculateVariables() {
-  _backlightDim = (float) current_config.backlightDimFactor / (float) 100;
-  _underlightDim = (float) current_config.extDimFactor / (float) 100;
+  _backlightDim = (float) cc->backlightDimFactor / (float) 100;
+  _underlightDim = (float) cc->extDimFactor / (float) 100;
 }
 
 // ************************************************************
@@ -50,32 +51,35 @@ void LEDManager::setBlanked(boolean blanked)
 // Set back light LEDs to the same colour
 // ************************************************************
 void LEDManager::setBacklightLEDs(byte red, byte green, byte blue) {
-  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-    ledR[i] = red;
-    ledG[i] = green;
-    ledB[i] = blue;
+  for (int i = 0 ; i < PIXEL_COUNT ; i++) {
+    ledRb[i] = red;
+    ledGb[i] = green;
+    ledBb[i] = blue;
   }
 }
 
 // ************************************************************
 // Set under light LEDs to the same colour
 // ************************************************************
-//void LEDManager::setUnderlightLEDs(byte red, byte green, byte blue) {
-//  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-//    ledR[i + DIGIT_COUNT] = red;
-//    ledG[i + DIGIT_COUNT] = green;
-//    ledB[i + DIGIT_COUNT] = blue;
-//  }
-//}
+void LEDManager::setUnderlightLEDs(byte red, byte green, byte blue) {
+  for (int i = 0 ; i < PIXEL_COUNT ; i++) {
+    ledRu[i] = red;
+    ledGu[i] = green;
+    ledBu[i] = blue;
+  }
+}
 
 // ************************************************************
 // Put the led buffers out
 // ************************************************************
 void LEDManager::outputLEDBuffer() {
-  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-    int idx = (DIGIT_COUNT - 1) - i;
-    RgbColor color(ledR[i], ledG[i], ledB[i]);
-    leds.SetPixelColor(idx, color);
+  for (int i = 0 ; i < PIXEL_COUNT ; i++) {
+    RgbColor color(ledRb[i], ledGb[i], ledBb[i]);
+    leds.SetPixelColor(i, color);
+  }
+  for (int i = 0 ; i < PIXEL_COUNT ; i++) {
+    RgbColor color(ledRu[i], ledGu[i], ledBu[i]);
+    leds.SetPixelColor(i + 6, color);
   }
   leds.Show();
 }
@@ -86,49 +90,49 @@ void LEDManager::outputLEDBuffer() {
 void LEDManager::processLedStatus() {
   // -------------------------------- Backlights / Underlights -------------------------------
 
-  if (1 == 2) {
+  if (_blanked) {
     setBacklightLEDs( getLEDAdjusted(0, NO_DIM, NO_PULSE, BACKLIGHT),
                       getLEDAdjusted(0, NO_DIM, NO_PULSE, BACKLIGHT),
                       getLEDAdjusted(0, NO_DIM, NO_PULSE, BACKLIGHT));
-//    setUnderlightLEDs(getLEDAdjusted(0, NO_DIM, NO_PULSE, UNDERLIGHT),
-//                      getLEDAdjusted(0, NO_DIM, NO_PULSE, UNDERLIGHT),
-//                      getLEDAdjusted(0, NO_DIM, NO_PULSE, UNDERLIGHT));
+    setUnderlightLEDs(getLEDAdjusted(0, NO_DIM, NO_PULSE, UNDERLIGHT),
+                      getLEDAdjusted(0, NO_DIM, NO_PULSE, UNDERLIGHT),
+                      getLEDAdjusted(0, NO_DIM, NO_PULSE, UNDERLIGHT));
   } else {
-    switch (current_config.backlightMode) {
+    switch (cc->backlightMode) {
       case BACKLIGHT_FIXED: {
-          setBacklightLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], NO_DIM, NO_PULSE, BACKLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], NO_DIM, NO_PULSE, BACKLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], NO_DIM, NO_PULSE, BACKLIGHT));
-//          setUnderlightLEDs(getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], NO_DIM, NO_PULSE, UNDERLIGHT),
-//                            getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], NO_DIM, NO_PULSE, UNDERLIGHT),
-//                            getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], NO_DIM, NO_PULSE, UNDERLIGHT));
+          setBacklightLEDs( getLEDAdjusted(rgb_backlight_curve[cc->redCnl], NO_DIM, NO_PULSE, BACKLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->grnCnl], NO_DIM, NO_PULSE, BACKLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->bluCnl], NO_DIM, NO_PULSE, BACKLIGHT));
+          setUnderlightLEDs(getLEDAdjusted(rgb_backlight_curve[cc->redCnl], NO_DIM, NO_PULSE, UNDERLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->grnCnl], NO_DIM, NO_PULSE, UNDERLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->bluCnl], NO_DIM, NO_PULSE, UNDERLIGHT));
           break;
         }
       case BACKLIGHT_PULSE: {
-          setBacklightLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], NO_DIM, PULSED, BACKLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], NO_DIM, PULSED, BACKLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], NO_DIM, PULSED, BACKLIGHT));
-//          setUnderlightLEDs(getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], NO_DIM, PULSED, UNDERLIGHT),
-//                            getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], NO_DIM, PULSED, UNDERLIGHT),
-//                            getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], NO_DIM, PULSED, UNDERLIGHT));
+          setBacklightLEDs( getLEDAdjusted(rgb_backlight_curve[cc->redCnl], NO_DIM, PULSED, BACKLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->grnCnl], NO_DIM, PULSED, BACKLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->bluCnl], NO_DIM, PULSED, BACKLIGHT));
+          setUnderlightLEDs(getLEDAdjusted(rgb_backlight_curve[cc->redCnl], NO_DIM, PULSED, UNDERLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->grnCnl], NO_DIM, PULSED, UNDERLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->bluCnl], NO_DIM, PULSED, UNDERLIGHT));
           break;
         }
       case BACKLIGHT_FIXED_DIM: {
-          setBacklightLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], DIMMED, NO_PULSE, BACKLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], DIMMED, NO_PULSE, BACKLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], DIMMED, NO_PULSE, BACKLIGHT));
-//          setUnderlightLEDs(getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], DIMMED, NO_PULSE, UNDERLIGHT),
-//                            getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], DIMMED, NO_PULSE, UNDERLIGHT),
-//                            getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], DIMMED, NO_PULSE, UNDERLIGHT));
+          setBacklightLEDs( getLEDAdjusted(rgb_backlight_curve[cc->redCnl], DIMMED, NO_PULSE, BACKLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->grnCnl], DIMMED, NO_PULSE, BACKLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->bluCnl], DIMMED, NO_PULSE, BACKLIGHT));
+          setUnderlightLEDs(getLEDAdjusted(rgb_backlight_curve[cc->redCnl], DIMMED, NO_PULSE, UNDERLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->grnCnl], DIMMED, NO_PULSE, UNDERLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->bluCnl], DIMMED, NO_PULSE, UNDERLIGHT));
           break;
         }
       case BACKLIGHT_PULSE_DIM: {
-          setBacklightLEDs( getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], DIMMED, PULSED, BACKLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], DIMMED, PULSED, BACKLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], DIMMED, PULSED, BACKLIGHT));
-//          setUnderlightLEDs(getLEDAdjusted(rgb_backlight_curve[current_config.redCnl], DIMMED, PULSED, UNDERLIGHT),
-//                            getLEDAdjusted(rgb_backlight_curve[current_config.grnCnl], DIMMED, PULSED, UNDERLIGHT),
-//                            getLEDAdjusted(rgb_backlight_curve[current_config.bluCnl], DIMMED, PULSED, UNDERLIGHT));
+          setBacklightLEDs( getLEDAdjusted(rgb_backlight_curve[cc->redCnl], DIMMED, PULSED, BACKLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->grnCnl], DIMMED, PULSED, BACKLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->bluCnl], DIMMED, PULSED, BACKLIGHT));
+          setUnderlightLEDs(getLEDAdjusted(rgb_backlight_curve[cc->redCnl], DIMMED, PULSED, UNDERLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->grnCnl], DIMMED, PULSED, UNDERLIGHT),
+                            getLEDAdjusted(rgb_backlight_curve[cc->bluCnl], DIMMED, PULSED, UNDERLIGHT));
           break;
         }
       case BACKLIGHT_CYCLE: {
@@ -136,9 +140,9 @@ void LEDManager::processLedStatus() {
           setBacklightLEDs( getLEDAdjusted(colors[0], NO_DIM, NO_PULSE, BACKLIGHT),
                             getLEDAdjusted(colors[1], NO_DIM, NO_PULSE, BACKLIGHT),
                             getLEDAdjusted(colors[2], NO_DIM, NO_PULSE, BACKLIGHT));
-//          setUnderlightLEDs(getLEDAdjusted(colors[0], NO_DIM, NO_PULSE, UNDERLIGHT),
-//                            getLEDAdjusted(colors[1], NO_DIM, NO_PULSE, UNDERLIGHT),
-//                            getLEDAdjusted(colors[2], NO_DIM, NO_PULSE, UNDERLIGHT));
+          setUnderlightLEDs(getLEDAdjusted(colors[0], NO_DIM, NO_PULSE, UNDERLIGHT),
+                            getLEDAdjusted(colors[1], NO_DIM, NO_PULSE, UNDERLIGHT),
+                            getLEDAdjusted(colors[2], NO_DIM, NO_PULSE, UNDERLIGHT));
           break;
         }
       case BACKLIGHT_CYCLE_DIM: {
@@ -146,32 +150,32 @@ void LEDManager::processLedStatus() {
           setBacklightLEDs( getLEDAdjusted(colors[0], NO_DIM, PULSED, BACKLIGHT),
                             getLEDAdjusted(colors[1], NO_DIM, PULSED, BACKLIGHT),
                             getLEDAdjusted(colors[2], NO_DIM, PULSED, BACKLIGHT));
-//          setUnderlightLEDs(getLEDAdjusted(colors[0], NO_DIM, PULSED, UNDERLIGHT),
-//                            getLEDAdjusted(colors[1], NO_DIM, PULSED, UNDERLIGHT),
-//                            getLEDAdjusted(colors[2], NO_DIM, PULSED, UNDERLIGHT));
+          setUnderlightLEDs(getLEDAdjusted(colors[0], NO_DIM, PULSED, UNDERLIGHT),
+                            getLEDAdjusted(colors[1], NO_DIM, PULSED, UNDERLIGHT),
+                            getLEDAdjusted(colors[2], NO_DIM, PULSED, UNDERLIGHT));
           break;
         }
       case BACKLIGHT_COLOUR_TIME: {
           if (!_syncColourTime) {
-            for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-              ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], NO_DIM, NO_PULSE, BACKLIGHT);
-              ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], NO_DIM, NO_PULSE, BACKLIGHT);
-              ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], NO_DIM, NO_PULSE, BACKLIGHT);
-//              ledR[DIGIT_COUNT + 5 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], NO_DIM, NO_PULSE, UNDERLIGHT);
-//              ledG[DIGIT_COUNT + 5 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], NO_DIM, NO_PULSE, UNDERLIGHT);
-//              ledB[DIGIT_COUNT + 5 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], NO_DIM, NO_PULSE, UNDERLIGHT);
+            for (int i = 0 ; i < PIXEL_COUNT ; i++) {
+              ledRb[i] = getLEDAdjusted(colourTimeR[numberArray[i]], NO_DIM, NO_PULSE, BACKLIGHT);
+              ledGb[i] = getLEDAdjusted(colourTimeG[numberArray[i]], NO_DIM, NO_PULSE, BACKLIGHT);
+              ledBb[i] = getLEDAdjusted(colourTimeB[numberArray[i]], NO_DIM, NO_PULSE, BACKLIGHT);
+              ledRu[i] = getLEDAdjusted(colourTimeR[numberArray[i]], NO_DIM, NO_PULSE, UNDERLIGHT);
+              ledGu[i] = getLEDAdjusted(colourTimeG[numberArray[i]], NO_DIM, NO_PULSE, UNDERLIGHT);
+              ledBu[i] = getLEDAdjusted(colourTimeB[numberArray[i]], NO_DIM, NO_PULSE, UNDERLIGHT);
             }
           }
           break;
         }
       case BACKLIGHT_COLOUR_TIME_DIM: {
-          for (int i = 0 ; i < DIGIT_COUNT ; i++) {
-              ledR[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], DIMMED, NO_PULSE, BACKLIGHT);
-              ledG[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], DIMMED, NO_PULSE, BACKLIGHT);
-              ledB[DIGIT_COUNT - 1 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], DIMMED, NO_PULSE, BACKLIGHT);
-//              ledR[DIGIT_COUNT + 5 - i] = getLEDAdjusted(colourTimeR[numberArray[i]], DIMMED, NO_PULSE, UNDERLIGHT);
-//              ledG[DIGIT_COUNT + 5 - i] = getLEDAdjusted(colourTimeG[numberArray[i]], DIMMED, NO_PULSE, UNDERLIGHT);
-//              ledB[DIGIT_COUNT + 5 - i] = getLEDAdjusted(colourTimeB[numberArray[i]], DIMMED, NO_PULSE, UNDERLIGHT);
+          for (int i = 0 ; i < PIXEL_COUNT ; i++) {
+              ledRb[i] = getLEDAdjusted(colourTimeR[numberArray[i]], DIMMED, NO_PULSE, BACKLIGHT);
+              ledGb[i] = getLEDAdjusted(colourTimeG[numberArray[i]], DIMMED, NO_PULSE, BACKLIGHT);
+              ledBb[i] = getLEDAdjusted(colourTimeB[numberArray[i]], DIMMED, NO_PULSE, BACKLIGHT);
+              ledRu[i] = getLEDAdjusted(colourTimeR[numberArray[i]], DIMMED, NO_PULSE, UNDERLIGHT);
+              ledGu[i] = getLEDAdjusted(colourTimeG[numberArray[i]], DIMMED, NO_PULSE, UNDERLIGHT);
+              ledBu[i] = getLEDAdjusted(colourTimeB[numberArray[i]], DIMMED, NO_PULSE, UNDERLIGHT);
           }
         }
     }
@@ -186,6 +190,7 @@ void LEDManager::processLedStatus() {
 // ************************************************************
 byte LEDManager::getLEDAdjusted(byte rawValue, boolean dimmed, boolean usePulse, boolean backOrUnder) {
   byte dimmedPWMVal;
+  float floatRaw = (float) rawValue;
   if (dimmed) {
     if (usePulse) {
       if (!backOrUnder) {
@@ -209,7 +214,7 @@ byte LEDManager::getLEDAdjusted(byte rawValue, boolean dimmed, boolean usePulse,
       }
     } else {
       if (!backOrUnder) {
-        dimmedPWMVal = (byte)(rawValue * _backlightDim);
+        dimmedPWMVal = (byte)(floatRaw * _backlightDim);
       } else {
         dimmedPWMVal = (byte)(rawValue * _underlightDim);
       }
@@ -223,7 +228,7 @@ byte LEDManager::getLEDAdjusted(byte rawValue, boolean dimmed, boolean usePulse,
 // ************************************************************
 void LEDManager::cycleColours3(int colors[3]) {
   _cycleCount++;
-  if (_cycleCount > current_config.cycleSpeed) {
+  if (_cycleCount > cc->cycleSpeed) {
     _cycleCount = 0;
 
     if (changeSteps == 0) {
@@ -287,26 +292,38 @@ void LEDManager::setSyncColourTime(boolean value) {
 // LEDs to dignostic colours
 // ************************************************************
 void LEDManager::setDiagnosticLED(byte stepNumber, byte state) {
-  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
+  for (int i = 0 ; i < PIXEL_COUNT ; i++) {
     if (i > stepNumber) {
-      ledR[i] = ledG[i] = ledB[i] = 0x1f;
+      ledRb[i] = ledGb[i] = ledBb[i] = ledRu[i] = ledGu[i] = ledBu[i] = 0x1f;
     } else if (i == stepNumber) {
       if (state == STATUS_RED) {
-        ledR[i] = 0xff;
-        ledG[i] = 0;
-        ledB[i] = 0;
+        ledRb[i] = 0xff;
+        ledGb[i] = 0;
+        ledBb[i] = 0;
+        ledRu[i] = 0xff;
+        ledGu[i] = 0;
+        ledBu[i] = 0;
       } else if (state == STATUS_YELLOW) {
-        ledR[i] = 0xff;
-        ledG[i] = 0x7f;
-        ledB[i] = 0x0f;
+        ledRb[i] = 0xff;
+        ledGb[i] = 0x7f;
+        ledBb[i] = 0x0f;
+        ledRu[i] = 0xff;
+        ledGu[i] = 0x7f;
+        ledBu[i] = 0x0f;
       } else if (state == STATUS_GREEN) {
-        ledR[i] = 0;
-        ledG[i] = 0xff;
-        ledB[i] = 0;
+        ledRb[i] = 0;
+        ledGb[i] = 0xff;
+        ledBb[i] = 0;
+        ledRu[i] = 0;
+        ledGu[i] = 0xff;
+        ledBu[i] = 0;
       } else if (state == STATUS_BLUE) {
-        ledR[i] = 0;
-        ledG[i] = 0;
-        ledB[i] = 0xff;
+        ledRb[i] = 0;
+        ledGb[i] = 0;
+        ledBb[i] = 0xff;
+        ledRu[i] = 0;
+        ledGu[i] = 0;
+        ledBu[i] = 0xff;
       }
     }
   }
