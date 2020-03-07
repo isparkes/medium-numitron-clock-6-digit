@@ -5,18 +5,14 @@
 #include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna 2.3.4)
 #include "SPIFFS.h"
 
-// -------------------------------------------------------------------------------
+// --------------------------- Strategy Backlights -------------------------------
 #define BACKLIGHT_MIN                   0
-#define BACKLIGHT_FIXED                 0   // Just define a colour and stick to it
-#define BACKLIGHT_PULSE                 1   // pulse the defined colour
-#define BACKLIGHT_CYCLE                 2   // cycle through random colours
-#define BACKLIGHT_FIXED_DIM             3   // A defined colour, but dims with bulb dimming
-#define BACKLIGHT_PULSE_DIM             4   // pulse the defined colour, dims with bulb dimming
-#define BACKLIGHT_CYCLE_DIM             5   // cycle through random colours, dims with bulb dimming
-#define BACKLIGHT_COLOUR_TIME           6   // use "ColourTime" - different colours for each digit value
-#define BACKLIGHT_COLOUR_TIME_DIM       7   // use "ColourTime" - dims with bulb dimming
-#define BACKLIGHT_MAX                   7
-#define BACKLIGHT_DEFAULT               4
+#define BACKLIGHT_FIXED                 0  // Just define a colour and stick to it
+#define BACKLIGHT_CYCLE                 1  // cycle through random colours, strategy 3
+#define BACKLIGHT_COLOUR_TIME           2  // use "ColourTime" - different colours for each digit value
+#define BACKLIGHT_DAY_OF_WEEK           3  // use "ColourTime" - different colours for each digit value
+#define BACKLIGHT_MAX                   3
+#define BACKLIGHT_DEFAULT               1
 
 // -------------------------------------------------------------------------------
 #define CYCLE_SPEED_MIN                 4
@@ -25,12 +21,6 @@
 
 #define BACKLIGHT                       false
 #define UNDERLIGHT                      true
-
-#define NO_DIM                          false
-#define DIMMED                          true
-
-#define NO_PULSE                        false
-#define PULSED                          true
 
 #define PIXEL_COUNT                     6
 
@@ -63,6 +53,9 @@ class LEDManager
     void setSyncColourTime(boolean value);
     void setDiagnosticLED(byte stepNumber, byte state);
 
+    // recalculate internal values based on the LDR reading
+    void setDayOfWeek(byte dow);
+
     // This processes the values and outputs the buffer
     void processLedStatus();
 
@@ -77,6 +70,7 @@ class LEDManager
     byte _cycleCount = 0;
     byte _cycleSpeed = CYCLE_SPEED_DEFAULT;
     boolean _syncColourTime = false;
+    byte _dow = 0;
     spiffs_config_t *cc = &current_config;
 
     // Strategy 3
@@ -99,7 +93,7 @@ class LEDManager
     void setBacklightLEDs(byte red, byte green, byte blue);
     void setUnderlightLEDs(byte red, byte green, byte blue);
     void outputLEDBuffer();
-    byte getLEDAdjusted(byte rawValue, boolean dimmed, boolean usePulse, boolean backOrUnder);
+    byte getLEDAdjusted(byte rawValue, boolean backOrUnder);
     void cycleColours3(int colors[3]);
 };
 
@@ -132,6 +126,12 @@ const byte rgb_backlight_curve[] = {0, 16, 32, 48, 64, 80, 99, 112, 128, 144, 16
 const byte colourTimeR[] = { 255, 255, 204,  51,   0,   0,   0, 153, 204, 255};
 const byte colourTimeG[] = {   0, 153, 192, 192, 255, 192, 102,   0,   0,   0};
 const byte colourTimeB[] = {   0,   0,   0,   0,  51, 192, 255, 255, 255, 153};
+
+// Used to define "dayOfWeek" colours
+//                            0    1    2    3    4    5    6
+const byte dayOfWeekR[] = { 255, 255, 204,  51,   0,   0,   0};
+const byte dayOfWeekG[] = {   0,   0,   0,   0,  51, 153, 255};
+const byte dayOfWeekB[] = {   0, 153, 192, 255, 255, 153,   0};
 
 // These are the "pure" HSV values turned to RGB
 // Number                        0    1    2    3    4    5    6    7    8    9

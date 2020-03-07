@@ -30,6 +30,8 @@ typedef struct {
   boolean useLDR;
   boolean usePIRPullup;
   byte backlightMode;
+  boolean useBLPulse;
+  boolean useBLDim;
   byte redCnl;
   byte grnCnl;
   byte bluCnl;

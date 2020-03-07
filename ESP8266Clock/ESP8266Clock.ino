@@ -321,6 +321,7 @@ void setup()
 
   debugMsg("Exit startup in 1 second");
   spiffs.getStatsFromSpiffs(&current_stats);
+  ledManager.setDayOfWeek(weekday());
   delay(1000);
 }
 
@@ -554,6 +555,7 @@ void performOncePerHourProcessing() {
 void performOncePerDayProcessing() {
   debugMsg("---> OncePerDayProcessing");
   spiffs.saveStatsToSpiffs(&current_stats);
+  ledManager.setDayOfWeek(weekday());
 }
 
 // ************************************************************
@@ -800,8 +802,7 @@ void setNextMode(int displayMode) {
         break;
       }
     case MODE_RED_CNL: {
-        if ((current_config.backlightMode == BACKLIGHT_CYCLE) || (current_config.backlightMode == BACKLIGHT_CYCLE_DIM))  {
-          // Skip if we are in cycle mode
+        if ((current_config.backlightMode == BACKLIGHT_CYCLE) || (current_config.backlightMode == BACKLIGHT_COLOUR_TIME) || (current_config.backlightMode == BACKLIGHT_DAY_OF_WEEK)) {
           setNewNextMode(MODE_CYCLE_SPEED);
         }
         loadNumberArrayConfInt(current_config.redCnl, displayMode);
@@ -819,7 +820,7 @@ void setNextMode(int displayMode) {
         break;
       }
     case MODE_CYCLE_SPEED: {
-        if ((current_config.backlightMode != BACKLIGHT_CYCLE) && (current_config.backlightMode != BACKLIGHT_CYCLE_DIM))  {
+        if (current_config.backlightMode != BACKLIGHT_CYCLE) {
           // Show only if we are in cycle mode
           setNewNextMode(MODE_MIN_DIM_UP);
         }
@@ -1201,12 +1202,6 @@ void processCurrentMode(int displayMode) {
         break;
       }
     case MODE_RED_CNL: {
-        if ((current_config.backlightMode == BACKLIGHT_CYCLE) || (current_config.backlightMode == BACKLIGHT_CYCLE_DIM) || (current_config.backlightMode == BACKLIGHT_COLOUR_TIME) || (current_config.backlightMode == BACKLIGHT_COLOUR_TIME_DIM))  {
-          // Skip if we are in cycle mode
-          nextMode++;
-          currentMode++;
-        }
-
         if (button1.isButtonPressedAndReleased()) {
           current_config.redCnl++;
           if (current_config.redCnl > COLOUR_CNL_MAX) {
@@ -1218,12 +1213,6 @@ void processCurrentMode(int displayMode) {
         break;
       }
     case MODE_GRN_CNL: {
-        if ((current_config.backlightMode == BACKLIGHT_CYCLE) || (current_config.backlightMode == BACKLIGHT_CYCLE_DIM) || (current_config.backlightMode == BACKLIGHT_COLOUR_TIME) || (current_config.backlightMode == BACKLIGHT_COLOUR_TIME_DIM))  {
-          // Skip if we are in cycle mode
-          nextMode++;
-          currentMode++;
-        }
-
         if (button1.isButtonPressedAndReleased()) {
           current_config.grnCnl++;
           if (current_config.grnCnl > COLOUR_CNL_MAX) {
@@ -2301,6 +2290,8 @@ void factoryReset() {
   cc->dateFormat = DATE_FORMAT_DEFAULT;
   cc->dayBlanking = DAY_BLANKING_DEFAULT;
   cc->backlightMode = BACKLIGHT_DEFAULT;
+  cc->useBLDim = true;
+  cc->useBLPulse = false;
   cc->redCnl = COLOUR_RED_CNL_DEFAULT;
   cc->grnCnl = COLOUR_GRN_CNL_DEFAULT;
   cc->bluCnl = COLOUR_BLU_CNL_DEFAULT;
@@ -2551,6 +2542,8 @@ void clockConfigPageHandler() {
   checkServerArgByte("blankHourStart", "blankHourStart", changed, current_config.blankHourStart);
   checkServerArgByte("blankHourEnd", "blankHourEnd", changed, current_config.blankHourEnd);
   checkServerArgByte("backlightMode", "backlightMode", changed, current_config.backlightMode);
+  checkServerArgBoolean("useBLPulse", "Use BL pulse", "on", "off", changed, current_config.useBLPulse);
+  checkServerArgBoolean("useBLDim", "Use BL dim", "on", "off", changed, current_config.useBLDim);
   checkServerArgByte("redCnl", "redCnl", changed, current_config.redCnl);
   checkServerArgByte("grnCnl", "grnCnl", changed, current_config.grnCnl);
   checkServerArgByte("bluCnl", "bluCnl", changed, current_config.bluCnl);
@@ -2664,19 +2657,37 @@ void clockConfigPageHandler() {
 
   // Back light
   response_message += getDropDownHeader("Back light:", "backlightMode", true);
-  response_message += getDropDownOption("0", "Fixed RGB backlight, no dimming", (current_config.backlightMode == 0));
-  response_message += getDropDownOption("1", "Pulsing RGB backlight, no dimming", (current_config.backlightMode == 1));
-  response_message += getDropDownOption("2", "Cycling RGB backlight, no dimming", (current_config.backlightMode == 2));
-  response_message += getDropDownOption("3", "Fixed RGB backlight, dims with ambient light", (current_config.backlightMode == 3));
-  response_message += getDropDownOption("4", "Pulsing RGB backlight, dims with ambient light", (current_config.backlightMode == 4));
-  response_message += getDropDownOption("5", "Cycling RGB backlight, dims with ambient light", (current_config.backlightMode == 5));
-  response_message += getDropDownOption("6", "'Colourtime' backlight", (current_config.backlightMode == 6));
-  response_message += getDropDownOption("7", "'Colourtime' backlight, dims with ambient light", (current_config.backlightMode == 7));
+  response_message += getDropDownOption("0", "Fixed RGB backlight", (current_config.backlightMode == 0));
+  response_message += getDropDownOption("1", "Cycling RGB backlight", (current_config.backlightMode == 1));
+  response_message += getDropDownOption("2", "'Colourtime' backlight", (current_config.backlightMode == 2));
+  response_message += getDropDownOption("3", "'Day of week' backlight", (current_config.backlightMode == 3));
   response_message += getDropDownFooter();
 
-  boolean activeLEDs = (current_config.backlightMode == 0) || (current_config.backlightMode == 1) || (current_config.backlightMode == 3) || (current_config.backlightMode == 4);
+  // Dim backlights
+  response_message += getRadioGroupHeader("Dim backlights:");
+  if (current_config.useBLDim) {
+    response_message += getRadioButton("useBLDim", "On", "on", true);
+    response_message += getRadioButton("useBLDim", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("useBLDim", "On", "on", false);
+    response_message += getRadioButton("useBLDim", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
+
+  // Pulse backlights
+  response_message += getRadioGroupHeader("Pulse backlights:");
+  if (current_config.useBLPulse) {
+    response_message += getRadioButton("useBLPulse", "On", "on", true);
+    response_message += getRadioButton("useBLPulse", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("useBLPulse", "On", "on", false);
+    response_message += getRadioButton("useBLPulse", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
 
   // RGB channels
+  boolean activeLEDs = (current_config.backlightMode == 0);
+
   response_message += getNumberInput("Red intensity:", "redCnl", 0, 15, current_config.redCnl, !activeLEDs);
   response_message += getNumberInput("Green intensity:", "grnCnl", 0, 15, current_config.grnCnl, !activeLEDs);
   response_message += getNumberInput("Blue intensity:", "bluCnl", 0, 15, current_config.bluCnl, !activeLEDs);
