@@ -32,8 +32,6 @@ void debugMsgCont(String message);
 boolean getDebug();
 void toggleDebug();
 
-void setPinModes();
-
 void hexCharacterStringToBytes(byte *byteArray, const char *hexString);
 byte nibble(char c);
 

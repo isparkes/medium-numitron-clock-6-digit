@@ -3,7 +3,8 @@
 
 ClockButton::ClockButton(int inputPin, boolean activeLow)
 {
-  pinMode(inputPin, OUTPUT);
+  // NOTE: Grounding the input pin causes it to actuate
+  pinMode(inputPin, INPUT_PULLUP);
   _inputPin = inputPin;
   _activeLow = activeLow;
 }
@@ -186,4 +187,3 @@ void ClockButton::resetInternal() {
   buttonPress = false;
   button1PressedCount = 0;
 }
-

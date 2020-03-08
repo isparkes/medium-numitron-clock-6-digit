@@ -9,15 +9,7 @@
 
 #define inputPin1   0     // D3
 #define pirPin      2     // D4
-#define LED_DOUT    3     // RX defined by DMA output of library
 #define LDRPin      A0    // ADC input
-
-// Shift register
-#define LATCHPin    14    // D5
-#define CLOCKPin    13    // D7
-#define DATAPin     12    // D6
-
-#define BLANKPin    16    // D0
 
 // -------------------------------------------------------------------------------
 // Software version shown in config menu

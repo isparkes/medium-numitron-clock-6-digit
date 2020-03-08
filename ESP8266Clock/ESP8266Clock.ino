@@ -48,8 +48,8 @@
 #include "HtmlServer.h"
 #include "LEDManager.h"
 #include "NtpAsync.h"
+#include "OutputManagerNumi6.h"
 #include "SPIFFS.h"
-#include "VFDDefs.h"
 
 #define DEBUG_OFF
 
@@ -60,11 +60,9 @@
 //**********************************************************************************
 void setup()
 {
-  setPinModes();
-
   // Show Start message on tubes
   loadNumberArrayPOSTMessage(DIAGS_START);
-  shiftDigitsOutDiags();
+  outputManager.outputDisplayDiags();
 
   WiFiManager wifiManager;
 
@@ -87,12 +85,12 @@ void setup()
   spiffs.setDebugOutput(true);
 #endif
 
-  // Set up the LED output
   ledManager.setUp();
+  outputManager.setUp();  
 
   setDiagnosticLED(DIAGS_START, STATUS_GREEN);
   loadNumberArrayPOSTMessage(DIAGS_START);
-  shiftDigitsOutDiags();
+  outputManager.outputDisplayDiags();
   delay(1000);
 
   // Start I2C now so that the update from NTP can be sent to the RTC immediately
@@ -103,7 +101,7 @@ void setup()
 
   setDiagnosticLED(DIAGS_SPIFFS, STATUS_YELLOW);
   loadNumberArrayPOSTMessage(DIAGS_SPIFFS);
-  shiftDigitsOutDiags();
+  outputManager.outputDisplayDiags();
   delay(1000);
 
   for (int i = 0; i < 25 ; i++) button1.checkButton(millis());
@@ -155,9 +153,8 @@ void setup()
     // set backlights to change with the displayed digits
     current_config.backlightMode = BACKLIGHT_COLOUR_TIME;
 
-    // All the digits on full
+    // All the digits on
     allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
-    setBlankingPin();
 
     lastCheckMillis = millis();
 
@@ -196,8 +193,7 @@ void setup()
         led2State = true;
       }
 
-      // debugMsg("Setting display: " + String(secCount));
-      outputDisplay();
+      outputManager.outputDisplay();
 
       setLeds();
 
@@ -227,7 +223,7 @@ void setup()
 
   setDiagnosticLED(DIAGS_WIFI, STATUS_YELLOW);
   loadNumberArrayPOSTMessage(DIAGS_WIFI);
-  shiftDigitsOutDiags();
+  outputManager.outputDisplayDiags();
 
   boolean connected = false;
   connected = wifiManager.autoConnect(WiFi.hostname().c_str(), "SetMeUp!");
@@ -252,7 +248,7 @@ void setup()
   ntpAsync.getTimeFromNTP();
   setDiagnosticLED(DIAGS_NTP, STATUS_YELLOW);
   loadNumberArrayPOSTMessage(DIAGS_NTP);
-  shiftDigitsOutDiags();
+  outputManager.outputDisplayDiags();
 
   long startSeachMs = millis();
   bool needUpdate = true;
@@ -289,7 +285,7 @@ void setup()
   nowMillis = millis();
 
   loadNumberArrayPOSTMessage(DIAGS_RTC);
-  shiftDigitsOutDiags();
+  outputManager.outputDisplayDiags();
   delay(1000);
   testRTCTimeProvider();
   if (useRTC) {
@@ -312,7 +308,7 @@ void setup()
   setTubesAndLEDSblankMode();
 
   loadNumberArrayPOSTMessage(DIAGS_DEBUG);
-  shiftDigitsOutDiags();
+  outputManager.outputDisplayDiags();
 #ifdef DEBUG
   setDiagnosticLED(DIAGS_DEBUG, STATUS_BLUE);
 #else
@@ -423,10 +419,12 @@ void loop()
 
   ldrValue = getDimmingFromLDR();
   ledManager.setLDRValue(ldrValue);
-  outputDisplay();
+  outputManager.setLDRValue(ldrValue);
+  
+  outputManager.outputDisplay();
 
   // Update the tick and backlight LEDs
-  if (secondsChanged && nowMillis - lastSecMillis >= getTubeLag(ldrValue)) {
+  if (secondsChanged && nowMillis - lastSecMillis >= outputManager.getTubeLag(ldrValue)) {
     lastCheckMillis = nowMillis;
     upOrDown = !upOrDown;
     secondsChanged = false;
@@ -644,7 +642,6 @@ void setLeds()
   }
 
   // output the backlight/underlight LEDs
-  ledManager.setLDRValue(ldrValue);
   ledManager.setPulseValue(secsDelta);  
   ledManager.processLedStatus();
 }
@@ -1541,135 +1538,6 @@ void loadNumberArrayESPID(String ID) {
 }
 
 // ************************************************************
-// Do a single complete display
-// ************************************************************
-void outputDisplay() {
-  byte digits[6];
-  static byte prevNumberArray[6];
-  static bool smoothRunning[6];
-
-  // Deal with blink, calculate if we are on or off
-  static uint16_t blinkCounter = BLINK_COUNT_OFF;
-  blinkCounter--;
-  if (blinkCounter <= 0) {
-    blinkState = !blinkState;
-    blinkCounter = blinkState ? BLINK_COUNT_ON : BLINK_COUNT_OFF;
-  }
-
-  // Decode numbers to 7-segment digits
-  for (int i = 0; i <= 5; i++) digits[i] = digitData[numberArray[i]];
-
-  blankDigits(digits, prevNumberArray, smoothRunning);
-  smoothDigits(digits, prevNumberArray, smoothRunning);
-
-  shiftDigitsOut(digits);
-  setBlankingPin();
-}
-
-// ************************************************************
-// Set the 48 output bits with the given value for the current
-// display. "Current" display is what we are fading from, or
-// the stable display when we are not cross-fading.
-// ************************************************************
-void shiftDigitsOut(byte *displayDigits) {
-  static unsigned long lastOut1 = 0;
-  static unsigned long lastOut2 = 0;
-
-  // Add in the orange separator "colon" LEDs
-  displayDigits[2] |= SEG_IND * led1State;
-  displayDigits[4] |= SEG_IND * led1State;
-  displayDigits[1] |= SEG_IND * led2State;
-  displayDigits[3] |= SEG_IND * led2State;
-
-  // Add in the red indicator LEDs
-  displayDigits[0] |= SEG_IND * ledLState;
-  displayDigits[5] |= SEG_IND * ledRState;
-
-  // Mix in the digits
-  unsigned long out1 = displayDigits[5] | (displayDigits[4] << 8) | (displayDigits[3] << 16);
-  unsigned long out2 = displayDigits[2] | (displayDigits[1] << 8) | (displayDigits[0] << 16);
-  
-
-  // Digit pre-heat
-  if (current_config.preheatStrength < PREHEAT_OFF) {
-    preheatCounter++;
-    if (preheatCounter > current_config.preheatStrength) {
-      preheatCounter = 0;
-      out1 |= 0x7f7f7f;
-      out2 |= 0x7f7f7f;
-    }
-  }
-  
-  // If nothing has changed don't bother updating tubes - it would be redundant
-  if (out1 != lastOut1 || out2 != lastOut2) {
-    lastOut1 = out1;
-    lastOut2 = out2;
-    digitsOut(out1, out2);
-  }
-}
-
-// ************************************************************
-// Set the 48 output bits on the shift registers without trying
-// to interpret them as numbers. This is used when displaying
-// non-numerical values.
-// ************************************************************
-void shiftDigitsOutDiags() {
-  // Mix in the digits
-  unsigned long out1 = numberArray[5] | (numberArray[4] << 8) | (numberArray[3] << 16);
-  unsigned long out2 = numberArray[2] | (numberArray[1] << 8) | (numberArray[0] << 16);
-  digitsOut(out1, out2);
-}
-
-// ************************************************************
-// Send the 48 output bits to the TLC5916 latches for display
-// ************************************************************
-void digitsOut(unsigned long highBits, unsigned long lowBits) {
-  digitalWrite(LATCHPin, LOW);
-  shiftOut24(DATAPin, CLOCKPin, MSBFIRST, lowBits);
-  shiftOut24(DATAPin, CLOCKPin, MSBFIRST, highBits);
-  digitalWrite(LATCHPin, HIGH);
-}
-
-// ************************************************************
-// Perform the parallel shift out to the registers
-// ************************************************************
-void shiftOut24(uint8_t _dataPin1,
-                uint8_t _clockPin,
-                uint8_t _bitOrder,
-                uint32_t _val1) {
-  uint8_t i;
-
-  for (i = 0; i < 24; i++) {
-    if (_bitOrder == LSBFIRST) {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << i)));
-    }
-    else {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << (23 - i))));
-    }
-    digitalWrite(_clockPin, HIGH);
-    digitalWrite(_clockPin, LOW);
-  }
-}
-
-// ************************************************************
-// Set the blanking pin to show the display. If we have gone
-// into display blanking mode, slowly fade out the display to
-// completely off.
-// ************************************************************
-void setBlankingPin() {
-  if (!blankTubes) {
-    lastLDRValue = ldrValue;
-  } else {
-    // Fade out slowly
-    if (lastLDRValue < 1023) {
-      lastLDRValue++;
-    }
-  }
-
-  analogWrite(BLANKPin, lastLDRValue);
-}
-
-// ************************************************************
 // Apply leading zero blanking
 // ************************************************************
 void applyBlanking() {
@@ -1680,49 +1548,6 @@ void applyBlanking() {
   }
   else {
     displayType[0] = NORMAL;
-  }
-}
-
-// ************************************************************
-// Blanking and Blinking of individual digits
-// ************************************************************
-void blankDigits(byte *digits, byte *prevNums, bool *smoothRun) {
-  static bool digitWasBlanked[6];
-  for (int i = 0; i <= 5; i++) {
-    if (displayType[i] == BLANKED || (displayType[i] == BLINK && !blinkState)) {
-      digits[i] = DIGIT_BLANK;
-      smoothRun[i] = false;
-      prevNums[i] = numberArray[i];
-      digitWasBlanked[i] = true;
-    }
-    else if (digitWasBlanked[i]) {      // Inhibits smoothing when digit goes
-      prevNums[i] = numberArray[i];     // from BLANKED to NORMAL because that
-      digitWasBlanked[i] = false;       // would not look good.
-    }
-  }
-}
-
-// ************************************************************
-// Smoothing of changing digits
-// ************************************************************
-void smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) {
-  static unsigned long smoothStartMillis[6];
-  ledManager.setSyncColourTime(false);
-  for (int i = 0; i <= 5; i++) {
-    if (numberArray[i] != prevNums[i]) {
-      digits[i] |= digitData[prevNums[i]];
-      if (!smoothRun[i]) {
-        smoothRun[i] = true;
-        smoothStartMillis[i] = millis();
-      }
-      else {
-        if (millis() - smoothStartMillis[i] >= getTubeLag(ldrValue)) {
-          prevNums[i] = numberArray[i];
-          smoothRun[i] = false;
-        }
-      }
-      ledManager.setSyncColourTime(true);
-    }
   }
 }
 
@@ -2253,18 +2078,6 @@ int getDimmingFromLDR() {
   } else {
     return 0;
   }
-}
-
-// ************************************************************
-// Get the Tube Lag value (used for display smoothing) that
-// corresponds to the current display dimming level. The
-// dimmer the display is the longer the lag is. Preheat is also 
-// taken into account.
-// ************************************************************
-int getTubeLag(int currentLDR) {
-  int returnValue = (.000655 * pow(currentLDR, 2) + -.01159 * currentLDR +
-148) / (6 - current_config.preheatStrength);
-  return returnValue;
 }
 
 // ************************************************************
@@ -3029,7 +2842,7 @@ void configModeCallback(WiFiManager *myWiFiManager) {
   debugMsg("*** Entered config mode");
   setDiagnosticLED(DIAGS_WIFI, STATUS_BLUE);
   loadNumberArrayPOSTMessage(AP_MODE);
-  shiftDigitsOutDiags();
+  outputManager.outputDisplayDiags();
 }
 
 // ************************************************************

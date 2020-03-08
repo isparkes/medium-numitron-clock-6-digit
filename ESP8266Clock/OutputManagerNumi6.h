@@ -1,6 +1,20 @@
-#ifndef VFDDefs_h
-#define VFDDefs_h
+#ifndef outputmanager_h
+#define outputmanager_h
 
+#include "Arduino.h"
+#include "DisplayDefs.h"
+#include "SPIFFS.h"
+#include "LEDManager.h"
+
+extern byte numberArray[];
+extern byte displayType[];
+extern boolean led1State;
+extern boolean led2State;
+extern boolean ledLState;
+extern boolean ledRState;
+extern boolean blankTubes;
+
+// ************************ Display management ************************
 // Layout
 //   Segment a                          --a-- 
 //   Segment b                         |     |
@@ -52,6 +66,48 @@
 #define LETTER_b SEG_C | SEG_D | SEG_E | SEG_F | SEG_G
 #define LETTER_d SEG_B | SEG_C | SEG_D | SEG_E | SEG_G
 
-byte digitData[16] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9, LETTER_A, LETTER_b, LETTER_C, LETTER_d, LETTER_E, LETTER_F};
+// ************************ Display management ************************
+
+// Shift register
+#define LATCHPin    14    // D5
+#define CLOCKPin    13    // D7
+#define DATAPin     12    // D6
+#define BLANKPin    16    // D0
+
+// ************************ Display management ************************
+
+class OutputManager
+{
+  public:
+    void setUp();
+    void outputDisplay();
+    void outputDisplayDiags();
+    void setLDRValue(unsigned int newBrightness);
+    int getTubeLag(int currentLDR);
+    
+  private:
+    boolean _blinkState;
+    spiffs_config_t *cc = &current_config;
+    byte _preheatCounter = 0;
+    int _ldrValue = 0;
+    int _lastLDRValue = 0;
+    
+    byte digitData[16] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9, LETTER_A, LETTER_b, LETTER_C, LETTER_d, LETTER_E, LETTER_F};
+    
+    void shiftDigitsOut(byte *displayDigits);
+    void digitsOut(unsigned long highBits, unsigned long lowBits);
+    void shiftOut24(uint8_t _dataPin1,
+                uint8_t _clockPin,
+                uint8_t _bitOrder,
+                uint32_t _val1);
+    void blankDigits(byte *digits, byte *prevNums, bool *smoothRun);
+    void smoothDigits(byte *digits, byte *prevNums, bool *smoothRun);
+    void setBlankingPin();
+};
+
+
+// ----------------- Exported Variables ------------------
+
+static OutputManager outputManager;
 
 #endif

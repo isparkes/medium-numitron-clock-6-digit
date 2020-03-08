@@ -24,8 +24,6 @@ byte displayType[DIGIT_COUNT]          = {NORMAL, NORMAL, NORMAL, NORMAL};
 byte valueDisplayTime                  = 0;
 int valueToShow                        = 0;
 byte valueDisplayType[DIGIT_COUNT / 2] = {NORMAL | NORMAL << 4, NORMAL | NORMAL << 4, NORMAL | NORMAL << 4}; // All normal by default
-byte preheatCounter                    = 0;
-byte preheatStrength                   = 3;
 
 // ------------- Time management variables -------------
 
@@ -52,9 +50,6 @@ int lastImpressionsPerSec = 0;
 byte useRTC = false;  // true if we detect an RTC
 boolean onceHadAnRTC = false;
 
-// ----------------- Digit handlng -------------------
-boolean syncColourTime;
-
 // ----------------- Motion detector -------------------
 
 unsigned long pirLastSeen = 0;
@@ -76,9 +71,6 @@ boolean blankLEDs = false;
 double sensorLDRSmoothed = 0;
 double sensorFactor = (double)SENSOR_SENSIT_DEFAULT / 100.0;
 int ldrValue = 0;
-int lastLDRValue = 0;
-
-boolean blinkState;
 
 // ------------------- LED management ------------------
 
