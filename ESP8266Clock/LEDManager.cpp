@@ -20,23 +20,23 @@ void LEDManager::recalculateVariables() {
 // ************************************************************
 // Set the LDR dimming value
 // ************************************************************
-void LEDManager::setLDRValue(int ldrValue)
+void LEDManager::setLDRValue(unsigned int ldrValue)
 {
-  if (_ldrValue != ldrValue) {
-    _ldrValue = ldrValue;
-
+  if (cc->useBLDim) {
     // calculate the PWM factor, goes between current_config.minDim% and 100%
-    _ldrDimFactor = (float) (1023 - _ldrValue) / (float) 1023.0;
+    _ldrDimFactor = (float) (1023 - ldrValue) / (float) 1023.0;
   }
 }
 
 // ************************************************************
 // Set the pulse current value
 // ************************************************************
-void LEDManager::setPulseValue(int secsDelta)
+void LEDManager::setPulseValue(unsigned int secsDelta)
 {
-  // Calculate the brightness factor based on the "pulse"
-  _pwmFactor = (float) secsDelta / (float) 1000.0;
+  if (cc->useBLPulse) {
+    // Calculate the brightness factor based on the "pulse"
+    _pwmFactor = (float) secsDelta / (float) 1000.0;
+  }
 }
 
 // ************************************************************
@@ -98,53 +98,53 @@ void LEDManager::processLedStatus() {
   // -------------------------------- Backlights / Underlights -------------------------------
 
   if (_blanked) {
-    setBacklightLEDs( getLEDAdjusted(0, BACKLIGHT),
-                      getLEDAdjusted(0, BACKLIGHT),
-                      getLEDAdjusted(0, BACKLIGHT));
-    setUnderlightLEDs(getLEDAdjusted(0, UNDERLIGHT),
-                      getLEDAdjusted(0, UNDERLIGHT),
-                      getLEDAdjusted(0, UNDERLIGHT));
+    setBacklightLEDs( getLEDAdjustedBL(0),
+                      getLEDAdjustedBL(0),
+                      getLEDAdjustedBL(0));
+    setUnderlightLEDs(getLEDAdjustedUL(0),
+                      getLEDAdjustedUL(0),
+                      getLEDAdjustedUL(0));
   } else {
     switch (cc->backlightMode) {
       case BACKLIGHT_FIXED: {
-          setBacklightLEDs( getLEDAdjusted(rgb_backlight_curve[cc->redCnl], BACKLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[cc->grnCnl], BACKLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[cc->bluCnl], BACKLIGHT));
-          setUnderlightLEDs(getLEDAdjusted(rgb_backlight_curve[cc->redCnl], UNDERLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[cc->grnCnl], UNDERLIGHT),
-                            getLEDAdjusted(rgb_backlight_curve[cc->bluCnl], UNDERLIGHT));
+          setBacklightLEDs( getLEDAdjustedBL(rgb_backlight_curve[cc->redCnl]),
+                            getLEDAdjustedBL(rgb_backlight_curve[cc->grnCnl]),
+                            getLEDAdjustedBL(rgb_backlight_curve[cc->bluCnl]));
+          setUnderlightLEDs(getLEDAdjustedUL(rgb_backlight_curve[cc->redCnl]),
+                            getLEDAdjustedUL(rgb_backlight_curve[cc->grnCnl]),
+                            getLEDAdjustedUL(rgb_backlight_curve[cc->bluCnl]));
           break;
         }
       case BACKLIGHT_CYCLE: {
           cycleColours3(colors);
-          setBacklightLEDs( getLEDAdjusted(colors[0], BACKLIGHT),
-                            getLEDAdjusted(colors[1], BACKLIGHT),
-                            getLEDAdjusted(colors[2], BACKLIGHT));
-          setUnderlightLEDs(getLEDAdjusted(colors[0], UNDERLIGHT),
-                            getLEDAdjusted(colors[1], UNDERLIGHT),
-                            getLEDAdjusted(colors[2], UNDERLIGHT));
+          setBacklightLEDs( getLEDAdjustedBL(colors[0]),
+                            getLEDAdjustedBL(colors[1]),
+                            getLEDAdjustedBL(colors[2]));
+          setUnderlightLEDs(getLEDAdjustedUL(colors[0]),
+                            getLEDAdjustedUL(colors[1]),
+                            getLEDAdjustedUL(colors[2]));
           break;
         }
       case BACKLIGHT_COLOUR_TIME: {
           if (!_syncColourTime) {
             for (int i = 0 ; i < PIXEL_COUNT ; i++) {
-              ledRb[i] = getLEDAdjusted(colourTimeR[numberArray[i]], BACKLIGHT);
-              ledGb[i] = getLEDAdjusted(colourTimeG[numberArray[i]], BACKLIGHT);
-              ledBb[i] = getLEDAdjusted(colourTimeB[numberArray[i]], BACKLIGHT);
-              ledRu[i] = getLEDAdjusted(colourTimeR[numberArray[i]], UNDERLIGHT);
-              ledGu[i] = getLEDAdjusted(colourTimeG[numberArray[i]], UNDERLIGHT);
-              ledBu[i] = getLEDAdjusted(colourTimeB[numberArray[i]], UNDERLIGHT);
+              ledRb[i] = getLEDAdjustedBL(colourTimeR[numberArray[i]]);
+              ledGb[i] = getLEDAdjustedBL(colourTimeG[numberArray[i]]);
+              ledBb[i] = getLEDAdjustedBL(colourTimeB[numberArray[i]]);
+              ledRu[i] = getLEDAdjustedUL(colourTimeR[numberArray[i]]);
+              ledGu[i] = getLEDAdjustedUL(colourTimeG[numberArray[i]]);
+              ledBu[i] = getLEDAdjustedUL(colourTimeB[numberArray[i]]);
             }
           }
           break;
         }
       case BACKLIGHT_DAY_OF_WEEK: {
-          setBacklightLEDs( getLEDAdjusted(dayOfWeekR[_dow], BACKLIGHT),
-                            getLEDAdjusted(dayOfWeekG[_dow], BACKLIGHT),
-                            getLEDAdjusted(dayOfWeekB[_dow], BACKLIGHT));
-          setUnderlightLEDs(getLEDAdjusted(dayOfWeekR[_dow], UNDERLIGHT),
-                            getLEDAdjusted(dayOfWeekG[_dow], UNDERLIGHT),
-                            getLEDAdjusted(dayOfWeekB[_dow], UNDERLIGHT));
+          setBacklightLEDs( getLEDAdjustedBL(dayOfWeekR[_dow]),
+                            getLEDAdjustedBL(dayOfWeekG[_dow]),
+                            getLEDAdjustedBL(dayOfWeekB[_dow]));
+          setUnderlightLEDs(getLEDAdjustedUL(dayOfWeekR[_dow]),
+                            getLEDAdjustedUL(dayOfWeekG[_dow]),
+                            getLEDAdjustedUL(dayOfWeekB[_dow]));
           break;
         }
     }
@@ -154,39 +154,44 @@ void LEDManager::processLedStatus() {
 }
 
 // ************************************************************
-// output a PWM LED channel, adjusting for dimming and PWM
-// brightness:
+// output a PWM LED channel, adjusting for dimming, PWM
+// and user back light brightness
 // ************************************************************
-byte LEDManager::getLEDAdjusted(byte rawValue, boolean backOrUnder) {
+byte LEDManager::getLEDAdjustedBL(byte rawValue) {
   byte dimmedPWMVal;
-  float floatRaw = (float) rawValue;
   if (cc->useBLDim) {
     if (cc->useBLPulse) {
-      if (!backOrUnder) {
-        dimmedPWMVal = (byte)(floatRaw * _pwmFactor * _backlightDim * _ldrDimFactor);
-      } else {
-        dimmedPWMVal = (byte)(floatRaw * _pwmFactor * _underlightDim * _ldrDimFactor);
-      }
+      dimmedPWMVal = (byte)(rawValue * _pwmFactor * _backlightDim * _ldrDimFactor);
     } else {
-      if (!backOrUnder) {
-        dimmedPWMVal = (byte)(floatRaw * _backlightDim * _ldrDimFactor);
-      } else {
-        dimmedPWMVal = (byte)(floatRaw * _underlightDim * _ldrDimFactor);
-      }
+      dimmedPWMVal = (byte)(rawValue * _backlightDim * _ldrDimFactor);
     }
   } else {
     if (cc->useBLPulse) {
-      if (!backOrUnder) {
-        dimmedPWMVal = (byte)(floatRaw * _pwmFactor * _backlightDim);
-      } else {
-        dimmedPWMVal = (byte)(floatRaw * _pwmFactor * _underlightDim);
-      }
+      dimmedPWMVal = (byte)(rawValue * _pwmFactor * _backlightDim);
     } else {
-      if (!backOrUnder) {
-        dimmedPWMVal = (byte)(floatRaw * _backlightDim);
-      } else {
-        dimmedPWMVal = (byte)(floatRaw * _underlightDim);
-      }
+      dimmedPWMVal = (byte)(rawValue * _backlightDim);
+    }
+  }
+  return dim_curve[dimmedPWMVal];
+}
+
+// ************************************************************
+// output a PWM LED channel, adjusting for dimming, PWM
+// and user under light brightness
+// ************************************************************
+byte LEDManager::getLEDAdjustedUL(byte rawValue) {
+  byte dimmedPWMVal;
+  if (cc->useBLDim) {
+    if (cc->useBLPulse) {
+      dimmedPWMVal = (byte)(rawValue * _pwmFactor * _underlightDim * _ldrDimFactor);
+    } else {
+      dimmedPWMVal = (byte)(rawValue * _underlightDim * _ldrDimFactor);
+    }
+  } else {
+    if (cc->useBLPulse) {
+      dimmedPWMVal = (byte)(rawValue * _pwmFactor * _underlightDim);
+    } else {
+      dimmedPWMVal = (byte)(rawValue * _underlightDim);
     }
   }
   return dim_curve[dimmedPWMVal];

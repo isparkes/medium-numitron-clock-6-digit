@@ -563,7 +563,7 @@ void performOncePerDayProcessing() {
 // ************************************************************
 void setLeds()
 {
-  int secsDelta;
+  unsigned int secsDelta;
   int secsDeltaAbs = (nowMillis - lastCheckMillis);
   if (upOrDown) {
     secsDelta = (nowMillis - lastCheckMillis);
@@ -2238,12 +2238,12 @@ int getDimmingFromLDR() {
 
     if (rawSensorVal < 0) rawSensorVal = 0;
 
-    double sensorFactor = (float) current_config.sensitivityLDR / 100.0;
+    float sensorFactor = (float) current_config.sensitivityLDR / 100.0;
 
-    double sensorVal = (float) rawSensorVal * sensorFactor;
+    float sensorVal = (float) rawSensorVal * sensorFactor;
 
-    double sensorDiff = rawSensorVal - sensorLDRSmoothed;
-    sensorLDRSmoothed += (sensorDiff / (double) current_config.sensorSmoothCountLDR);
+    float sensorDiff = rawSensorVal - sensorLDRSmoothed;
+    sensorLDRSmoothed += (sensorDiff / (float) current_config.sensorSmoothCountLDR);
 
     int returnValue = sensorLDRSmoothed;
 

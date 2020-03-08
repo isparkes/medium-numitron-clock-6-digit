@@ -19,9 +19,6 @@
 #define CYCLE_SPEED_MAX                 64
 #define CYCLE_SPEED_DEFAULT             10
 
-#define BACKLIGHT                       false
-#define UNDERLIGHT                      true
-
 #define PIXEL_COUNT                     6
 
 #define LED_DOUT                        3     // RX defined by DMA output of library
@@ -42,10 +39,10 @@ class LEDManager
     void recalculateVariables();
 
     // recalculate internal values based on the LDR reading
-    void setLDRValue(int ldrValue);
+    void setLDRValue(unsigned int ldrValue);
 
     // recalculate internal values based on the pulsing factor
-    void setPulseValue(int secsDelta);
+    void setPulseValue(unsigned int secsDelta);
 
     // Change LED blanking status
     void setBlanked(boolean blanked);
@@ -62,7 +59,6 @@ class LEDManager
   private:
     float _backlightDim = 1.0;
     float _underlightDim = 1.0;
-    float _ldrValue = 0.0;
     float _ldrDimFactor = 1.0;
     float _pwmFactor = 1.0;
     boolean _blanked = false;
@@ -93,7 +89,8 @@ class LEDManager
     void setBacklightLEDs(byte red, byte green, byte blue);
     void setUnderlightLEDs(byte red, byte green, byte blue);
     void outputLEDBuffer();
-    byte getLEDAdjusted(byte rawValue, boolean backOrUnder);
+    byte getLEDAdjustedBL(byte rawValue);
+    byte getLEDAdjustedUL(byte rawValue);
     void cycleColours3(int colors[3]);
 };
 
