@@ -2575,8 +2575,8 @@ void clockConfigPageHandler() {
   String response_message = getHTMLHead(getIsConnected());
   response_message += getNavBar();
 
-  // form header
-  response_message += getFormHead("Set Configuration");
+  // -----------------------------------------------------------------------------
+  response_message += getFormHead("General options");
 
   // 12/24 mode
   response_message += getRadioGroupHeader("12H/24H mode:");
@@ -2600,6 +2600,36 @@ void clockConfigPageHandler() {
   }
   response_message += getRadioGroupFooter();
 
+  // Date format
+  response_message += getDropDownHeader("Date format:", "dateFormat", false);
+  response_message += getDropDownOption("0", "YY-MM-DD", (current_config.dateFormat == DATE_FORMAT_YYMMDD));
+  response_message += getDropDownOption("1", "MM-DD-YY", (current_config.dateFormat == DATE_FORMAT_MMDDYY));
+  response_message += getDropDownOption("2", "DD-MM-YY", (current_config.dateFormat == DATE_FORMAT_DDMMYY));
+  response_message += getDropDownFooter();
+
+  // Slots Mode
+  response_message += getDropDownHeader("Date Slots:", "slotsMode", true);
+  response_message += getDropDownOption("0", "Don't use slots mode", (current_config.slotsMode == 0));
+  response_message += getDropDownOption("1", "Wipe In, Wipe Out", (current_config.slotsMode == 1));
+  response_message += getDropDownOption("2", "Bang In, Bang Out", (current_config.slotsMode == 2));
+  response_message += getDropDownFooter();
+
+  // preheat mode
+  response_message += getDropDownHeader("Digit pre-heat:", "preheatStrength", true);
+  response_message += getDropDownOption("1", "Very Strong", (current_config.preheatStrength == PREHEAT_V_STRONG));
+  response_message += getDropDownOption("2", "Strong", (current_config.preheatStrength == PREHEAT_STRONG));
+  response_message += getDropDownOption("3", "Weak", (current_config.preheatStrength == PREHEAT_WEAK));
+  response_message += getDropDownOption("4", "Very Weak", (current_config.preheatStrength == PREHEAT_V_WEAK));
+  response_message += getDropDownOption("5", "Off", (current_config.preheatStrength == PREHEAT_OFF));
+  response_message += getDropDownFooter();
+
+  response_message += getSubmitButton("Set");
+
+  response_message += getFormFoot();
+
+  // -----------------------------------------------------------------------------
+  response_message += getFormHead("Light Dependent Resistor");
+
   // LDR
   response_message += getRadioGroupHeader("Use LDR:");
   if (current_config.useLDR) {
@@ -2620,12 +2650,12 @@ void clockConfigPageHandler() {
   // LDR Sensitivity
   response_message += getNumberInput("LDR Sensitivity:", "sensitivityLDR", SENSOR_SENSIT_MIN, SENSOR_SENSIT_MAX, current_config.sensitivityLDR, false);
 
-  // Date format
-  response_message += getDropDownHeader("Date format:", "dateFormat", false);
-  response_message += getDropDownOption("0", "YY-MM-DD", (current_config.dateFormat == DATE_FORMAT_YYMMDD));
-  response_message += getDropDownOption("1", "MM-DD-YY", (current_config.dateFormat == DATE_FORMAT_MMDDYY));
-  response_message += getDropDownOption("2", "DD-MM-YY", (current_config.dateFormat == DATE_FORMAT_DDMMYY));
-  response_message += getDropDownFooter();
+  response_message += getSubmitButton("Set");
+
+  response_message += getFormFoot();
+
+  // -----------------------------------------------------------------------------
+  response_message += getFormHead("Digit blanking");
 
   // Day blanking
   response_message += getDropDownHeader("Day blanking:", "dayBlanking", true);
@@ -2654,6 +2684,13 @@ void clockConfigPageHandler() {
 
   // Blank hours to
   response_message += getNumberInput("Blank to:", "blankHourEnd", 0, 23, current_config.blankHourEnd, hoursDisabled);
+
+  response_message += getSubmitButton("Set");
+
+  response_message += getFormFoot();
+
+  // -----------------------------------------------------------------------------
+  response_message += getFormHead("Back/Underlights");
 
   // Back light
   response_message += getDropDownHeader("Back light:", "backlightMode", true);
@@ -2698,17 +2735,17 @@ void clockConfigPageHandler() {
   // external backlight dim factor
   response_message += getNumberInput("Underlight Dim:", "extDimFactor", EXT_DIM_FACTOR_MIN, EXT_DIM_FACTOR_MAX, current_config.extDimFactor, false);
 
-  boolean activeCycle = (current_config.backlightMode == 2) || (current_config.backlightMode == 5);
+  boolean activeCycle = (current_config.backlightMode == 1);
 
   // Cycle speed
   response_message += getNumberInput("Backlight Cycle Speed:", "cycleSpeed", CYCLE_SPEED_MIN, CYCLE_SPEED_MAX, current_config.cycleSpeed, !activeCycle);
 
-  // Slots Mode
-  response_message += getDropDownHeader("Date Slots:", "slotsMode", true);
-  response_message += getDropDownOption("0", "Don't use slots mode", (current_config.slotsMode == 0));
-  response_message += getDropDownOption("1", "Wipe In, Wipe Out", (current_config.slotsMode == 1));
-  response_message += getDropDownOption("2", "Bang In, Bang Out", (current_config.slotsMode == 2));
-  response_message += getDropDownFooter();
+  response_message += getSubmitButton("Set");
+
+  response_message += getFormFoot();
+
+  // -----------------------------------------------------------------------------
+  response_message += getFormHead("Separators");
 
   // LED mode
   response_message += getDropDownHeader("LED Mode:", "ledMode", true);
@@ -2740,6 +2777,13 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("5", "On", (current_config.statusModeR == STATUS_LED_MODE_ON));
   response_message += getDropDownFooter();
 
+  response_message += getSubmitButton("Set");
+
+  response_message += getFormFoot();
+
+  // -----------------------------------------------------------------------------
+  response_message += getFormHead("Motion detector");
+
   // PIR timeout
   response_message += getNumberInput("PIR timeout:", "pirTimeout", PIR_TIMEOUT_MIN, PIR_TIMEOUT_MAX, current_config.pirTimeout, false);
 
@@ -2753,6 +2797,13 @@ void clockConfigPageHandler() {
     response_message += getRadioButton("usePIRPullup", "Off", "off", true);
   }
   response_message += getRadioGroupFooter();
+
+  response_message += getSubmitButton("Set");
+
+  response_message += getFormFoot();
+
+  // -----------------------------------------------------------------------------
+  response_message += getFormHead("Security");
 
   // web auth mode
   response_message += getRadioGroupHeader("Web Authentication:");
@@ -2768,19 +2819,9 @@ void clockConfigPageHandler() {
   response_message += getTextInput("User Name", "webUsername", current_config.webUsername, !current_config.webAuthentication);
   response_message += getTextInput("Password", "webPassword", current_config.webPassword, !current_config.webAuthentication);
 
-  // preheat mode
-  response_message += getDropDownHeader("Digit pre-heat:", "preheatStrength", true);
-  response_message += getDropDownOption("1", "Very Strong", (current_config.preheatStrength == PREHEAT_V_STRONG));
-  response_message += getDropDownOption("2", "Strong", (current_config.preheatStrength == PREHEAT_STRONG));
-  response_message += getDropDownOption("3", "Weak", (current_config.preheatStrength == PREHEAT_WEAK));
-  response_message += getDropDownOption("4", "Very Weak", (current_config.preheatStrength == PREHEAT_V_WEAK));
-  response_message += getDropDownOption("5", "Off", (current_config.preheatStrength == PREHEAT_OFF));
-  response_message += getDropDownFooter();
-
-  // form footer
   response_message += getSubmitButton("Set");
 
-  response_message += "</form></div>";
+  response_message += getFormFoot();
 
   // all done
   response_message += getHTMLFoot();
