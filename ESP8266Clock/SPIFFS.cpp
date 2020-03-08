@@ -81,6 +81,12 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
           spiffs_config->backlightMode = json["backlightMode"];
           debugMsg("Loaded backlight mode: " + String(spiffs_config->backlightMode));
 
+          spiffs_config->useBLPulse = json["useBLPulse"].as<bool>();
+          debugMsg("Loaded backlight pulse: " + String(spiffs_config->useBLPulse));
+
+          spiffs_config->useBLDim = json["useBLDim"].as<bool>();
+          debugMsg("Loaded backlight dim: " + String(spiffs_config->useBLDim));
+
           spiffs_config->redCnl = json["redCnl"];
           debugMsg("Loaded redCnl: " + String(spiffs_config->redCnl));
 
@@ -177,13 +183,13 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
     json["blankLeading"] = spiffs_config->blankLeading;
     json["dateFormat"] = spiffs_config->dateFormat;
     json["dayBlanking"] = spiffs_config->dayBlanking;
-
     json["thresholdBright"] = spiffs_config->thresholdBright;
     json["sensitivityLDR"] = spiffs_config->sensitivityLDR;
     json["minDim"] = spiffs_config->minDim;
     json["sensorSmoothCountLDR"] = spiffs_config->sensorSmoothCountLDR;
-
     json["backlightMode"] = spiffs_config->backlightMode;
+    json["useBLPulse"] = spiffs_config->useBLPulse;
+    json["useBLDim"] = spiffs_config->useBLDim;    
     json["redCnl"] = spiffs_config->redCnl;
     json["grnCnl"] = spiffs_config->grnCnl;
     json["bluCnl"] = spiffs_config->bluCnl;
