@@ -156,7 +156,7 @@ void OutputManager::smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) 
         smoothStartMillis[i] = millis();
       }
       else {
-        if (millis() - smoothStartMillis[i] >= getTubeLag(_ldrValue)) {
+        if (millis() - smoothStartMillis[i] >= _tubeLag) {
           prevNums[i] = numberArray[i];
           smoothRun[i] = false;
         }
@@ -167,22 +167,13 @@ void OutputManager::smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) 
 }
 
 // ************************************************************
-// Get the Tube Lag value (used for display smoothing) that
-// corresponds to the current display dimming level. The
-// dimmer the display is the longer the lag is. Preheat is also 
-// taken into account.
-// ************************************************************
-int OutputManager::getTubeLag(int currentLDR) {
-  int returnValue = (.000655 * pow(currentLDR, 2) + -.01159 * currentLDR +
-148) / (6 - current_config.preheatStrength);
-  return returnValue;
-}
-
-// ************************************************************
 // set the PWM Brighness
 // ************************************************************
 void OutputManager::setLDRValue(unsigned int newBrightness) {
-  _ldrValue = newBrightness;
+  if (_ldrValue != newBrightness) {
+    _ldrValue = newBrightness;
+    _tubeLag = (.000655 * pow(newBrightness, 2) + -.01159 * newBrightness + 148) / (6 - current_config.preheatStrength);
+  }
 }
 
 // ************************************************************

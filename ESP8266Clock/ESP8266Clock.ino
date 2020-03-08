@@ -423,14 +423,8 @@ void loop()
   
   outputManager.outputDisplay();
 
-  // Update the tick and backlight LEDs
-  if (secondsChanged && nowMillis - lastSecMillis >= outputManager.getTubeLag(ldrValue)) {
-    lastCheckMillis = nowMillis;
-    upOrDown = !upOrDown;
-    secondsChanged = false;
-  }
   setLeds();
-
+  
   delay(10);
 }
 
@@ -561,8 +555,15 @@ void performOncePerDayProcessing() {
 // ************************************************************
 void setLeds()
 {
+  if (secondsChanged) {
+    lastCheckMillis = nowMillis;
+    upOrDown = !upOrDown;
+    secondsChanged = false;
+  }
+
   unsigned int secsDelta;
   int secsDeltaAbs = (nowMillis - lastCheckMillis);
+  
   if (upOrDown) {
     secsDelta = (nowMillis - lastCheckMillis);
   } else {
@@ -2382,6 +2383,7 @@ void clockConfigPageHandler() {
   }
   checkServerArgByte("preheatStrength", "preheatStrength", changed, current_config.preheatStrength);
   saveToSpiffsIfChanged(changed);
+  
   ledManager.recalculateVariables();
 
   // -----------------------------------------------------------------------------

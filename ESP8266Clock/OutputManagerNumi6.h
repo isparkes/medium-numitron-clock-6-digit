@@ -83,7 +83,6 @@ class OutputManager
     void outputDisplay();
     void outputDisplayDiags();
     void setLDRValue(unsigned int newBrightness);
-    int getTubeLag(int currentLDR);
     
   private:
     boolean _blinkState;
@@ -91,6 +90,7 @@ class OutputManager
     byte _preheatCounter = 0;
     int _ldrValue = 0;
     int _lastLDRValue = 0;
+    int _tubeLag = 0;
     
     byte digitData[16] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9, LETTER_A, LETTER_b, LETTER_C, LETTER_d, LETTER_E, LETTER_F};
     
