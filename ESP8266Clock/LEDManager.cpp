@@ -163,29 +163,29 @@ byte LEDManager::getLEDAdjusted(byte rawValue, boolean backOrUnder) {
   if (cc->useBLDim) {
     if (cc->useBLPulse) {
       if (!backOrUnder) {
-        dimmedPWMVal = (byte)(rawValue * _pwmFactor * _backlightDim * _ldrDimFactor);
+        dimmedPWMVal = (byte)(floatRaw * _pwmFactor * _backlightDim * _ldrDimFactor);
       } else {
-        dimmedPWMVal = (byte)(rawValue * _pwmFactor * _underlightDim * _ldrDimFactor);
+        dimmedPWMVal = (byte)(floatRaw * _pwmFactor * _underlightDim * _ldrDimFactor);
       }
     } else {
       if (!backOrUnder) {
-        dimmedPWMVal = (byte)(rawValue * _backlightDim * _ldrDimFactor);
+        dimmedPWMVal = (byte)(floatRaw * _backlightDim * _ldrDimFactor);
       } else {
-        dimmedPWMVal = (byte)(rawValue * _underlightDim * _ldrDimFactor);
+        dimmedPWMVal = (byte)(floatRaw * _underlightDim * _ldrDimFactor);
       }
     }
   } else {
     if (cc->useBLPulse) {
       if (!backOrUnder) {
-        dimmedPWMVal = (byte)(rawValue * _pwmFactor * _backlightDim);
+        dimmedPWMVal = (byte)(floatRaw * _pwmFactor * _backlightDim);
       } else {
-        dimmedPWMVal = (byte)(rawValue * _pwmFactor * _underlightDim);
+        dimmedPWMVal = (byte)(floatRaw * _pwmFactor * _underlightDim);
       }
     } else {
       if (!backOrUnder) {
         dimmedPWMVal = (byte)(floatRaw * _backlightDim);
       } else {
-        dimmedPWMVal = (byte)(rawValue * _underlightDim);
+        dimmedPWMVal = (byte)(floatRaw * _underlightDim);
       }
     }
   }

@@ -2656,6 +2656,26 @@ void clockConfigPageHandler() {
 
   // -----------------------------------------------------------------------------
   response_message += getFormHead("Digit blanking");
+  
+  if (pirInstalled) {
+    response_message += getExplanationText("Motion detector installed - time based blanking is disabled");
+  } else {
+    response_message += getExplanationText("Motion detector not installed - motion detector blanking is inactive");
+  }
+  
+  // PIR timeout
+  response_message += getNumberInput("Motion timeout:", "pirTimeout", PIR_TIMEOUT_MIN, PIR_TIMEOUT_MAX, current_config.pirTimeout, !pirInstalled);
+
+  // PIR pullup
+  response_message += getRadioGroupHeader("Use Motion detector pullup:");
+  if (current_config.usePIRPullup) {
+    response_message += getRadioButton("usePIRPullup", "On", "on", true);
+    response_message += getRadioButton("usePIRPullup", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("usePIRPullup", "On", "on", false);
+    response_message += getRadioButton("usePIRPullup", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
 
   // Day blanking
   response_message += getDropDownHeader("Day blanking:", "dayBlanking", true);
@@ -2700,6 +2720,10 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("3", "'Day of week' backlight", (current_config.backlightMode == 3));
   response_message += getDropDownFooter();
 
+  // Cycle speed
+  boolean activeCycle = (current_config.backlightMode == 1);
+  response_message += getNumberInput("Backlight Cycle Speed:", "cycleSpeed", CYCLE_SPEED_MIN, CYCLE_SPEED_MAX, current_config.cycleSpeed, !activeCycle);
+
   // Dim backlights
   response_message += getRadioGroupHeader("Dim backlights:");
   if (current_config.useBLDim) {
@@ -2734,11 +2758,6 @@ void clockConfigPageHandler() {
 
   // external backlight dim factor
   response_message += getNumberInput("Underlight Dim:", "extDimFactor", EXT_DIM_FACTOR_MIN, EXT_DIM_FACTOR_MAX, current_config.extDimFactor, false);
-
-  boolean activeCycle = (current_config.backlightMode == 1);
-
-  // Cycle speed
-  response_message += getNumberInput("Backlight Cycle Speed:", "cycleSpeed", CYCLE_SPEED_MIN, CYCLE_SPEED_MAX, current_config.cycleSpeed, !activeCycle);
 
   response_message += getSubmitButton("Set");
 
@@ -2776,27 +2795,6 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("4", "Off", (current_config.statusModeR == STATUS_LED_MODE_OFF));
   response_message += getDropDownOption("5", "On", (current_config.statusModeR == STATUS_LED_MODE_ON));
   response_message += getDropDownFooter();
-
-  response_message += getSubmitButton("Set");
-
-  response_message += getFormFoot();
-
-  // -----------------------------------------------------------------------------
-  response_message += getFormHead("Motion detector");
-
-  // PIR timeout
-  response_message += getNumberInput("PIR timeout:", "pirTimeout", PIR_TIMEOUT_MIN, PIR_TIMEOUT_MAX, current_config.pirTimeout, false);
-
-  // PIR pullup
-  response_message += getRadioGroupHeader("Use PIR pullup:");
-  if (current_config.usePIRPullup) {
-    response_message += getRadioButton("usePIRPullup", "On", "on", true);
-    response_message += getRadioButton("usePIRPullup", "Off", "off", false);
-  } else {
-    response_message += getRadioButton("usePIRPullup", "On", "on", false);
-    response_message += getRadioButton("usePIRPullup", "Off", "off", true);
-  }
-  response_message += getRadioGroupFooter();
 
   response_message += getSubmitButton("Set");
 
