@@ -1,4 +1,22 @@
 #include "OutputManagerNumi6.h"
+#include "TimeLib.h"
+#include "ClockUtils.h"
+
+// ************************************************************
+// Instance value
+// ************************************************************
+OutputManager* OutputManager::pInstance;
+
+// ************************************************************
+// Singleton accessor
+// ************************************************************
+OutputManager& OutputManager::Instance(){
+  if (OutputManager::pInstance == nullptr) {
+    OutputManager::pInstance = new OutputManager();
+  } else {
+  }
+  return *OutputManager::pInstance;
+}
 
 // ************************************************************
 // Set up the manager
@@ -9,7 +27,7 @@ void OutputManager::setUp() {
   pinMode(DATAPin, OUTPUT);
   pinMode(BLANKPin, OUTPUT);  
 
-  analogWrite(BLANKPin, 0);  
+  analogWrite(BLANKPin, 0);
 }
 
 // ************************************************************
@@ -29,7 +47,7 @@ void OutputManager::outputDisplay() {
   }
 
   // Decode numbers to 7-segment digits
-  for (int i = 0; i <= 5; i++) digits[i] = digitData[numberArray[i]];
+  for (int i = 0; i < DIGIT_COUNT; i++) digits[i] = digitData[_digit_buffer.numberArray[i]];
 
   blankDigits(digits, prevNumberArray, smoothRunning);
   smoothDigits(digits, prevNumberArray, smoothRunning);
@@ -87,8 +105,8 @@ void OutputManager::shiftDigitsOut(byte *displayDigits) {
 // ************************************************************
 void OutputManager::outputDisplayDiags() {
   // Mix in the digits
-  unsigned long out1 = numberArray[5] | (numberArray[4] << 8) | (numberArray[3] << 16);
-  unsigned long out2 = numberArray[2] | (numberArray[1] << 8) | (numberArray[0] << 16);
+  unsigned long out1 = _digit_buffer.numberArray[5] | (_digit_buffer.numberArray[4] << 8) | (_digit_buffer.numberArray[3] << 16);
+  unsigned long out2 = _digit_buffer.numberArray[2] | (_digit_buffer.numberArray[1] << 8) | (_digit_buffer.numberArray[0] << 16);
   digitsOut(out1, out2);
 }
 
@@ -129,14 +147,14 @@ void OutputManager::shiftOut24(uint8_t _dataPin1,
 void OutputManager::blankDigits(byte *digits, byte *prevNums, bool *smoothRun) {
   static bool digitWasBlanked[6];
   for (int i = 0; i <= 5; i++) {
-    if (displayType[i] == BLANKED || (displayType[i] == BLINK && !_blinkState)) {
+    if (_digit_buffer.displayType[i] == BLANKED || (_digit_buffer.displayType[i] == BLINK && !_blinkState)) {
       digits[i] = DIGIT_BLANK;
       smoothRun[i] = false;
-      prevNums[i] = numberArray[i];
+      prevNums[i] = _digit_buffer.numberArray[i];
       digitWasBlanked[i] = true;
     }
     else if (digitWasBlanked[i]) {      // Inhibits smoothing when digit goes
-      prevNums[i] = numberArray[i];     // from BLANKED to NORMAL because that
+      prevNums[i] = _digit_buffer.numberArray[i];     // from BLANKED to NORMAL because that
       digitWasBlanked[i] = false;       // would not look good.
     }
   }
@@ -149,7 +167,7 @@ void OutputManager::smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) 
   static unsigned long smoothStartMillis[6];
   ledManager.setSyncColourTime(false);
   for (int i = 0; i <= 5; i++) {
-    if (numberArray[i] != prevNums[i]) {
+    if (_digit_buffer.numberArray[i] != prevNums[i]) {
       digits[i] |= digitData[prevNums[i]];
       if (!smoothRun[i]) {
         smoothRun[i] = true;
@@ -157,7 +175,7 @@ void OutputManager::smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) 
       }
       else {
         if (millis() - smoothStartMillis[i] >= _tubeLag) {
-          prevNums[i] = numberArray[i];
+          prevNums[i] = _digit_buffer.numberArray[i];
           smoothRun[i] = false;
         }
       }
@@ -192,4 +210,446 @@ void OutputManager::setBlankingPin() {
   }
 
   analogWrite(BLANKPin, _lastLDRValue);
+}
+
+//**********************************************************************************
+//**********************************************************************************
+//*                             Utility functions                                  *
+//**********************************************************************************
+//**********************************************************************************
+
+// ************************************************************
+// Break the time into displayable digits
+// ************************************************************
+void OutputManager::loadNumberArrayTime() {
+  Serial.println("Load number array 0 before: " + String(_digit_buffer.numberArray[0]));
+  _digit_buffer.numberArray[5] = second() % 10;
+  _digit_buffer.numberArray[4] = second() / 10;
+  _digit_buffer.numberArray[3] = minute() % 10;
+  _digit_buffer.numberArray[2] = minute() / 10;
+  if (current_config.hourMode) {
+    _digit_buffer.numberArray[1] = hourFormat12() % 10;
+    _digit_buffer.numberArray[0] = hourFormat12() / 10;
+  } else {
+    _digit_buffer.numberArray[1] = hour() % 10;
+    _digit_buffer.numberArray[0] = hour() / 10;
+  }
+  Serial.println("Load number array hour: " + String(hour()));
+  Serial.println("Load number array 0 after: " + String(_digit_buffer.numberArray[0]));
+}
+
+// ************************************************************
+// Break the time into displayable digits
+// ************************************************************
+void OutputManager::loadNumberArraySameValue(byte val) {
+  _digit_buffer.numberArray[5] = val;
+  _digit_buffer.numberArray[4] = val;
+  _digit_buffer.numberArray[3] = val;
+  _digit_buffer.numberArray[2] = val;
+  _digit_buffer.numberArray[1] = val;
+  _digit_buffer.numberArray[0] = val;
+}
+
+// ************************************************************
+// Break the time into displayable digits
+// ************************************************************
+void OutputManager::loadNumberArrayPOSTMessage(byte val) {
+  switch (val) {
+    case DIAGS_START:
+      {
+        _digit_buffer.numberArray[0] = LETTER_S;
+        _digit_buffer.numberArray[1] = LETTER_t;
+        _digit_buffer.numberArray[2] = LETTER_A;
+        _digit_buffer.numberArray[3] = LETTER_r;
+        _digit_buffer.numberArray[4] = LETTER_t;
+        _digit_buffer.numberArray[5] = LETTER__;
+        break;
+      }
+    case DIAGS_SPIFFS:
+      {
+        _digit_buffer.numberArray[0] = LETTER_S;
+        _digit_buffer.numberArray[1] = LETTER_P;
+        _digit_buffer.numberArray[2] = LETTER_I;
+        _digit_buffer.numberArray[3] = LETTER_F;
+        _digit_buffer.numberArray[4] = LETTER_F;
+        _digit_buffer.numberArray[5] = LETTER_S;
+        break;
+      }
+    case DIAGS_WIFI:
+      {
+        _digit_buffer.numberArray[0] = LETTER_n;
+        _digit_buffer.numberArray[1] = LETTER_E;
+        _digit_buffer.numberArray[2] = LETTER_t;
+        _digit_buffer.numberArray[3] = LETTER__;
+        _digit_buffer.numberArray[4] = LETTER_U;
+        _digit_buffer.numberArray[5] = LETTER_P;
+        break;
+      }
+    case DIAGS_NTP:
+      {
+        _digit_buffer.numberArray[0] = LETTER_n;
+        _digit_buffer.numberArray[1] = LETTER_t;
+        _digit_buffer.numberArray[2] = LETTER_P;
+        _digit_buffer.numberArray[3] = LETTER__;
+        _digit_buffer.numberArray[4] = LETTER_U;
+        _digit_buffer.numberArray[5] = LETTER_P;
+        break;
+      }
+    case DIAGS_RTC:
+      {
+        _digit_buffer.numberArray[0] = LETTER_r;
+        _digit_buffer.numberArray[1] = LETTER_t;
+        _digit_buffer.numberArray[2] = LETTER_C;
+        _digit_buffer.numberArray[3] = LETTER__;
+        _digit_buffer.numberArray[4] = LETTER_U;
+        _digit_buffer.numberArray[5] = LETTER_P;
+        break;
+      }
+    case DIAGS_DEBUG:
+      {
+        _digit_buffer.numberArray[0] = LETTER_A;
+        _digit_buffer.numberArray[1] = LETTER_L;
+        _digit_buffer.numberArray[2] = LETTER_L;
+        _digit_buffer.numberArray[3] = LETTER__;
+        _digit_buffer.numberArray[4] = LETTER_O;
+        _digit_buffer.numberArray[5] = LETTER_n;
+        break;
+      }
+    case AP_MODE:
+      {
+        _digit_buffer.numberArray[0] = LETTER_A;
+        _digit_buffer.numberArray[1] = LETTER_P;
+        _digit_buffer.numberArray[2] = LETTER__;
+        _digit_buffer.numberArray[3] = LETTER__;
+        _digit_buffer.numberArray[4] = LETTER_O;
+        _digit_buffer.numberArray[5] = LETTER_n;
+        break;
+      }
+  }
+}
+
+// ************************************************************
+// Break the time into displayable digits
+// ************************************************************
+void OutputManager::loadNumberArrayDate() {
+  switch (current_config.dateFormat) {
+    case DATE_FORMAT_YYMMDD:
+      _digit_buffer.numberArray[5] = day() % 10;
+      _digit_buffer.numberArray[4] = day() / 10;
+      _digit_buffer.numberArray[3] = month() % 10;
+      _digit_buffer.numberArray[2] = month() / 10;
+      _digit_buffer.numberArray[1] = (year() - 2000) % 10;
+      _digit_buffer.numberArray[0] = (year() - 2000) / 10;
+      break;
+    case DATE_FORMAT_MMDDYY:
+      _digit_buffer.numberArray[5] = (year() - 2000) % 10;
+      _digit_buffer.numberArray[4] = (year() - 2000) / 10;
+      _digit_buffer.numberArray[3] = day() % 10;
+      _digit_buffer.numberArray[2] = day() / 10;
+      _digit_buffer.numberArray[1] = month() % 10;
+      _digit_buffer.numberArray[0] = month() / 10;
+      break;
+    case DATE_FORMAT_DDMMYY:
+      _digit_buffer.numberArray[5] = (year() - 2000) % 10;
+      _digit_buffer.numberArray[4] = (year() - 2000) / 10;
+      _digit_buffer.numberArray[3] = month() % 10;
+      _digit_buffer.numberArray[2] = month() / 10;
+      _digit_buffer.numberArray[1] = day() % 10;
+      _digit_buffer.numberArray[0] = day() / 10;
+      break;
+  }
+}
+
+// ************************************************************
+// Break the LDR reading into displayable digits
+// ************************************************************
+void OutputManager::loadNumberArrayLDR() {
+  _digit_buffer.numberArray[5] = 0;
+  _digit_buffer.numberArray[4] = 0;
+
+  int ldrValueDisp = 1023 - _ldrValue;
+
+  _digit_buffer.numberArray[3] = (ldrValueDisp / 1) % 10;
+  _digit_buffer.numberArray[2] = (ldrValueDisp / 10) % 10;
+  _digit_buffer.numberArray[1] = (ldrValueDisp / 100) % 10;
+  _digit_buffer.numberArray[0] = (ldrValueDisp / 1000) % 10;
+}
+
+// ************************************************************
+// Test digits
+// ************************************************************
+void OutputManager::loadNumberArrayTestDigits() {
+  _digit_buffer.numberArray[5] =  second() % 10;
+  _digit_buffer.numberArray[4] = (second() + 1) % 10;
+  _digit_buffer.numberArray[3] = (second() + 2) % 10;
+  _digit_buffer.numberArray[2] = (second() + 3) % 10;
+  _digit_buffer.numberArray[1] = (second() + 4) % 10;
+  _digit_buffer.numberArray[0] = (second() + 5) % 10;
+}
+
+// ************************************************************
+// Show an integer configuration value
+// ************************************************************
+void OutputManager::loadNumberArrayConfInt(int confValue, int confNum) {
+  _digit_buffer.numberArray[5] = (confNum) % 10;
+  _digit_buffer.numberArray[4] = (confNum / 10) % 10;
+  _digit_buffer.numberArray[3] = (confValue / 1) % 10;
+  _digit_buffer.numberArray[2] = (confValue / 10) % 10;
+  _digit_buffer.numberArray[1] = (confValue / 100) % 10;
+  _digit_buffer.numberArray[0] = (confValue / 1000) % 10;
+}
+
+// ************************************************************
+// Show an integer configuration value
+// ************************************************************
+void OutputManager::loadNumberArrayConfIntWide(int confValue) {
+  _digit_buffer.numberArray[5] = (confValue / 1) % 10;
+  _digit_buffer.numberArray[4] = (confValue / 10) % 10;
+  _digit_buffer.numberArray[3] = (confValue / 100) % 10;
+  _digit_buffer.numberArray[2] = (confValue / 1000) % 10;
+  _digit_buffer.numberArray[1] = (confValue / 10000) % 10;
+  _digit_buffer.numberArray[0] = (confValue / 100000) % 10;
+}
+
+// ************************************************************
+// Show a boolean configuration value
+// ************************************************************
+void OutputManager::loadNumberArrayConfBool(boolean confValue, int confNum) {
+  int boolInt;
+  if (confValue) {
+    boolInt = 1;
+  } else {
+    boolInt = 0;
+  }
+  _digit_buffer.numberArray[5] = (confNum) % 10;
+  _digit_buffer.numberArray[4] = (confNum / 10) % 10;
+  _digit_buffer.numberArray[3] = boolInt;
+  _digit_buffer.numberArray[2] = 0;
+  _digit_buffer.numberArray[1] = 0;
+  _digit_buffer.numberArray[0] = 0;
+}
+
+// ************************************************************
+// Show an integer configuration value
+// ************************************************************
+void OutputManager::loadNumberArrayIP(byte byte1, byte byte2) {
+  _digit_buffer.numberArray[5] = (byte2) % 10;
+  _digit_buffer.numberArray[4] = (byte2 / 10) % 10;
+  _digit_buffer.numberArray[3] = (byte2 / 100) % 10;
+  _digit_buffer.numberArray[2] = (byte1) % 10;
+  _digit_buffer.numberArray[1] = (byte1 / 10) % 10;
+  _digit_buffer.numberArray[0] = (byte1 / 100) % 10;
+}
+
+// ************************************************************
+// Show an integer configuration value
+// ************************************************************
+void OutputManager::loadNumberArrayESPID(String ID) {
+  byte byteArray[5];
+  hexCharacterStringToBytes(byteArray, ID.c_str());
+  _digit_buffer.numberArray[5] = byteArray[5];
+  _digit_buffer.numberArray[4] = byteArray[4];
+  _digit_buffer.numberArray[3] = byteArray[3];
+  _digit_buffer.numberArray[2] = byteArray[2];
+  _digit_buffer.numberArray[1] = byteArray[1];
+  _digit_buffer.numberArray[0] = byteArray[0];
+}
+
+// ************************************************************
+// Show an integer configuration value
+// ************************************************************
+void OutputManager::loadNumberArrayValueToShow() {
+  _digit_buffer.numberArray[5] = (_value_buffer.valueToShow / 1) % 10;
+  _digit_buffer.numberArray[4] = (_value_buffer.valueToShow / 10) % 10;
+  _digit_buffer.numberArray[3] = (_value_buffer.valueToShow / 100) % 10;
+  _digit_buffer.numberArray[2] = (_value_buffer.valueToShow / 1000) % 10;
+  _digit_buffer.numberArray[1] = (_value_buffer.valueToShow / 10000) % 10;
+  _digit_buffer.numberArray[0] = (_value_buffer.valueToShow / 100000) % 10;
+}
+
+// ************************************************************
+// highlight years taking into account the date format
+// ************************************************************
+void OutputManager::highlightYearsDateFormat() {
+  switch (current_config.dateFormat) {
+    case DATE_FORMAT_YYMMDD:
+      highlight0and1();
+      break;
+    case DATE_FORMAT_MMDDYY:
+      highlight4and5();
+      break;
+    case DATE_FORMAT_DDMMYY:
+      highlight4and5();
+      break;
+  }
+}
+
+// ************************************************************
+// highlight years taking into account the date format
+// ************************************************************
+void OutputManager::highlightMonthsDateFormat() {
+  switch (current_config.dateFormat) {
+    case DATE_FORMAT_YYMMDD:
+      highlight2and3();
+      break;
+    case DATE_FORMAT_MMDDYY:
+      highlight0and1();
+      break;
+    case DATE_FORMAT_DDMMYY:
+      highlight2and3();
+      break;
+  }
+}
+
+// ************************************************************
+// highlight days taking into account the date format
+// ************************************************************
+void OutputManager::highlightDaysDateFormat() {
+  switch (current_config.dateFormat) {
+    case DATE_FORMAT_YYMMDD:
+      highlight4and5();
+      break;
+    case DATE_FORMAT_MMDDYY:
+      highlight2and3();
+      break;
+    case DATE_FORMAT_DDMMYY:
+      highlight0and1();
+      break;
+  }
+}
+
+// ************************************************************
+// Display preset, highlight digits 0 and 1
+// ************************************************************
+void OutputManager::highlight0and1() {
+  if (_digit_buffer.displayType[0] != BLINK) _digit_buffer.displayType[0] = BLINK;
+  if (_digit_buffer.displayType[1] != BLINK) _digit_buffer.displayType[1] = BLINK;
+  if (_digit_buffer.displayType[2] != NORMAL) _digit_buffer.displayType[2] = NORMAL;
+  if (_digit_buffer.displayType[3] != NORMAL) _digit_buffer.displayType[3] = NORMAL;
+  if (_digit_buffer.displayType[4] != NORMAL) _digit_buffer.displayType[4] = NORMAL;
+  if (_digit_buffer.displayType[5] != NORMAL) _digit_buffer.displayType[5] = NORMAL;
+}
+
+// ************************************************************
+// Display preset, highlight digits 2 and 3
+// ************************************************************
+void OutputManager::highlight2and3() {
+  if (_digit_buffer.displayType[0] != NORMAL) _digit_buffer.displayType[0] = NORMAL;
+  if (_digit_buffer.displayType[1] != NORMAL) _digit_buffer.displayType[1] = NORMAL;
+  if (_digit_buffer.displayType[2] != BLINK) _digit_buffer.displayType[2] = BLINK;
+  if (_digit_buffer.displayType[3] != BLINK) _digit_buffer.displayType[3] = BLINK;
+  if (_digit_buffer.displayType[4] != NORMAL) _digit_buffer.displayType[4] = NORMAL;
+  if (_digit_buffer.displayType[5] != NORMAL) _digit_buffer.displayType[5] = NORMAL;
+}
+
+// ************************************************************
+// Display preset, highlight digits 4 and 5
+// ************************************************************
+void OutputManager::highlight4and5() {
+  if (_digit_buffer.displayType[0] != NORMAL) _digit_buffer.displayType[0] = NORMAL;
+  if (_digit_buffer.displayType[1] != NORMAL) _digit_buffer.displayType[1] = NORMAL;
+  if (_digit_buffer.displayType[2] != NORMAL) _digit_buffer.displayType[2] = NORMAL;
+  if (_digit_buffer.displayType[3] != NORMAL) _digit_buffer.displayType[3] = NORMAL;
+  if (_digit_buffer.displayType[4] != BLINK) _digit_buffer.displayType[4] = BLINK;
+  if (_digit_buffer.displayType[5] != BLINK) _digit_buffer.displayType[5] = BLINK;
+}
+
+// ************************************************************
+// Display preset
+// ************************************************************
+void OutputManager::allNormal(bool leadingBlank) {
+
+  if (leadingBlank)
+    applyBlanking();
+  else if (_digit_buffer.displayType[0] != NORMAL) _digit_buffer.displayType[0] = NORMAL;
+
+  if (_digit_buffer.displayType[1] != NORMAL) _digit_buffer.displayType[1] = NORMAL;
+  if (_digit_buffer.displayType[2] != NORMAL) _digit_buffer.displayType[2] = NORMAL;
+  if (_digit_buffer.displayType[3] != NORMAL) _digit_buffer.displayType[3] = NORMAL;
+  if (_digit_buffer.displayType[4] != NORMAL) _digit_buffer.displayType[4] = NORMAL;
+  if (_digit_buffer.displayType[5] != NORMAL) _digit_buffer.displayType[5] = NORMAL;
+}
+
+// ************************************************************
+// Display preset
+// ************************************************************
+void OutputManager::displayConfig() {
+  if (_digit_buffer.displayType[0] != NORMAL) _digit_buffer.displayType[0] = NORMAL;
+  if (_digit_buffer.displayType[1] != NORMAL) _digit_buffer.displayType[1] = NORMAL;
+  if (_digit_buffer.displayType[2] != NORMAL) _digit_buffer.displayType[2] = NORMAL;
+  if (_digit_buffer.displayType[3] != NORMAL) _digit_buffer.displayType[3] = NORMAL;
+  if (_digit_buffer.displayType[4] != BLINK)  _digit_buffer.displayType[4] = BLINK;
+  if (_digit_buffer.displayType[5] != BLINK)  _digit_buffer.displayType[5] = BLINK;
+}
+
+// ************************************************************
+// Display preset
+// ************************************************************
+void OutputManager::allBlanked() {
+  if (_digit_buffer.displayType[0] != BLANKED) _digit_buffer.displayType[0] = BLANKED;
+  if (_digit_buffer.displayType[1] != BLANKED) _digit_buffer.displayType[1] = BLANKED;
+  if (_digit_buffer.displayType[2] != BLANKED) _digit_buffer.displayType[2] = BLANKED;
+  if (_digit_buffer.displayType[3] != BLANKED) _digit_buffer.displayType[3] = BLANKED;
+  if (_digit_buffer.displayType[4] != BLANKED) _digit_buffer.displayType[4] = BLANKED;
+  if (_digit_buffer.displayType[5] != BLANKED) _digit_buffer.displayType[5] = BLANKED;
+}
+
+// ************************************************************
+// Display preset
+// ************************************************************
+void OutputManager::loadDisplaySetValueType() {
+  _digit_buffer.displayType[5] = _value_buffer.valueDisplayType[5] & 0xf;
+  _digit_buffer.displayType[4] = _value_buffer.valueDisplayType[4] & 0xf;
+  _digit_buffer.displayType[5] = _value_buffer.valueDisplayType[3] & 0xf;
+  _digit_buffer.displayType[2] = _value_buffer.valueDisplayType[2] & 0xf;
+  _digit_buffer.displayType[1] = _value_buffer.valueDisplayType[1] & 0xf;
+  _digit_buffer.displayType[0] = _value_buffer.valueDisplayType[0] & 0xf;
+}
+
+// ************************************************************
+// Apply leading zero blanking
+// ************************************************************
+void OutputManager::applyBlanking() {
+
+  // We only want to blank the hours tens digit
+  if (current_config.blankLeading && _digit_buffer.numberArray[0] == 0) {
+    _digit_buffer.displayType[0] = BLANKED;
+  }
+  else {
+    _digit_buffer.displayType[0] = NORMAL;
+  }
+}
+
+// ************************************************************
+// Get a pointer to the internal digit buffer
+// ************************************************************
+digit_buffer_t* OutputManager::getDigitBuffer() {
+  return &_digit_buffer;
+}
+
+// ************************************************************
+// Get a pointer to the internal value buffer
+// ************************************************************
+value_buffer_t* OutputManager::getValueBuffer() {
+  return &_value_buffer;
+}
+
+void OutputManager::setValueDisplayTime(int timeToDisplay) {
+  _value_buffer.valueDisplayTime = timeToDisplay;
+}
+
+int OutputManager::getValueDisplayTime() {
+  return _value_buffer.valueDisplayTime;
+}
+
+void OutputManager::decValueDisplayTime() {
+  _value_buffer.valueDisplayTime--;
+}
+
+void OutputManager::setValueToShow(int newValue) {
+  _value_buffer.valueToShow = newValue;
+}
+
+byte OutputManager::getNumberArrayIndexedValue(byte idx) {
+  return _digit_buffer.numberArray[idx];
 }

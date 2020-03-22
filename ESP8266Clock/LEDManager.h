@@ -4,6 +4,7 @@
 #include "Arduino.h"
 #include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna 2.3.4)
 #include "SPIFFS.h"
+#include "OutputManagerNumi6.h"
 
 // --------------------------- Strategy Backlights -------------------------------
 #define BACKLIGHT_MIN                   0
@@ -27,8 +28,6 @@
 #define STATUS_YELLOW 1
 #define STATUS_GREEN  2
 #define STATUS_BLUE   3
-
-extern byte numberArray[];
 
 class LEDManager
 {

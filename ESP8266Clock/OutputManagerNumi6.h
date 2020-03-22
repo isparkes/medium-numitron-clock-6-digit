@@ -5,9 +5,10 @@
 #include "DisplayDefs.h"
 #include "SPIFFS.h"
 #include "LEDManager.h"
+#include "ClockDefs.h"
 
-extern byte numberArray[];
-extern byte displayType[];
+#define DIGIT_COUNT 6
+
 extern boolean led1State;
 extern boolean led2State;
 extern boolean ledLState;
@@ -66,7 +67,7 @@ extern boolean blankTubes;
 #define LETTER_b SEG_C | SEG_D | SEG_E | SEG_F | SEG_G
 #define LETTER_d SEG_B | SEG_C | SEG_D | SEG_E | SEG_G
 
-// ************************ Display management ************************
+// ************************** Pin Allocations *************************
 
 // Shift register
 #define LATCHPin    14    // D5
@@ -74,26 +75,79 @@ extern boolean blankTubes;
 #define DATAPin     12    // D6
 #define BLANKPin    16    // D0
 
-// ************************ Display management ************************
+// ************************* Shared Structures ************************
 
-class OutputManager
-{
+typedef struct {
+    byte numberArray[DIGIT_COUNT];
+    byte displayType[DIGIT_COUNT];  
+} digit_buffer_t;
+
+typedef struct {
+  int valueToShow;
+  byte valueDisplayTime;
+  byte valueDisplayType[DIGIT_COUNT];
+} value_buffer_t;
+
+// ************************ Display management ************************
+class OutputManager {
   public:
+    static OutputManager& Instance();
+    
     void setUp();
     void outputDisplay();
     void outputDisplayDiags();
     void setLDRValue(unsigned int newBrightness);
     
+    void loadNumberArrayTime();
+    void loadNumberArrayDate();
+    void loadNumberArraySameValue(byte val);
+    void loadNumberArrayPOSTMessage(byte val);
+    void loadNumberArrayTestDigits();
+    void loadNumberArrayConfInt(int confValue, int confNum);
+    void loadNumberArrayConfIntWide(int confValue);
+    void loadNumberArrayConfBool(boolean confValue, int confNum);
+    void loadNumberArrayIP(byte byte1, byte byte2);
+    void loadNumberArrayLDR();
+    void loadNumberArrayESPID(String ID);
+    void loadNumberArrayValueToShow();
+    
+    void loadDisplaySetValueType();
+    
+    void allNormal(bool leadingBlank);
+    void highlight0and1();
+    void highlight2and3();
+    void highlight4and5();
+    void highlightDaysDateFormat();
+    void highlightMonthsDateFormat();
+    void highlightYearsDateFormat();
+    void displayConfig();
+    void allBlanked();
+
+    void setValueDisplayTime(int timeToDisplay);
+    int  getValueDisplayTime();
+    void decValueDisplayTime();
+
+    void setValueToShow(int newValue);
+
+    digit_buffer_t* getDigitBuffer();
+    value_buffer_t* getValueBuffer();
+
+    byte getNumberArrayIndexedValue(byte idx);
   private:
+    static OutputManager* pInstance;
+    
     boolean _blinkState;
     spiffs_config_t *cc = &current_config;
     byte _preheatCounter = 0;
     int _ldrValue = 0;
     int _lastLDRValue = 0;
     int _tubeLag = 0;
-    
+
     byte digitData[16] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9, LETTER_A, LETTER_b, LETTER_C, LETTER_d, LETTER_E, LETTER_F};
     
+    digit_buffer_t _digit_buffer = {{0,0,0,0,0,0}, {0,0,0,0,0,0}};
+    value_buffer_t _value_buffer = {0,10,{NORMAL,NORMAL,NORMAL,NORMAL,NORMAL,NORMAL}};
+
     void shiftDigitsOut(byte *displayDigits);
     void digitsOut(unsigned long highBits, unsigned long lowBits);
     void shiftOut24(uint8_t _dataPin1,
@@ -103,11 +157,7 @@ class OutputManager
     void blankDigits(byte *digits, byte *prevNums, bool *smoothRun);
     void smoothDigits(byte *digits, byte *prevNums, bool *smoothRun);
     void setBlankingPin();
+    void applyBlanking();
 };
-
-
-// ----------------- Exported Variables ------------------
-
-static OutputManager outputManager;
 
 #endif

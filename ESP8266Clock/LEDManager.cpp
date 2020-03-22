@@ -85,7 +85,7 @@ void LEDManager::outputLEDBuffer() {
     leds.SetPixelColor(i, color);
   }
   for (int i = 0 ; i < PIXEL_COUNT ; i++) {
-    RgbColor color(ledRu[i], ledGu[i], ledBu[i]);
+    RgbColor color(ledRu[5 - i], ledGu[5 - i], ledBu[5 - i]);
     leds.SetPixelColor(i + 6, color);
   }
   leds.Show();
@@ -127,13 +127,14 @@ void LEDManager::processLedStatus() {
         }
       case BACKLIGHT_COLOUR_TIME: {
           if (!_syncColourTime) {
-            for (int i = 0 ; i < PIXEL_COUNT ; i++) {
-              ledRb[i] = getLEDAdjustedBL(colourTimeR[numberArray[i]]);
-              ledGb[i] = getLEDAdjustedBL(colourTimeG[numberArray[i]]);
-              ledBb[i] = getLEDAdjustedBL(colourTimeB[numberArray[i]]);
-              ledRu[i] = getLEDAdjustedUL(colourTimeR[numberArray[i]]);
-              ledGu[i] = getLEDAdjustedUL(colourTimeG[numberArray[i]]);
-              ledBu[i] = getLEDAdjustedUL(colourTimeB[numberArray[i]]);
+            for (byte i = 0 ; i < PIXEL_COUNT ; i++) {
+              byte numVal = OutputManager::Instance().getNumberArrayIndexedValue(i);
+              ledRb[i] = getLEDAdjustedBL(colourTimeR[numVal]);
+              ledGb[i] = getLEDAdjustedBL(colourTimeG[numVal]);
+              ledBb[i] = getLEDAdjustedBL(colourTimeB[numVal]);
+              ledRu[i] = getLEDAdjustedUL(colourTimeR[numVal]);
+              ledGu[i] = getLEDAdjustedUL(colourTimeG[numVal]);
+              ledBu[i] = getLEDAdjustedUL(colourTimeB[numVal]);
             }
           }
           break;

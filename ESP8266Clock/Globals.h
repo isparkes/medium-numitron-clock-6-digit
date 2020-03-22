@@ -17,14 +17,6 @@ Transition transitionBang(400, 400, 3200, SLOTS_MODE_BANG_BANG);  // Bang In / B
 Transition transitionDummy(0, 0, 0, SLOTS_MODE_NONE);             // Dummy transition for null pointer prevention
 Transition *activeTransition = &transitionDummy;                  // Pointer to selected transition object
 
-// ------------------ Display Variables ----------------
-
-byte numberArray[DIGIT_COUNT]          = {0, 0, 0, 0, 0, 0};
-byte displayType[DIGIT_COUNT]          = {NORMAL, NORMAL, NORMAL, NORMAL};
-byte valueDisplayTime                  = 0;
-int valueToShow                        = 0;
-byte valueDisplayType[DIGIT_COUNT / 2] = {NORMAL | NORMAL << 4, NORMAL | NORMAL << 4, NORMAL | NORMAL << 4}; // All normal by default
-
 // ------------- Time management variables -------------
 
 unsigned long nowMillis = 0;

@@ -4,6 +4,7 @@
 #include "Arduino.h"
 #include "DisplayDefs.h"
 #include "ClockDefs.h"
+#include "OutputManagerNumi6.h"
 
 extern byte numberArray[];
 extern byte displayType[];
