@@ -67,6 +67,15 @@ extern boolean blankTubes;
 #define LETTER_b SEG_C | SEG_D | SEG_E | SEG_F | SEG_G
 #define LETTER_d SEG_B | SEG_C | SEG_D | SEG_E | SEG_G
 
+#define PREHEAT_MIN            1
+#define PREHEAT_V_STRONG       1
+#define PREHEAT_STRONG         2
+#define PREHEAT_WEAK           3
+#define PREHEAT_V_WEAK         4
+#define PREHEAT_OFF            5
+#define PREHEAT_DEFAULT        PREHEAT_WEAK
+#define PREHEAT_MAX            5
+
 // ************************** Pin Allocations *************************
 
 // Shift register
@@ -133,15 +142,18 @@ class OutputManager {
     value_buffer_t* getValueBuffer();
 
     byte getNumberArrayIndexedValue(byte idx);
+    
+    void setPreheatStrength(int newValue);
   private:
     static OutputManager* pInstance;
     
     boolean _blinkState;
-    spiffs_config_t *cc = &current_config;
     byte _preheatCounter = 0;
+    byte _preheatStrength = PREHEAT_DEFAULT;
     int _ldrValue = 0;
     int _lastLDRValue = 0;
     int _tubeLag = 0;
+    byte _separatorDim = 0;
 
     byte digitData[16] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9, LETTER_A, LETTER_b, LETTER_C, LETTER_d, LETTER_E, LETTER_F};
     
@@ -152,7 +164,6 @@ class OutputManager {
     void digitsOut(unsigned long highBits, unsigned long lowBits);
     void shiftOut24(uint8_t _dataPin1,
                 uint8_t _clockPin,
-                uint8_t _bitOrder,
                 uint32_t _val1);
     void blankDigits(byte *digits, byte *prevNums, bool *smoothRun);
     void smoothDigits(byte *digits, byte *prevNums, bool *smoothRun);

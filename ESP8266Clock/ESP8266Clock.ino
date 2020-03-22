@@ -420,11 +420,11 @@ void loop()
   ldrValue = getDimmingFromLDR();
   ledManager.setLDRValue(ldrValue);
   OutputManager::Instance().setLDRValue(ldrValue);
-  
+
   OutputManager::Instance().outputDisplay();
 
   setLeds();
-  
+
   delay(10);
 }
 
@@ -563,7 +563,7 @@ void setLeds()
 
   unsigned int secsDelta;
   int secsDeltaAbs = (nowMillis - lastCheckMillis);
-  
+
   if (upOrDown) {
     secsDelta = (nowMillis - lastCheckMillis);
   } else {
@@ -1278,6 +1278,7 @@ void processCurrentMode(int displayMode) {
         if (button1.isButtonPressedAndReleased()) {
           current_config.preheatStrength++;
           if (current_config.preheatStrength > PREHEAT_MAX) {
+            current_config.preheatStrength = PREHEAT_MIN;
           }
         }
         OutputManager::Instance().loadNumberArrayConfInt(current_config.preheatStrength, displayMode);
@@ -1995,8 +1996,9 @@ void clockConfigPageHandler() {
   }
   checkServerArgByte("preheatStrength", "preheatStrength", changed, current_config.preheatStrength);
   saveToSpiffsIfChanged(changed);
-  
+
   ledManager.recalculateVariables();
+  OutputManager::Instance().setPreheatStrength(current_config.preheatStrength);
 
   // -----------------------------------------------------------------------------
   String response_message = getHTMLHead(getIsConnected());

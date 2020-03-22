@@ -65,31 +65,33 @@ void OutputManager::shiftDigitsOut(byte *displayDigits) {
   static unsigned long lastOut1 = 0;
   static unsigned long lastOut2 = 0;
 
-  // Add in the orange separator "colon" LEDs
-  displayDigits[2] |= SEG_IND * led1State;
-  displayDigits[4] |= SEG_IND * led1State;
-  displayDigits[1] |= SEG_IND * led2State;
-  displayDigits[3] |= SEG_IND * led2State;
+  _separatorDim++;
+  if (_separatorDim & 0x01) { 
+    // Add in the orange separator "colon" LEDs
+    displayDigits[2] |= SEG_IND * led1State;
+    displayDigits[1] |= SEG_IND * led2State;
+    displayDigits[3] |= SEG_IND * led2State;
+    displayDigits[4] |= SEG_IND * led1State;
 
-  // Add in the red indicator LEDs
-  displayDigits[0] |= SEG_IND * ledLState;
-  displayDigits[5] |= SEG_IND * ledRState;
+    // Add in the red indicator LEDs
+    displayDigits[0] |= SEG_IND * ledLState;
+    displayDigits[5] |= SEG_IND * ledRState;
+  }
 
   // Mix in the digits
   unsigned long out1 = displayDigits[5] | (displayDigits[4] << 8) | (displayDigits[3] << 16);
   unsigned long out2 = displayDigits[2] | (displayDigits[1] << 8) | (displayDigits[0] << 16);
-  
 
   // Digit pre-heat
-  if (cc->preheatStrength < PREHEAT_OFF) {
+  if (_preheatStrength < PREHEAT_OFF) {
     _preheatCounter++;
-    if (_preheatCounter > cc->preheatStrength) {
+    if (_preheatCounter > _preheatStrength) {
       _preheatCounter = 0;
       out1 |= 0x7f7f7f;
       out2 |= 0x7f7f7f;
     }
   }
-  
+
   // If nothing has changed don't bother updating tubes - it would be redundant
   if (out1 != lastOut1 || out2 != lastOut2) {
     lastOut1 = out1;
@@ -115,8 +117,8 @@ void OutputManager::outputDisplayDiags() {
 // ************************************************************
 void OutputManager::digitsOut(unsigned long highBits, unsigned long lowBits) {
   digitalWrite(LATCHPin, LOW);
-  shiftOut24(DATAPin, CLOCKPin, MSBFIRST, lowBits);
-  shiftOut24(DATAPin, CLOCKPin, MSBFIRST, highBits);
+  shiftOut24(DATAPin, CLOCKPin, lowBits);
+  shiftOut24(DATAPin, CLOCKPin, highBits);
   digitalWrite(LATCHPin, HIGH);
 }
 
@@ -125,17 +127,11 @@ void OutputManager::digitsOut(unsigned long highBits, unsigned long lowBits) {
 // ************************************************************
 void OutputManager::shiftOut24(uint8_t _dataPin1,
                 uint8_t _clockPin,
-                uint8_t _bitOrder,
                 uint32_t _val1) {
   uint8_t i;
 
   for (i = 0; i < 24; i++) {
-    if (_bitOrder == LSBFIRST) {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << i)));
-    }
-    else {
-      digitalWrite(_dataPin1, !!(_val1 & (1 << (23 - i))));
-    }
+    digitalWrite(_dataPin1, !!(_val1 & (1 << (23 - i))));
     digitalWrite(_clockPin, HIGH);
     digitalWrite(_clockPin, LOW);
   }
@@ -652,4 +648,8 @@ void OutputManager::setValueToShow(int newValue) {
 
 byte OutputManager::getNumberArrayIndexedValue(byte idx) {
   return _digit_buffer.numberArray[idx];
+}
+
+void OutputManager::setPreheatStrength(int newValue) {
+  _preheatStrength = newValue;
 }
