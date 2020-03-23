@@ -11,11 +11,16 @@ OutputManager* OutputManager::pInstance;
 // Singleton accessor
 // ************************************************************
 OutputManager& OutputManager::Instance(){
+  return *OutputManager::pInstance;
+}
+
+// ************************************************************
+// Singleton creator
+// ************************************************************
+void OutputManager::CreateInstance(){
   if (OutputManager::pInstance == nullptr) {
     OutputManager::pInstance = new OutputManager();
-  } else {
   }
-  return *OutputManager::pInstance;
 }
 
 // ************************************************************
@@ -31,6 +36,13 @@ void OutputManager::setUp() {
 }
 
 // ************************************************************
+// Set up the manager
+// ************************************************************
+void OutputManager::setConfigObject(spiffs_config_t* ccPtr) {
+  cc = ccPtr;
+}
+
+// ************************************************************
 // Do a single complete display
 // ************************************************************
 void OutputManager::outputDisplay() {
@@ -39,11 +51,10 @@ void OutputManager::outputDisplay() {
   static bool smoothRunning[6];
 
   // Deal with blink, calculate if we are on or off
-  static uint16_t blinkCounter = BLINK_COUNT_OFF;
-  blinkCounter--;
-  if (blinkCounter <= 0) {
+  _blinkCounter--;
+  if (_blinkCounter <= 0) {
     _blinkState = !_blinkState;
-    blinkCounter = _blinkState ? BLINK_COUNT_ON : BLINK_COUNT_OFF;
+    _blinkCounter = _blinkState ? BLINK_COUNT_ON : BLINK_COUNT_OFF;
   }
 
   // Decode numbers to 7-segment digits
@@ -62,42 +73,46 @@ void OutputManager::outputDisplay() {
 // the stable display when we are not cross-fading.
 // ************************************************************
 void OutputManager::shiftDigitsOut(byte *displayDigits) {
-  static unsigned long lastOut1 = 0;
-  static unsigned long lastOut2 = 0;
-
-  _separatorDim++;
-  if (_separatorDim & 0x01) { 
-    // Add in the orange separator "colon" LEDs
-    displayDigits[2] |= SEG_IND * led1State;
-    displayDigits[1] |= SEG_IND * led2State;
-    displayDigits[3] |= SEG_IND * led2State;
-    displayDigits[4] |= SEG_IND * led1State;
-
-    // Add in the red indicator LEDs
-    displayDigits[0] |= SEG_IND * ledLState;
-    displayDigits[5] |= SEG_IND * ledRState;
+  if (cc->separatorDimFactor == SEP_DIM) {
+    _separatorDim++;
+    if (_separatorDim & 0x01) { 
+      // Add in the orange separator "colon" LEDs
+      displayDigits[2] |= SEG_IND * led1State;
+      displayDigits[1] |= SEG_IND * led2State;
+      displayDigits[3] |= SEG_IND * led2State;
+      displayDigits[4] |= SEG_IND * led1State;
+      
+      // Add in the red indicator LEDs
+      displayDigits[0] |= SEG_IND * ledLState;
+      displayDigits[5] |= SEG_IND * ledRState;
+    }
+  } else {
+      // Add in the orange separator "colon" LEDs
+      displayDigits[2] |= SEG_IND * led1State;
+      displayDigits[1] |= SEG_IND * led2State;
+      displayDigits[3] |= SEG_IND * led2State;
+      displayDigits[4] |= SEG_IND * led1State;
+      
+      // Add in the red indicator LEDs
+      displayDigits[0] |= SEG_IND * ledLState;
+      displayDigits[5] |= SEG_IND * ledRState;
   }
 
   // Mix in the digits
   unsigned long out1 = displayDigits[5] | (displayDigits[4] << 8) | (displayDigits[3] << 16);
   unsigned long out2 = displayDigits[2] | (displayDigits[1] << 8) | (displayDigits[0] << 16);
-
+  
   // Digit pre-heat
-  if (_preheatStrength < PREHEAT_OFF) {
+  if (cc->preheatStrength < PREHEAT_OFF) {
     _preheatCounter++;
-    if (_preheatCounter > _preheatStrength) {
+    if (_preheatCounter > cc->preheatStrength) {
       _preheatCounter = 0;
       out1 |= 0x7f7f7f;
       out2 |= 0x7f7f7f;
     }
   }
-
-  // If nothing has changed don't bother updating tubes - it would be redundant
-  if (out1 != lastOut1 || out2 != lastOut2) {
-    lastOut1 = out1;
-    lastOut2 = out2;
-    digitsOut(out1, out2);
-  }
+  
+  digitsOut(out1, out2);
 }
 
 // ************************************************************
@@ -186,7 +201,7 @@ void OutputManager::smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) 
 void OutputManager::setLDRValue(unsigned int newBrightness) {
   if (_ldrValue != newBrightness) {
     _ldrValue = newBrightness;
-    _tubeLag = (.000655 * pow(newBrightness, 2) + -.01159 * newBrightness + 148) / (6 - current_config.preheatStrength);
+    _tubeLag = (.000655 * pow(newBrightness, 2) + -.01159 * newBrightness + 148) / (6 - cc->preheatStrength);
   }
 }
 
@@ -218,20 +233,17 @@ void OutputManager::setBlankingPin() {
 // Break the time into displayable digits
 // ************************************************************
 void OutputManager::loadNumberArrayTime() {
-  Serial.println("Load number array 0 before: " + String(_digit_buffer.numberArray[0]));
   _digit_buffer.numberArray[5] = second() % 10;
   _digit_buffer.numberArray[4] = second() / 10;
   _digit_buffer.numberArray[3] = minute() % 10;
   _digit_buffer.numberArray[2] = minute() / 10;
-  if (current_config.hourMode) {
+  if (cc->hourMode) {
     _digit_buffer.numberArray[1] = hourFormat12() % 10;
     _digit_buffer.numberArray[0] = hourFormat12() / 10;
   } else {
     _digit_buffer.numberArray[1] = hour() % 10;
     _digit_buffer.numberArray[0] = hour() / 10;
   }
-  Serial.println("Load number array hour: " + String(hour()));
-  Serial.println("Load number array 0 after: " + String(_digit_buffer.numberArray[0]));
 }
 
 // ************************************************************
@@ -328,7 +340,7 @@ void OutputManager::loadNumberArrayPOSTMessage(byte val) {
 // Break the time into displayable digits
 // ************************************************************
 void OutputManager::loadNumberArrayDate() {
-  switch (current_config.dateFormat) {
+  switch (cc->dateFormat) {
     case DATE_FORMAT_YYMMDD:
       _digit_buffer.numberArray[5] = day() % 10;
       _digit_buffer.numberArray[4] = day() / 10;
@@ -467,7 +479,7 @@ void OutputManager::loadNumberArrayValueToShow() {
 // highlight years taking into account the date format
 // ************************************************************
 void OutputManager::highlightYearsDateFormat() {
-  switch (current_config.dateFormat) {
+  switch (cc->dateFormat) {
     case DATE_FORMAT_YYMMDD:
       highlight0and1();
       break;
@@ -484,7 +496,7 @@ void OutputManager::highlightYearsDateFormat() {
 // highlight years taking into account the date format
 // ************************************************************
 void OutputManager::highlightMonthsDateFormat() {
-  switch (current_config.dateFormat) {
+  switch (cc->dateFormat) {
     case DATE_FORMAT_YYMMDD:
       highlight2and3();
       break;
@@ -501,7 +513,7 @@ void OutputManager::highlightMonthsDateFormat() {
 // highlight days taking into account the date format
 // ************************************************************
 void OutputManager::highlightDaysDateFormat() {
-  switch (current_config.dateFormat) {
+  switch (cc->dateFormat) {
     case DATE_FORMAT_YYMMDD:
       highlight4and5();
       break;
@@ -608,7 +620,7 @@ void OutputManager::loadDisplaySetValueType() {
 void OutputManager::applyBlanking() {
 
   // We only want to blank the hours tens digit
-  if (current_config.blankLeading && _digit_buffer.numberArray[0] == 0) {
+  if (cc->blankLeading && _digit_buffer.numberArray[0] == 0) {
     _digit_buffer.displayType[0] = BLANKED;
   }
   else {
@@ -648,8 +660,4 @@ void OutputManager::setValueToShow(int newValue) {
 
 byte OutputManager::getNumberArrayIndexedValue(byte idx) {
   return _digit_buffer.numberArray[idx];
-}
-
-void OutputManager::setPreheatStrength(int newValue) {
-  _preheatStrength = newValue;
 }

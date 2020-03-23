@@ -5,7 +5,6 @@
 #include "DisplayDefs.h"
 #include "SPIFFS.h"
 #include "LEDManager.h"
-#include "ClockDefs.h"
 
 #define DIGIT_COUNT 6
 
@@ -76,6 +75,19 @@ extern boolean blankTubes;
 #define PREHEAT_DEFAULT        PREHEAT_WEAK
 #define PREHEAT_MAX            5
 
+// Display mode, set per digit
+#define BLANKED  0
+#define NORMAL   1
+#define BLINK    2
+#define BLINK_COUNT_ON        70                      // The number of impressions blinking digits are ON
+#define BLINK_COUNT_OFF       55                      // The number of impressions blinking digits are OFF
+                                                      // Blink is asymetrical because Numitrons light up slowly
+#define SEP_DIM_MIN            1
+#define SEP_BRIGHT             1
+#define SEP_DIM                2
+#define SEP_DIM_MAX            2
+#define SEP_DIM_DEFAULT        SEP_DIM
+
 // ************************** Pin Allocations *************************
 
 // Shift register
@@ -100,9 +112,11 @@ typedef struct {
 // ************************ Display management ************************
 class OutputManager {
   public:
+    static void CreateInstance();
     static OutputManager& Instance();
     
     void setUp();
+    void setConfigObject(spiffs_config_t* ccPtr);
     void outputDisplay();
     void outputDisplayDiags();
     void setLDRValue(unsigned int newBrightness);
@@ -142,18 +156,18 @@ class OutputManager {
     value_buffer_t* getValueBuffer();
 
     byte getNumberArrayIndexedValue(byte idx);
-    
-    void setPreheatStrength(int newValue);
   private:
     static OutputManager* pInstance;
-    
+
+    int   _blinkCounter;
     boolean _blinkState;
     byte _preheatCounter = 0;
-    byte _preheatStrength = PREHEAT_DEFAULT;
     int _ldrValue = 0;
     int _lastLDRValue = 0;
     int _tubeLag = 0;
     byte _separatorDim = 0;
+
+    spiffs_config_t *cc;
 
     byte digitData[16] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9, LETTER_A, LETTER_b, LETTER_C, LETTER_d, LETTER_E, LETTER_F};
     

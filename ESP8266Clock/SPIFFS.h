@@ -50,6 +50,7 @@ typedef struct {
   String webPassword;
   byte preheatStrength;
   byte extDimFactor;
+  byte separatorDimFactor;
 } spiffs_config_t;
 
 typedef struct {

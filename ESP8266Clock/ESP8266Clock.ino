@@ -60,6 +60,11 @@
 //**********************************************************************************
 void setup()
 {
+  // Set up the output manager
+  OutputManager::CreateInstance();
+  OutputManager::Instance().setUp();
+  OutputManager::Instance().setConfigObject(&current_config);
+  
   // Show Start message on tubes
   OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_START);
   OutputManager::Instance().outputDisplayDiags();
@@ -86,7 +91,7 @@ void setup()
 #endif
 
   ledManager.setUp();
-  OutputManager::Instance().setUp();  
+  OutputManager::Instance().setUp();
 
   setDiagnosticLED(DIAGS_START, STATUS_GREEN);
   OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_START);
@@ -328,6 +333,8 @@ void setup()
 //**********************************************************************************
 void loop()
 {
+  OutputManager outputManager = OutputManager::Instance();
+  
   server.handleClient();
   mdns.update();
 
@@ -387,7 +394,7 @@ void loop()
     spiffs.saveConfigToSpiffs(&current_config);
 
     // Preset the display
-    OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+    outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
 
     nextMode = currentMode;
   } else if (button1.isButtonPressedReleased1S()) {
@@ -400,7 +407,7 @@ void loop()
       spiffs.saveConfigToSpiffs(&current_config);
 
       // Preset the display
-      OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+      outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
     }
 
     nextMode = currentMode;
@@ -419,9 +426,9 @@ void loop()
 
   ldrValue = getDimmingFromLDR();
   ledManager.setLDRValue(ldrValue);
-  OutputManager::Instance().setLDRValue(ldrValue);
-
-  OutputManager::Instance().outputDisplay();
+  outputManager.setLDRValue(ldrValue);
+  
+  outputManager.outputDisplay();
 
   setLeds();
 
@@ -563,7 +570,7 @@ void setLeds()
 
   unsigned int secsDelta;
   int secsDeltaAbs = (nowMillis - lastCheckMillis);
-
+  
   if (upOrDown) {
     secsDelta = (nowMillis - lastCheckMillis);
   } else {
@@ -1743,6 +1750,7 @@ void factoryReset() {
   cc->statusModeR = STATUS_LED_MODE_NTP;
   cc->preheatStrength = PREHEAT_DEFAULT;
   cc->extDimFactor = EXT_DIM_FACTOR_DEFAULT;
+  cc->separatorDimFactor = SEP_DIM_DEFAULT;
 
   spiffs.saveConfigToSpiffs(cc);
 }
@@ -1995,10 +2003,10 @@ void clockConfigPageHandler() {
     setWebPassword(current_config.webPassword);
   }
   checkServerArgByte("preheatStrength", "preheatStrength", changed, current_config.preheatStrength);
+  checkServerArgByte("separatorDimFactor", "separatorDimFactor", changed, current_config.separatorDimFactor);
   saveToSpiffsIfChanged(changed);
-
+  
   ledManager.recalculateVariables();
-  OutputManager::Instance().setPreheatStrength(current_config.preheatStrength);
 
   // -----------------------------------------------------------------------------
   String response_message = getHTMLHead(getIsConnected());
@@ -2050,6 +2058,11 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("3", "Weak", (current_config.preheatStrength == PREHEAT_WEAK));
   response_message += getDropDownOption("4", "Very Weak", (current_config.preheatStrength == PREHEAT_V_WEAK));
   response_message += getDropDownOption("5", "Off", (current_config.preheatStrength == PREHEAT_OFF));
+  response_message += getDropDownFooter();
+
+  response_message += getDropDownHeader("Separator Dimming:", "separatorDimFactor", true);
+  response_message += getDropDownOption("1", "Bright", (current_config.separatorDimFactor == SEP_BRIGHT));
+  response_message += getDropDownOption("2", "Dim", (current_config.separatorDimFactor == SEP_DIM));
   response_message += getDropDownFooter();
 
   response_message += getSubmitButton("Set");

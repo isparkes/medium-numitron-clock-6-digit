@@ -17,6 +17,8 @@ Transition transitionBang(400, 400, 3200, SLOTS_MODE_BANG_BANG);  // Bang In / B
 Transition transitionDummy(0, 0, 0, SLOTS_MODE_NONE);             // Dummy transition for null pointer prevention
 Transition *activeTransition = &transitionDummy;                  // Pointer to selected transition object
 
+OutputManager outputManager;
+
 // ------------- Time management variables -------------
 
 unsigned long nowMillis = 0;

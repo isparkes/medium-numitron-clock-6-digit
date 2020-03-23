@@ -150,6 +150,9 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
           spiffs_config->extDimFactor = json["extDimFactor"];
           debugMsg("Loaded extDimFactor: " + String(spiffs_config->extDimFactor));
 
+          spiffs_config->separatorDimFactor = json["separatorDimFactor"];
+          debugMsg("Loaded separatorDimFactor: " + String(spiffs_config->separatorDimFactor));
+
           loaded = true;
         } else {
           debugMsg("failed to load json config");
@@ -211,6 +214,7 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
     json["statusModeR"] = spiffs_config->statusModeR;
     json["preheatStrength"] = spiffs_config->preheatStrength;
     json["extDimFactor"] = spiffs_config->extDimFactor;
+    json["separatorDimFactor"] = spiffs_config->separatorDimFactor;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {

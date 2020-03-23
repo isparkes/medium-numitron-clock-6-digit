@@ -6,9 +6,6 @@
 #include "ClockDefs.h"
 #include "OutputManagerNumi6.h"
 
-extern byte numberArray[];
-extern byte displayType[];
-
 class Transition
 {
   public:
