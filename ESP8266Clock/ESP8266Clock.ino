@@ -2054,11 +2054,6 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("5", "Off", (current_config.preheatStrength == PREHEAT_OFF));
   response_message += getDropDownFooter();
 
-  response_message += getDropDownHeader("Separator Dimming:", "separatorDimFactor", true);
-  response_message += getDropDownOption("1", "Bright", (current_config.separatorDimFactor == SEP_BRIGHT));
-  response_message += getDropDownOption("2", "Dim", (current_config.separatorDimFactor == SEP_DIM));
-  response_message += getDropDownFooter();
-
   response_message += getSubmitButton("Set");
 
   response_message += getFormFoot();
@@ -2230,6 +2225,11 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("3", "PIR", (current_config.statusModeR == STATUS_LED_MODE_PIR));
   response_message += getDropDownOption("4", "Off", (current_config.statusModeR == STATUS_LED_MODE_OFF));
   response_message += getDropDownOption("5", "On", (current_config.statusModeR == STATUS_LED_MODE_ON));
+  response_message += getDropDownFooter();
+
+  response_message += getDropDownHeader("Separator Dimming:", "separatorDimFactor", true);
+  response_message += getDropDownOption("1", "Bright", (current_config.separatorDimFactor == SEP_BRIGHT));
+  response_message += getDropDownOption("2", "Dim", (current_config.separatorDimFactor == SEP_DIM));
   response_message += getDropDownFooter();
 
   response_message += getSubmitButton("Set");
