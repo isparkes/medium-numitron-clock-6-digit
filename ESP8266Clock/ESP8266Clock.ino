@@ -51,7 +51,7 @@
 #include "OutputManagerNumi6.h"
 #include "SPIFFS.h"
 
-#define DEBUG_OFF
+#define DEBUG
 
 //**********************************************************************************
 //**********************************************************************************
@@ -304,7 +304,8 @@ void setup()
   onceHadAnRTC = useRTC;
   delay(1000);
 
-  // Show the version for 1 s
+  // Set the time and set to  show the version
+  OutputManager::Instance().loadNumberArrayTime();
   tempDisplayMode = TEMP_MODE_VERSION;
   tempDisplayModeDuration = TEMP_DISPLAY_MODE_DUR_MS;
 
@@ -333,8 +334,6 @@ void setup()
 //**********************************************************************************
 void loop()
 {
-  OutputManager outputManager = OutputManager::Instance();
-  
   server.handleClient();
   mdns.update();
 
@@ -394,7 +393,7 @@ void loop()
     spiffs.saveConfigToSpiffs(&current_config);
 
     // Preset the display
-    outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+    OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
 
     nextMode = currentMode;
   } else if (button1.isButtonPressedReleased1S()) {
@@ -407,7 +406,7 @@ void loop()
       spiffs.saveConfigToSpiffs(&current_config);
 
       // Preset the display
-      outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+      OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
     }
 
     nextMode = currentMode;
@@ -426,9 +425,9 @@ void loop()
 
   ldrValue = getDimmingFromLDR();
   ledManager.setLDRValue(ldrValue);
-  outputManager.setLDRValue(ldrValue);
+  OutputManager::Instance().setLDRValue(ldrValue);
   
-  outputManager.outputDisplay();
+  OutputManager::Instance().outputDisplay();
 
   setLeds();
 
@@ -985,11 +984,6 @@ void processCurrentMode(int displayMode) {
 
             // Initialise the slots transition values and start it
             if (second() == 50 && !msgDisplaying) {
-              OutputManager::Instance().loadNumberArrayDate();
-              activeTransition->setAlternateValues();
-              OutputManager::Instance().loadNumberArrayTime();
-              activeTransition->setRegularValues();
-              OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
               activeTransition->start(nowMillis);
             }
 

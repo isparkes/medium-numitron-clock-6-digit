@@ -12,11 +12,8 @@ class Transition
     Transition(int, int, int, int);
     void start(unsigned long);
     boolean isMessageOnDisplay(unsigned long);
-    void updateRegularDisplaySeconds(int);    
-    void setRegularValues();
-    void setAlternateValues();
-    void saveCurrentDisplayType();
     boolean runEffect(unsigned long, boolean blankLeading);
+    void updateRegularDisplaySeconds(byte secondUpdate);
     
   private:
     int _effectInDuration;
@@ -32,9 +29,6 @@ class Transition
     
     boolean wipeInWipeOut(unsigned long, boolean blankLeading);
     boolean bangInBangOut(unsigned long);
-    void loadRegularValues();
-    void loadAlternateValues();
-    void restoreCurrentDisplayType();
     unsigned long getEnd();
 };
 

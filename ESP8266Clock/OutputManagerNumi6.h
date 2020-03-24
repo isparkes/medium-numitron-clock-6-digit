@@ -79,8 +79,8 @@ extern boolean blankTubes;
 #define BLANKED  0
 #define NORMAL   1
 #define BLINK    2
-#define BLINK_COUNT_ON        70                      // The number of impressions blinking digits are ON
-#define BLINK_COUNT_OFF       55                      // The number of impressions blinking digits are OFF
+#define BLINK_COUNT_ON         70                      // The number of impressions blinking digits are ON
+#define BLINK_COUNT_OFF        55                      // The number of impressions blinking digits are OFF
                                                       // Blink is asymetrical because Numitrons light up slowly
 #define SEP_DIM_MIN            1
 #define SEP_BRIGHT             1
@@ -91,10 +91,10 @@ extern boolean blankTubes;
 // ************************** Pin Allocations *************************
 
 // Shift register
-#define LATCHPin    14    // D5
-#define CLOCKPin    13    // D7
-#define DATAPin     12    // D6
-#define BLANKPin    16    // D0
+#define LATCHPin               14    // D5
+#define CLOCKPin               13    // D7
+#define DATAPin                12    // D6
+#define BLANKPin               16    // D0
 
 // ************************* Shared Structures ************************
 
@@ -152,10 +152,11 @@ class OutputManager {
 
     void setValueToShow(int newValue);
 
-    digit_buffer_t* getDigitBuffer();
-    value_buffer_t* getValueBuffer();
-
+    // used for transition stunts
     byte getNumberArrayIndexedValue(byte idx);
+    void setNumberArrayIndexedValue(byte idx, byte value);
+    byte getDisplayTypeIndexedValue(byte idx);
+    void setDisplayTypeIndexedValue(byte idx, byte value);
   private:
     static OutputManager* pInstance;
 

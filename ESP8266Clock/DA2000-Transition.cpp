@@ -18,9 +18,20 @@ Transition::Transition(int effectInDuration, int effectOutDuration, int holdDura
 
 void Transition::start(unsigned long now) {
   if (_end < now) {
+    // save the target display
+    OutputManager::Instance().loadNumberArrayDate();
+    for (int idx = 0; idx < DIGIT_COUNT ; idx++) {
+      _alternateDisplay[idx] = OutputManager::Instance().getNumberArrayIndexedValue(idx);
+    }
+
+    // save the current version of the normal display
+    OutputManager::Instance().loadNumberArrayTime();
+    for (int idx = 0; idx < DIGIT_COUNT ; idx++) {
+      _regularDisplay[idx] = OutputManager::Instance().getNumberArrayIndexedValue(idx);
+      _savedDisplayType[idx] = OutputManager::Instance().getDisplayTypeIndexedValue(idx);
+    }
     _started = now;
     _end = getEnd();
-    saveCurrentDisplayType(); 
   }
   // else we are already running!
 }
@@ -44,51 +55,42 @@ boolean Transition::isMessageOnDisplay(unsigned long now)
   return (now < _end);
 }
 
-// we need to get the seconds updated, otherwise we show the old
-// time at the end of the stunt
-void Transition::updateRegularDisplaySeconds(int seconds) {
-  _regularDisplay[5] = seconds % 10;
-  _regularDisplay[4] = seconds / 10;
-}
-
 boolean Transition::wipeInWipeOut(unsigned long now, boolean blankLeading)
 {
-  digit_buffer_t * dbs = OutputManager::Instance().getDigitBuffer();
-  value_buffer_t * vbs = OutputManager::Instance().getValueBuffer();
   if (now < _end) {
     int msCount = now - _started;
     // Wipe In blanking
     if (msCount < _effectInDuration) {
       _digit = msCount * (DIGIT_COUNT + 1) / _effectInDuration;
       if (_digit > 0)
-        vbs->valueDisplayType[_digit-1] = BLANKED;      
+        OutputManager::Instance().setDisplayTypeIndexedValue(_digit-1, BLANKED);
     }
     // Wipe In date values
     else if (msCount < _effectInDuration * 2) {
       _digit = (msCount - _effectInDuration) * DIGIT_COUNT / _effectInDuration;
-      dbs->numberArray[_digit] = _alternateDisplay[_digit];
-      vbs->valueDisplayType[_digit] = NORMAL;
+      OutputManager::Instance().setNumberArrayIndexedValue(_digit, _alternateDisplay[_digit]);
+      OutputManager::Instance().setDisplayTypeIndexedValue(_digit, NORMAL);
     }
     // Hold date display
     else if (msCount < _effectInDuration * 2 + _holdDuration) {
-      loadAlternateValues();
+      OutputManager::Instance().loadNumberArrayDate();
     }
     // Wipe Out blanking
     else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration) {
       _digit = (msCount - _holdDuration - _effectInDuration * 2) * DIGIT_COUNT / _effectOutDuration;
-      vbs->valueDisplayType[_digit] = BLANKED;    
+      OutputManager::Instance().setDisplayTypeIndexedValue(_digit, BLANKED);
     }
     // Wipe Out to time values
     else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration * 2) {
       _digit = (msCount - _holdDuration - _effectInDuration * 2 - _effectOutDuration) * DIGIT_COUNT / _effectOutDuration;
-      dbs->numberArray[_digit] = _regularDisplay[_digit];
-      if (!blankLeading || _digit != 0 || dbs->numberArray[_digit] != 0)
-        vbs->valueDisplayType[_digit] = NORMAL;
+      OutputManager::Instance().setNumberArrayIndexedValue(_digit, _regularDisplay[_digit]);
+      if (!blankLeading || _digit != 0 || _regularDisplay[_digit] != 0)
+        OutputManager::Instance().setDisplayTypeIndexedValue(_digit, NORMAL);
     }
     // We now return you to your regularly scheduled program
     else {
-      loadRegularValues();
-      restoreCurrentDisplayType();
+      OutputManager::Instance().loadNumberArrayTime();
+      OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
       _end = 0;
    }
     return true;  // we are still running
@@ -98,35 +100,35 @@ boolean Transition::wipeInWipeOut(unsigned long now, boolean blankLeading)
 
 boolean Transition::bangInBangOut(unsigned long now)
 {
-  value_buffer_t * vbs = OutputManager::Instance().getValueBuffer();
   if (now < _end) {
     int msCount = now - _started;
     // Bang In blanking
     if (msCount < _effectInDuration) {
-      memset(vbs->valueDisplayType, BLANKED, DIGIT_COUNT);
+      OutputManager::Instance().allBlanked();
     }
     // Bang In date values
     else if (msCount < _effectInDuration * 2) {
-      loadAlternateValues();
-      memset(vbs->valueDisplayType, NORMAL, DIGIT_COUNT);
+      OutputManager::Instance().loadNumberArrayDate();
+      OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
     }
     // Hold date display
     else if (msCount < _effectInDuration * 2 + _holdDuration) {
-      loadAlternateValues();
+      OutputManager::Instance().loadNumberArrayDate();
+      OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
     }
     // Bang Out blanking
     else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration) {
-      memset(vbs->valueDisplayType, BLANKED, DIGIT_COUNT);
+      OutputManager::Instance().allBlanked();
     }
     // Bang Out to time values
     else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration * 2) {
-      loadRegularValues();
-      restoreCurrentDisplayType();
+      OutputManager::Instance().loadNumberArrayTime();
+      OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
     }
     // We now return you to your regularly scheduled program
     else {
-      loadRegularValues();
-      restoreCurrentDisplayType();
+      OutputManager::Instance().loadNumberArrayTime();
+      OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
       _end = 0;
    }
     return true;  // we are still running
@@ -134,36 +136,12 @@ boolean Transition::bangInBangOut(unsigned long now)
   return false;   // We aren't running
 }
 
-void Transition::setRegularValues() {
-  digit_buffer_t * dbs = OutputManager::Instance().getDigitBuffer();
-  memcpy(_regularDisplay, dbs->numberArray, sizeof(_regularDisplay));
-}
-
-void Transition::setAlternateValues() {
-  digit_buffer_t * dbs = OutputManager::Instance().getDigitBuffer();
-  memcpy(_alternateDisplay, dbs->numberArray, sizeof(_alternateDisplay));
-}
-
-void Transition::loadRegularValues() {
-  digit_buffer_t * dbs = OutputManager::Instance().getDigitBuffer();
-  memcpy(dbs->numberArray, _regularDisplay, sizeof(_regularDisplay));
-}
-
-void Transition::loadAlternateValues() {
-  digit_buffer_t * dbs = OutputManager::Instance().getDigitBuffer();
-  memcpy(dbs->numberArray, _alternateDisplay, sizeof(_alternateDisplay));
-}
-
-void Transition::saveCurrentDisplayType() {
-  value_buffer_t * vbs = OutputManager::Instance().getValueBuffer();
-  memcpy(_savedDisplayType, vbs->valueDisplayType, sizeof(_savedDisplayType));
-}
-
-void Transition::restoreCurrentDisplayType() {
-  value_buffer_t * vbs = OutputManager::Instance().getValueBuffer();
-  memcpy(vbs->valueDisplayType, _savedDisplayType, sizeof(_savedDisplayType));
-}
-
 unsigned long Transition::getEnd() {
   return _started + _effectInDuration * 2 + _holdDuration + _effectOutDuration * 2;
+}
+
+// Update the seconds in the internal buffer
+void Transition::updateRegularDisplaySeconds(byte secondUpdate) {
+  _regularDisplay[4] = secondUpdate / 10;
+  _regularDisplay[5] = secondUpdate % 10;
 }

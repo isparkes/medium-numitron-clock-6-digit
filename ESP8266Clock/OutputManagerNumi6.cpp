@@ -75,7 +75,7 @@ void OutputManager::outputDisplay() {
 void OutputManager::shiftDigitsOut(byte *displayDigits) {
   if (cc->separatorDimFactor == SEP_DIM) {
     _separatorDim++;
-    if (_separatorDim & 0x01) { 
+    if (_separatorDim & 0x01) {
       // Add in the orange separator "colon" LEDs
       displayDigits[2] |= SEG_IND * led1State;
       displayDigits[1] |= SEG_IND * led2State;
@@ -85,17 +85,18 @@ void OutputManager::shiftDigitsOut(byte *displayDigits) {
       // Add in the red indicator LEDs
       displayDigits[0] |= SEG_IND * ledLState;
       displayDigits[5] |= SEG_IND * ledRState;
+    } else {
     }
   } else {
-      // Add in the orange separator "colon" LEDs
-      displayDigits[2] |= SEG_IND * led1State;
-      displayDigits[1] |= SEG_IND * led2State;
-      displayDigits[3] |= SEG_IND * led2State;
-      displayDigits[4] |= SEG_IND * led1State;
-      
-      // Add in the red indicator LEDs
-      displayDigits[0] |= SEG_IND * ledLState;
-      displayDigits[5] |= SEG_IND * ledRState;
+    // Add in the orange separator "colon" LEDs
+    displayDigits[2] |= SEG_IND * led1State;
+    displayDigits[1] |= SEG_IND * led2State;
+    displayDigits[3] |= SEG_IND * led2State;
+    displayDigits[4] |= SEG_IND * led1State;
+    
+    // Add in the red indicator LEDs
+    displayDigits[0] |= SEG_IND * ledLState;
+    displayDigits[5] |= SEG_IND * ledRState;
   }
 
   // Mix in the digits
@@ -164,9 +165,9 @@ void OutputManager::blankDigits(byte *digits, byte *prevNums, bool *smoothRun) {
       prevNums[i] = _digit_buffer.numberArray[i];
       digitWasBlanked[i] = true;
     }
-    else if (digitWasBlanked[i]) {      // Inhibits smoothing when digit goes
-      prevNums[i] = _digit_buffer.numberArray[i];     // from BLANKED to NORMAL because that
-      digitWasBlanked[i] = false;       // would not look good.
+    else if (digitWasBlanked[i]) {                  // Inhibits smoothing when digit goes
+      prevNums[i] = _digit_buffer.numberArray[i];   // from BLANKED to NORMAL because that
+      digitWasBlanked[i] = false;                   // would not look good.
     }
   }
 }
@@ -530,36 +531,36 @@ void OutputManager::highlightDaysDateFormat() {
 // Display preset, highlight digits 0 and 1
 // ************************************************************
 void OutputManager::highlight0and1() {
-  if (_digit_buffer.displayType[0] != BLINK) _digit_buffer.displayType[0] = BLINK;
-  if (_digit_buffer.displayType[1] != BLINK) _digit_buffer.displayType[1] = BLINK;
-  if (_digit_buffer.displayType[2] != NORMAL) _digit_buffer.displayType[2] = NORMAL;
-  if (_digit_buffer.displayType[3] != NORMAL) _digit_buffer.displayType[3] = NORMAL;
-  if (_digit_buffer.displayType[4] != NORMAL) _digit_buffer.displayType[4] = NORMAL;
-  if (_digit_buffer.displayType[5] != NORMAL) _digit_buffer.displayType[5] = NORMAL;
+  _digit_buffer.displayType[0] = BLINK;
+  _digit_buffer.displayType[1] = BLINK;
+  _digit_buffer.displayType[2] = NORMAL;
+  _digit_buffer.displayType[3] = NORMAL;
+  _digit_buffer.displayType[4] = NORMAL;
+  _digit_buffer.displayType[5] = NORMAL;
 }
 
 // ************************************************************
 // Display preset, highlight digits 2 and 3
 // ************************************************************
 void OutputManager::highlight2and3() {
-  if (_digit_buffer.displayType[0] != NORMAL) _digit_buffer.displayType[0] = NORMAL;
-  if (_digit_buffer.displayType[1] != NORMAL) _digit_buffer.displayType[1] = NORMAL;
-  if (_digit_buffer.displayType[2] != BLINK) _digit_buffer.displayType[2] = BLINK;
-  if (_digit_buffer.displayType[3] != BLINK) _digit_buffer.displayType[3] = BLINK;
-  if (_digit_buffer.displayType[4] != NORMAL) _digit_buffer.displayType[4] = NORMAL;
-  if (_digit_buffer.displayType[5] != NORMAL) _digit_buffer.displayType[5] = NORMAL;
+  _digit_buffer.displayType[0] = NORMAL;
+  _digit_buffer.displayType[1] = NORMAL;
+  _digit_buffer.displayType[2] = BLINK;
+  _digit_buffer.displayType[3] = BLINK;
+  _digit_buffer.displayType[4] = NORMAL;
+  _digit_buffer.displayType[5] = NORMAL;
 }
 
 // ************************************************************
 // Display preset, highlight digits 4 and 5
 // ************************************************************
 void OutputManager::highlight4and5() {
-  if (_digit_buffer.displayType[0] != NORMAL) _digit_buffer.displayType[0] = NORMAL;
-  if (_digit_buffer.displayType[1] != NORMAL) _digit_buffer.displayType[1] = NORMAL;
-  if (_digit_buffer.displayType[2] != NORMAL) _digit_buffer.displayType[2] = NORMAL;
-  if (_digit_buffer.displayType[3] != NORMAL) _digit_buffer.displayType[3] = NORMAL;
-  if (_digit_buffer.displayType[4] != BLINK) _digit_buffer.displayType[4] = BLINK;
-  if (_digit_buffer.displayType[5] != BLINK) _digit_buffer.displayType[5] = BLINK;
+  _digit_buffer.displayType[0] = NORMAL;
+  _digit_buffer.displayType[1] = NORMAL;
+  _digit_buffer.displayType[2] = NORMAL;
+  _digit_buffer.displayType[3] = NORMAL;
+  _digit_buffer.displayType[4] = BLINK;
+  _digit_buffer.displayType[5] = BLINK;
 }
 
 // ************************************************************
@@ -569,37 +570,38 @@ void OutputManager::allNormal(bool leadingBlank) {
 
   if (leadingBlank)
     applyBlanking();
-  else if (_digit_buffer.displayType[0] != NORMAL) _digit_buffer.displayType[0] = NORMAL;
+  else 
+    _digit_buffer.displayType[0] = NORMAL;
 
-  if (_digit_buffer.displayType[1] != NORMAL) _digit_buffer.displayType[1] = NORMAL;
-  if (_digit_buffer.displayType[2] != NORMAL) _digit_buffer.displayType[2] = NORMAL;
-  if (_digit_buffer.displayType[3] != NORMAL) _digit_buffer.displayType[3] = NORMAL;
-  if (_digit_buffer.displayType[4] != NORMAL) _digit_buffer.displayType[4] = NORMAL;
-  if (_digit_buffer.displayType[5] != NORMAL) _digit_buffer.displayType[5] = NORMAL;
+  _digit_buffer.displayType[1] = NORMAL;
+  _digit_buffer.displayType[2] = NORMAL;
+  _digit_buffer.displayType[3] = NORMAL;
+  _digit_buffer.displayType[4] = NORMAL;
+  _digit_buffer.displayType[5] = NORMAL;
 }
 
 // ************************************************************
 // Display preset
 // ************************************************************
 void OutputManager::displayConfig() {
-  if (_digit_buffer.displayType[0] != NORMAL) _digit_buffer.displayType[0] = NORMAL;
-  if (_digit_buffer.displayType[1] != NORMAL) _digit_buffer.displayType[1] = NORMAL;
-  if (_digit_buffer.displayType[2] != NORMAL) _digit_buffer.displayType[2] = NORMAL;
-  if (_digit_buffer.displayType[3] != NORMAL) _digit_buffer.displayType[3] = NORMAL;
-  if (_digit_buffer.displayType[4] != BLINK)  _digit_buffer.displayType[4] = BLINK;
-  if (_digit_buffer.displayType[5] != BLINK)  _digit_buffer.displayType[5] = BLINK;
+  _digit_buffer.displayType[0] = NORMAL;
+  _digit_buffer.displayType[1] = NORMAL;
+  _digit_buffer.displayType[2] = NORMAL;
+  _digit_buffer.displayType[3] = NORMAL;
+  _digit_buffer.displayType[4] = BLINK;
+  _digit_buffer.displayType[5] = BLINK;
 }
 
 // ************************************************************
 // Display preset
 // ************************************************************
 void OutputManager::allBlanked() {
-  if (_digit_buffer.displayType[0] != BLANKED) _digit_buffer.displayType[0] = BLANKED;
-  if (_digit_buffer.displayType[1] != BLANKED) _digit_buffer.displayType[1] = BLANKED;
-  if (_digit_buffer.displayType[2] != BLANKED) _digit_buffer.displayType[2] = BLANKED;
-  if (_digit_buffer.displayType[3] != BLANKED) _digit_buffer.displayType[3] = BLANKED;
-  if (_digit_buffer.displayType[4] != BLANKED) _digit_buffer.displayType[4] = BLANKED;
-  if (_digit_buffer.displayType[5] != BLANKED) _digit_buffer.displayType[5] = BLANKED;
+  _digit_buffer.displayType[0] = BLANKED;
+  _digit_buffer.displayType[1] = BLANKED;
+  _digit_buffer.displayType[2] = BLANKED;
+  _digit_buffer.displayType[3] = BLANKED;
+  _digit_buffer.displayType[4] = BLANKED;
+  _digit_buffer.displayType[5] = BLANKED;
 }
 
 // ************************************************************
@@ -629,35 +631,57 @@ void OutputManager::applyBlanking() {
 }
 
 // ************************************************************
-// Get a pointer to the internal digit buffer
+// Set the time we are going to do the value display for
 // ************************************************************
-digit_buffer_t* OutputManager::getDigitBuffer() {
-  return &_digit_buffer;
-}
-
-// ************************************************************
-// Get a pointer to the internal value buffer
-// ************************************************************
-value_buffer_t* OutputManager::getValueBuffer() {
-  return &_value_buffer;
-}
-
 void OutputManager::setValueDisplayTime(int timeToDisplay) {
   _value_buffer.valueDisplayTime = timeToDisplay;
 }
 
+// ************************************************************
+// Get the time we are going to do the value display for
+// ************************************************************
 int OutputManager::getValueDisplayTime() {
   return _value_buffer.valueDisplayTime;
 }
 
+// ************************************************************
+// Decrement the time we are going to do the value display for
+// ************************************************************
 void OutputManager::decValueDisplayTime() {
   _value_buffer.valueDisplayTime--;
 }
 
+// ************************************************************
+// Set the value to display
+// ************************************************************
 void OutputManager::setValueToShow(int newValue) {
   _value_buffer.valueToShow = newValue;
 }
 
+// ************************************************************
+// Get the digit at index idx
+// ************************************************************
 byte OutputManager::getNumberArrayIndexedValue(byte idx) {
   return _digit_buffer.numberArray[idx];
+}
+
+// ************************************************************
+// Set the digit at index idx
+// ************************************************************
+void OutputManager::setNumberArrayIndexedValue(byte idx, byte value) {
+  _digit_buffer.numberArray[idx] = value;
+}
+
+// ************************************************************
+// Get the display type at index idx
+// ************************************************************
+byte OutputManager::getDisplayTypeIndexedValue(byte idx) {
+  return _digit_buffer.displayType[idx];
+}
+
+// ************************************************************
+// Set the display type at index idx
+// ************************************************************
+void OutputManager::setDisplayTypeIndexedValue(byte idx, byte value) {
+  _digit_buffer.displayType[idx] = value;
 }
