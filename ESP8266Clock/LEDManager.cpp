@@ -1,7 +1,7 @@
 #include "LEDManager.h"
 
-// 6 Backlights and 6 underlights
-static NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(PIXEL_COUNT * 2, LED_DOUT);
+// DIGIT_COUNT Backlights and DIGIT_COUNT underlights
+static NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(DIGIT_COUNT * 2, LED_DOUT);
 
 void LEDManager::setUp()
 {
@@ -51,7 +51,7 @@ void LEDManager::setBlanked(boolean blanked)
 // Set back light LEDs to the same colour
 // ************************************************************
 void LEDManager::setBacklightLEDs(byte red, byte green, byte blue) {
-  for (int i = 0 ; i < PIXEL_COUNT ; i++) {
+  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
     ledRb[i] = red;
     ledGb[i] = green;
     ledBb[i] = blue;
@@ -62,7 +62,7 @@ void LEDManager::setBacklightLEDs(byte red, byte green, byte blue) {
 // Set under light LEDs to the same colour
 // ************************************************************
 void LEDManager::setUnderlightLEDs(byte red, byte green, byte blue) {
-  for (int i = 0 ; i < PIXEL_COUNT ; i++) {
+  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
     ledRu[i] = red;
     ledGu[i] = green;
     ledBu[i] = blue;
@@ -80,13 +80,13 @@ void LEDManager::setDayOfWeek(byte dow) {
 // Put the led buffers out
 // ************************************************************
 void LEDManager::outputLEDBuffer() {
-  for (int i = 0 ; i < PIXEL_COUNT ; i++) {
+  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
     RgbColor color(ledRb[i], ledGb[i], ledBb[i]);
     leds.SetPixelColor(i, color);
   }
-  for (int i = 0 ; i < PIXEL_COUNT ; i++) {
-    RgbColor color(ledRu[5 - i], ledGu[5 - i], ledBu[5 - i]);
-    leds.SetPixelColor(i + 6, color);
+  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
+    RgbColor color(ledRu[DIGIT_COUNT - 1 - i], ledGu[DIGIT_COUNT - 1 - i], ledBu[DIGIT_COUNT - 1 - i]);
+    leds.SetPixelColor(i + DIGIT_COUNT, color);
   }
   leds.Show();
 }
@@ -127,7 +127,7 @@ void LEDManager::processLedStatus() {
         }
       case BACKLIGHT_COLOUR_TIME: {
           if (!_syncColourTime) {
-            for (byte i = 0 ; i < PIXEL_COUNT ; i++) {
+            for (byte i = 0 ; i < DIGIT_COUNT ; i++) {
               byte numVal = OutputManager::Instance().getNumberArrayIndexedValue(i);
               ledRb[i] = getLEDAdjustedBL(colourTimeR[numVal]);
               ledGb[i] = getLEDAdjustedBL(colourTimeG[numVal]);
@@ -267,7 +267,7 @@ void LEDManager::setSyncColourTime(boolean value) {
 // LEDs to dignostic colours
 // ************************************************************
 void LEDManager::setDiagnosticLED(byte stepNumber, byte state) {
-  for (int i = 0 ; i < PIXEL_COUNT ; i++) {
+  for (int i = 0 ; i < DIGIT_COUNT ; i++) {
     if (i > stepNumber) {
       ledRb[i] = ledGb[i] = ledBb[i] = ledRu[i] = ledGu[i] = ledBu[i] = 0x1f;
     } else if (i == stepNumber) {

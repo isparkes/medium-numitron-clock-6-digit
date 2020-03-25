@@ -91,7 +91,6 @@ void setup()
 #endif
 
   ledManager.setUp();
-  OutputManager::Instance().setUp();
 
   setDiagnosticLED(DIAGS_START, STATUS_GREEN);
   OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_START);

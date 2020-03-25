@@ -20,14 +20,21 @@
 #define CYCLE_SPEED_MAX                 64
 #define CYCLE_SPEED_DEFAULT             10
 
-#define PIXEL_COUNT                     6
+// -------------------------------------------------------------------------------
+#define COLOUR_CNL_MAX                  15
+#define COLOUR_RED_CNL_DEFAULT          15
+#define COLOUR_GRN_CNL_DEFAULT          0
+#define COLOUR_BLU_CNL_DEFAULT          0
+#define COLOUR_CNL_MIN                  0
 
-#define LED_DOUT                        3     // RX defined by DMA output of library
-
+// -------------------------------------------------------------------------------
 #define STATUS_RED    0
 #define STATUS_YELLOW 1
 #define STATUS_GREEN  2
 #define STATUS_BLUE   3
+
+// ************************** Pin Allocations *************************
+#define LED_DOUT                        3     // RX defined by DMA output of library
 
 class LEDManager
 {
@@ -76,14 +83,14 @@ class LEDManager
     byte cycleCount = 0;
 
     // Back lights
-    byte ledRb[PIXEL_COUNT];
-    byte ledGb[PIXEL_COUNT];
-    byte ledBb[PIXEL_COUNT];
+    byte ledRb[DIGIT_COUNT];
+    byte ledGb[DIGIT_COUNT];
+    byte ledBb[DIGIT_COUNT];
 
     // Under lights
-    byte ledRu[PIXEL_COUNT];
-    byte ledGu[PIXEL_COUNT];
-    byte ledBu[PIXEL_COUNT];
+    byte ledRu[DIGIT_COUNT];
+    byte ledGu[DIGIT_COUNT];
+    byte ledBu[DIGIT_COUNT];
 
     void setBacklightLEDs(byte red, byte green, byte blue);
     void setUnderlightLEDs(byte red, byte green, byte blue);

@@ -5,9 +5,8 @@
 #ifndef ClockDefs_h
 #define ClockDefs_h
 
-// ---// ***** Pin Defintions ****** Pin Defintions ****** Pin Defintions ******
+// ************************** Pin Allocations *************************
 
-#define inputPin1   0     // D3
 #define pirPin      2     // D4
 #define LDRPin      A0    // ADC input
 
@@ -34,28 +33,9 @@
 #define SENSOR_SMOOTH_READINGS_DEFAULT 100  // Speed at which the brighness adapts to changes
 
 // -------------------------------------------------------------------------------
-// How quickly the scroll works
-#define SCROLL_STEPS_DEFAULT 8
-#define SCROLL_STEPS_MIN     1
-#define SCROLL_STEPS_MAX     80
-
-// -------------------------------------------------------------------------------
-// The number of dispay impessions we need to fade by default
-// 100 is about 1 second
-#define FADE_STEPS_DEFAULT 50
-#define FADE_STEPS_MIN     20
-#define FADE_STEPS_MAX     200
-
 #define SECS_MAX  60
 #define MINS_MAX  60
 #define HOURS_MAX 24
-
-// -------------------------------------------------------------------------------
-#define COLOUR_CNL_MAX                  15
-#define COLOUR_RED_CNL_DEFAULT          15
-#define COLOUR_GRN_CNL_DEFAULT          0
-#define COLOUR_BLU_CNL_DEFAULT          0
-#define COLOUR_CNL_MIN                  0
 
 // -------------------------------------------------------------------------------
 // Clock modes - normal running is MODE_TIME, other modes accessed by a middle length ( 1S < press < 2S ) button press

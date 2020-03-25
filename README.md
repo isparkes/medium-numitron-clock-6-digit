@@ -1,5 +1,5 @@
-# ESP8266 VFD Clock 
+# ESP8266 Numitron Clock 
 
-This is the code for the ESP8266 VFD Clock.
+This is the code for the ESP8266 Numitron Clock.
 
-Currently a collection of individual parts, soon to be integrated.
+
