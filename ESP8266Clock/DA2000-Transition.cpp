@@ -140,8 +140,10 @@ unsigned long Transition::getEnd() {
   return _started + _effectInDuration * 2 + _holdDuration + _effectOutDuration * 2;
 }
 
-// Update the seconds in the internal buffer
+// Update the seconds in the internal buffer only needed with 6 digit displays
 void Transition::updateRegularDisplaySeconds(byte secondUpdate) {
-  _regularDisplay[4] = secondUpdate / 10;
-  _regularDisplay[5] = secondUpdate % 10;
+  if (DIGIT_COUNT == 6) {
+    _regularDisplay[4] = secondUpdate / 10;
+    _regularDisplay[5] = secondUpdate % 10;
+  }
 }
