@@ -41,6 +41,7 @@
 #include "Globals.h"
 #include "ClockButton.h"
 #include "DA2000-Transition.h"
+#include "DebugManager.h"
 #include "DisplayDefs.h"
 #include "ClockUtils.h"
 #include "ClockDefs.h"
@@ -50,8 +51,6 @@
 #include "NtpAsync.h"
 #include "OutputManagerNumi6.h"
 #include "SPIFFS.h"
-
-#define DEBUG_OFF
 
 //**********************************************************************************
 //**********************************************************************************
@@ -76,37 +75,32 @@ void setup()
   NewTimeCallback ntcb = newTimeUpdateReceived;
   ntpAsync.setNewTimeCallback(ntcb);
 
-#ifdef DEBUG
-  setupDebug(true);
-  debugMsg("");
-  debugMsg("--------------------- START ---------------------");
-  wifiManager.setDebugOutput(true);
+  bool debugVal = false;
+  debugManager.setUp(debugVal);
+  wifiManager.setDebugOutput(debugVal);
 
-  DebugCallback dbcb = debugMsg;
+  DebugCallback dbcb = debugMsgLocal;
   ntpAsync.setDebugCallback(dbcb);
-  ntpAsync.setDebugOutput(true);
+  ntpAsync.setDebugOutput(debugVal);
 
   spiffs.setDebugCallback(dbcb);
-  spiffs.setDebugOutput(true);
-#endif
+  spiffs.setDebugOutput(debugVal);
 
   ledManager.setUp();
 
   setDiagnosticLED(DIAGS_START, STATUS_GREEN);
   OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_START);
   OutputManager::Instance().outputDisplayDiags();
-  delay(1000);
 
   // Start I2C now so that the update from NTP can be sent to the RTC immediately
   Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
-  debugMsg("I2C master started");
+  debugManager.debugMsg("I2C master started");
 
   button1.reset();
 
   setDiagnosticLED(DIAGS_SPIFFS, STATUS_YELLOW);
   OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_SPIFFS);
   OutputManager::Instance().outputDisplayDiags();
-  delay(1000);
 
   for (int i = 0; i < 25 ; i++) button1.checkButton(millis());
 
@@ -119,7 +113,7 @@ void setup()
 
   if (!spiffs.getConfigFromSpiffs(&current_config)) {
     if (spiffs.testMountSpiffs()) {
-      debugMsg("No config found - resetting everything");
+      debugManager.debugMsg("No config found - resetting everything");
       factoryReset();
       setDiagnosticLED(DIAGS_SPIFFS, STATUS_BLUE);
     } else {
@@ -146,7 +140,7 @@ void setup()
   button1.reset();
 
   if (current_config.testMode) {
-    debugMsg("Doing test sequence");
+    debugManager.debugMsg("Doing test sequence");
     delay(1000);
     boolean oldUseLDR = current_config.useLDR;
     byte oldbacklightMode = current_config.backlightMode;
@@ -201,7 +195,7 @@ void setup()
 
       setLeds();
 
-      // debugMsg("Checing test mode exit condition");
+      // debugManager.debugMsg("Checing test mode exit condition");
       button1.checkButton(nowMillis);
       if (button1.isButtonPressedNow() && (secCount == 8)) {
         inLoop = false;
@@ -233,17 +227,17 @@ void setup()
   connected = wifiManager.autoConnect(WiFi.hostname().c_str(), "SetMeUp!");
 
   if (connected) {
-    debugMsg("Connected!");
+    debugManager.debugMsg("Connected!");
     setDiagnosticLED(DIAGS_WIFI, STATUS_GREEN);
   } else {
-    debugMsg("Could NOT Connect");
+    debugManager.debugMsg("Could NOT Connect");
     setDiagnosticLED(DIAGS_WIFI, STATUS_RED);
   }
 
   IPAddress apIP = WiFi.softAPIP();
   IPAddress myIP = WiFi.localIP();
-  debugMsg("AP IP address: " + formatIPAsString(apIP));
-  debugMsg("IP address: " + formatIPAsString(myIP));
+  debugManager.debugMsg("AP IP address: " + formatIPAsString(apIP));
+  debugManager.debugMsg("IP address: " + formatIPAsString(myIP));
 
   // If we lose the connection, we try to recover it
   WiFi.setAutoReconnect(true);
@@ -260,7 +254,7 @@ void setup()
     delay(1000);
     ntpAsync.getTimeFromNTP();
     if (ntpAsync.ntpTimeValid(millis()) > 0) {
-      debugMsg("Got update from NTP, exiting loop");
+      debugManager.debugMsg("Got update from NTP, exiting loop");
       needUpdate = false;
     }
   }
@@ -273,13 +267,13 @@ void setup()
 
   setServerPageHandlers();
   server.begin();
-  debugMsg("HTTP server started");
+  debugManager.debugMsg("HTTP server started");
 
   // Enable OTA updates
   httpUpdater.setup(&server, "/update", "admin", "update");
 
   if (mdns.begin(WiFi.hostname(), WiFi.localIP())) {
-    debugMsg("MDNS responder started as http://" + WiFi.hostname() + ".local");
+    debugManager.debugMsg("MDNS responder started as http://" + WiFi.hostname() + ".local");
     mdns.addService("http", "tcp", 80);
   }
 
@@ -290,7 +284,6 @@ void setup()
 
   OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_RTC);
   OutputManager::Instance().outputDisplayDiags();
-  delay(1000);
   testRTCTimeProvider();
   if (useRTC) {
     getRTCTime(true);
@@ -301,8 +294,7 @@ void setup()
 
   // Note that we had an RTC to allow the indicator DP to have meaning
   onceHadAnRTC = useRTC;
-  delay(1000);
-
+  
   // Set the time and set to  show the version
   OutputManager::Instance().loadNumberArrayTime();
   tempDisplayMode = TEMP_MODE_VERSION;
@@ -314,16 +306,16 @@ void setup()
 
   OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_DEBUG);
   OutputManager::Instance().outputDisplayDiags();
-#ifdef DEBUG
-  setDiagnosticLED(DIAGS_DEBUG, STATUS_BLUE);
-#else
-  setDiagnosticLED(DIAGS_DEBUG, STATUS_GREEN);
-#endif
+  
+  if (debugManager.getDebug()) {
+    setDiagnosticLED(DIAGS_DEBUG, STATUS_BLUE);
+  } else {
+    setDiagnosticLED(DIAGS_DEBUG, STATUS_GREEN);
+  }
 
-  debugMsg("Exit startup in 1 second");
+  debugManager.debugMsg("Exit startup");
   spiffs.getStatsFromSpiffs(&current_stats);
   ledManager.setDayOfWeek(weekday());
-  delay(1000);
 }
 
 //**********************************************************************************
@@ -469,11 +461,11 @@ void performOncePerSecondProcessing() {
     blanked = (nativeBlanked || pirBlanked) && (blankSuppressedMillis == 0);
 
     if (blanked) {
-      debugMsg("blanked");
+      debugManager.debugMsg("blanked");
       if (pirBlanked)
-        debugMsg(" -> PIR");
+        debugManager.debugMsg(" -> PIR");
       if (nativeBlanked)
-        debugMsg(" -> Native");
+        debugManager.debugMsg(" -> Native");
     }
 
     // reset the blanking period selection timer
@@ -509,9 +501,9 @@ void performOncePerSecondProcessing() {
 // Called once per minute
 // ************************************************************
 void performOncePerMinuteProcessing() {
-  debugMsg("---> OncePerMinuteProcessing");
+  debugManager.debugMsg("---> OncePerMinuteProcessing");
 
-  debugMsg("nu: " + String(ntpAsync.getNextUpdate(nowMillis)));
+  debugManager.debugMsg("nu: " + String(ntpAsync.getNextUpdate(nowMillis)));
 
   // Set the internal time to the time from the RTC even if we are still in
   // NTP valid time. This is more accurate than using the internal time source
@@ -526,15 +518,15 @@ void performOncePerMinuteProcessing() {
 
   // RTC - light up only if we have lost our RTC
   if (onceHadAnRTC && !useRTC) {
-    // debugMsg("lost access to RTC");
+    // debugManager.debugMsg("lost access to RTC");
   }
 
   if (getIsConnected()) {
     IPAddress ip = WiFi.localIP();
-    debugMsg("IP: " + formatIPAsString(ip));
+    debugManager.debugMsg("IP: " + formatIPAsString(ip));
   } else {
     IPAddress ip = WiFi.localIP();
-    debugMsg("Not connected IP: " + formatIPAsString(ip));
+    debugManager.debugMsg("Not connected IP: " + formatIPAsString(ip));
   }
 }
 
@@ -542,7 +534,7 @@ void performOncePerMinuteProcessing() {
 // Called once per hour
 // ************************************************************
 void performOncePerHourProcessing() {
-  debugMsg("---> OncePerHourProcessing");
+  debugManager.debugMsg("---> OncePerHourProcessing");
   reconnectDroppedConnection();
 }
 
@@ -550,7 +542,7 @@ void performOncePerHourProcessing() {
 // Called once per day
 // ************************************************************
 void performOncePerDayProcessing() {
-  debugMsg("---> OncePerDayProcessing");
+  debugManager.debugMsg("---> OncePerDayProcessing");
   spiffs.saveStatsToSpiffs(&current_stats);
   ledManager.setDayOfWeek(weekday());
 }
@@ -668,7 +660,7 @@ boolean checkPIR(unsigned long nowMillis) {
     pirLastSeen = nowMillis;
     return false;
   } else {
-    if (!pirInstalled) debugMsg("Marking PIR as installed");
+    if (!pirInstalled) debugManager.debugMsg("Marking PIR as installed");
     pirInstalled = true;
     if (nowMillis > (pirLastSeen + (current_config.pirTimeout * 1000))) {
       pirStatus = false;
@@ -946,7 +938,7 @@ void processCurrentMode(int displayMode) {
             if (getIsConnected()) {
               String shortHostName = WiFi.hostname().substring(4, 10);
               shortHostName.toLowerCase();
-              //debugMsg("ESPID: " + shortHostName);
+              //debugManager.debugMsg("ESPID: " + shortHostName);
               OutputManager::Instance().loadNumberArrayESPID(shortHostName);
             } else {
               // we can't show the IP address if we have the RTC, just skip
@@ -1425,7 +1417,7 @@ void setTimeFromServer(String timeString) {
   int intValues[6];
   grabInts(timeString, &intValues[0], ",");
   setTime(intValues[SYNC_HOURS], intValues[SYNC_MINS], intValues[SYNC_SECS], intValues[SYNC_DAY], intValues[SYNC_MONTH], intValues[SYNC_YEAR]);
-  debugMsg("Set internal time to NTP time: " + String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
+  debugManager.debugMsg("Set internal time to NTP time: " + String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
 }
 
 // ************************************************************
@@ -1562,10 +1554,10 @@ void setTubesAndLEDSblankMode() {
 // ************************************************************
 void setPIRPullup(boolean newState) {
   if (newState) {
-    debugMsg("Setting PIR pullup");
+    debugManager.debugMsg("Setting PIR pullup");
     pinMode(pirPin, INPUT_PULLUP);
   } else {
-    debugMsg("Resetting PIR pullup");
+    debugManager.debugMsg("Resetting PIR pullup");
     pinMode(pirPin, INPUT);
   }
 }
@@ -1583,7 +1575,7 @@ void setNewNextMode(int newNextMode) {
 // go and get it
 // ************************************************************
 void newTimeUpdateReceived() {
-  debugMsg("Got a new time update");
+  debugManager.debugMsg("Got a new time update");
   setTimeFromServer(ntpAsync.getLastTimeFromServer());
   setRTCTime();
 }
@@ -1617,12 +1609,12 @@ String getRTCTime(boolean setInternalTime) {
     byte secs = Clock.second;
 
     String returnValue = String(years) + ":" + String(months) + ":" + String(days) + " " + String(hours) + ":" + String(mins) + ":" + String(secs);
-    debugMsg("Got RTC time: " + returnValue);
+    debugManager.debugMsg("Got RTC time: " + returnValue);
 
     if (setInternalTime) {
       // Set the internal time provider to the value we got
       setTime(hours, mins, secs, days, months, years);
-      debugMsg("Set Internal time to: " + returnValue);
+      debugManager.debugMsg("Set Internal time to: " + returnValue);
     }
 
     return returnValue;
@@ -1651,7 +1643,7 @@ void setRTCTime() {
     Clock.fillByHMS(hour(), minute(), second());
     Clock.setTime();
 
-    debugMsg("Set RTC time to internal time: " + String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
+    debugManager.debugMsg("Set RTC time to internal time: " + String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
   }
 }
 
@@ -1754,7 +1746,7 @@ void factoryReset() {
 // ************************************************************
 void saveToSpiffsIfChanged(boolean changed) {
   if (changed) {
-    debugMsg("Config options changed, saving them");
+    debugManager.debugMsg("Config options changed, saving them");
     spiffs.saveConfigToSpiffs(&current_config);
 
     // Save the stats while we are at it
@@ -1772,7 +1764,7 @@ void saveToSpiffsIfChanged(boolean changed) {
 // Summary page
 // ************************************************************
 void rootPageHandler() {
-  debugMsg("Root page in");
+  debugManager.debugMsg("Root page in");
 
   String response_message = getHTMLHead(getIsConnected());
   response_message += getNavBar();
@@ -1883,14 +1875,14 @@ void rootPageHandler() {
 
   server.send(200, "text/html", response_message);
 
-  debugMsg("Root page out");
+  debugManager.debugMsg("Root page out");
 }
 
 // ************************************************************
 // Get the local time from the time server, and modify the time server URL if needed
 // ************************************************************
 void timeServerPageHandler() {
-  debugMsg("Time page in");
+  debugManager.debugMsg("Time page in");
 
   boolean changed = false;
 
@@ -1912,7 +1904,7 @@ void timeServerPageHandler() {
   // form header
   response_message += getFormHead("Select time server");
 
-  debugMsg("ntpPool is: " + ntpAsync.getNtpPool());
+  debugManager.debugMsg("ntpPool is: " + ntpAsync.getNtpPool());
   response_message += getTextInputWide("NTP Pool", "ntppool", ntpAsync.getNtpPool(), false);
   response_message += getNumberInput("Update interval:", "ntpupdate", NTP_UPDATE_INTERVAL_MIN, NTP_UPDATE_INTERVAL_MAX, ntpAsync.getUpdateInterval(), false);
   response_message += getTextInputWide("Time Zone String", "tzs", ntpAsync.getTZS(), false);
@@ -1924,14 +1916,14 @@ void timeServerPageHandler() {
 
   server.send(200, "text/html", response_message);
 
-  debugMsg("Time page out");
+  debugManager.debugMsg("Time page out");
 }
 
 // ************************************************************
 // Reset the EEPROM and WiFi values, restart
 // ************************************************************
 void resetPageHandler() {
-  debugMsg("Reset page in");
+  debugManager.debugMsg("Reset page in");
 
   String response_message = getHTMLHead(getIsConnected());
   response_message += getNavBar();
@@ -1942,7 +1934,7 @@ void resetPageHandler() {
 
   server.send(200, "text/html", response_message);
 
-  debugMsg("Reset page out");
+  debugManager.debugMsg("Reset page out");
 
   // let the message get written
   delay(500);
@@ -1955,7 +1947,7 @@ void resetPageHandler() {
 // Page for the clock configuration
 // ************************************************************
 void clockConfigPageHandler() {
-  debugMsg("Config page in");
+  debugManager.debugMsg("Config page in");
 
   boolean changed = false;
 
@@ -2031,21 +2023,21 @@ void clockConfigPageHandler() {
   response_message += getRadioGroupFooter();
 
   // Date format
-  response_message += getDropDownHeader("Date format:", "dateFormat", false);
+  response_message += getDropDownHeader("Date format:", "dateFormat", false, false);
   response_message += getDropDownOption("0", "YY-MM-DD", (current_config.dateFormat == DATE_FORMAT_YYMMDD));
   response_message += getDropDownOption("1", "MM-DD-YY", (current_config.dateFormat == DATE_FORMAT_MMDDYY));
   response_message += getDropDownOption("2", "DD-MM-YY", (current_config.dateFormat == DATE_FORMAT_DDMMYY));
   response_message += getDropDownFooter();
 
   // Slots Mode
-  response_message += getDropDownHeader("Date Slots:", "slotsMode", true);
+  response_message += getDropDownHeader("Date Slots:", "slotsMode", true, false);
   response_message += getDropDownOption("0", "Don't use slots mode", (current_config.slotsMode == 0));
   response_message += getDropDownOption("1", "Wipe In, Wipe Out", (current_config.slotsMode == 1));
   response_message += getDropDownOption("2", "Bang In, Bang Out", (current_config.slotsMode == 2));
   response_message += getDropDownFooter();
 
   // preheat mode
-  response_message += getDropDownHeader("Digit pre-heat:", "preheatStrength", true);
+  response_message += getDropDownHeader("Digit pre-heat:", "preheatStrength", true, false);
   response_message += getDropDownOption("1", "Very Strong", (current_config.preheatStrength == PREHEAT_V_STRONG));
   response_message += getDropDownOption("2", "Strong", (current_config.preheatStrength == PREHEAT_STRONG));
   response_message += getDropDownOption("3", "Weak", (current_config.preheatStrength == PREHEAT_WEAK));
@@ -2108,7 +2100,7 @@ void clockConfigPageHandler() {
   response_message += getRadioGroupFooter();
 
   // Day blanking
-  response_message += getDropDownHeader("Day blanking:", "dayBlanking", true);
+  response_message += getDropDownHeader("Day blanking:", "dayBlanking", true, pirInstalled);
   response_message += getDropDownOption("0", "Never blank", (current_config.dayBlanking == 0));
   response_message += getDropDownOption("1", "Blank all day on weekends", (current_config.dayBlanking == 1));
   response_message += getDropDownOption("2", "Blank all day on week days", (current_config.dayBlanking == 2));
@@ -2121,13 +2113,13 @@ void clockConfigPageHandler() {
   response_message += getDropDownFooter();
 
   // Blank Mode
-  response_message += getDropDownHeader("Blank Mode:", "blankMode", true);
+  response_message += getDropDownHeader("Blank Mode:", "blankMode", true, false);
   response_message += getDropDownOption("0", "Blank tubes only", (current_config.blankMode == 0));
   response_message += getDropDownOption("1", "Blank LEDs only", (current_config.blankMode == 1));
   response_message += getDropDownOption("2", "Blank tubes and LEDs", (current_config.blankMode == 2));
   response_message += getDropDownFooter();
 
-  boolean hoursDisabled = (current_config.dayBlanking < 4);
+  boolean hoursDisabled = (current_config.dayBlanking < 4) || pirInstalled;
 
   // Blank hours from
   response_message += getNumberInput("Blank from:", "blankHourStart", 0, 23, current_config.blankHourStart, hoursDisabled);
@@ -2143,7 +2135,7 @@ void clockConfigPageHandler() {
   response_message += getFormHead("Back/Underlights");
 
   // Back light
-  response_message += getDropDownHeader("Back light:", "backlightMode", true);
+  response_message += getDropDownHeader("Back light:", "backlightMode", true, false);
   response_message += getDropDownOption("0", "Fixed RGB backlight", (current_config.backlightMode == 0));
   response_message += getDropDownOption("1", "Cycling RGB backlight", (current_config.backlightMode == 1));
   response_message += getDropDownOption("2", "'Colourtime' backlight", (current_config.backlightMode == 2));
@@ -2197,7 +2189,7 @@ void clockConfigPageHandler() {
   response_message += getFormHead("Separators");
 
   // LED mode
-  response_message += getDropDownHeader("LED Mode:", "ledMode", true);
+  response_message += getDropDownHeader("LED Mode:", "ledMode", true, false);
   response_message += getDropDownOption("0", "RailRoad", (current_config.ledMode == LED_RAILROAD));
   response_message += getDropDownOption("1", "Slow flash", (current_config.ledMode == LED_BLINK_SLOW));
   response_message += getDropDownOption("2", "Fast flash", (current_config.ledMode == LED_BLINK_FAST));
@@ -2207,7 +2199,7 @@ void clockConfigPageHandler() {
   response_message += getDropDownFooter();
 
   // Status LED mode Left
-  response_message += getDropDownHeader("Left Status LED Mode:", "statusModeL", true);
+  response_message += getDropDownHeader("Left Status LED Mode:", "statusModeL", true, false);
   response_message += getDropDownOption("0", "NTP", (current_config.statusModeL == STATUS_LED_MODE_NTP));
   response_message += getDropDownOption("1", "Connected", (current_config.statusModeL == STATUS_LED_MODE_ONLINE));
   response_message += getDropDownOption("2", "AM/PM", (current_config.statusModeL == STATUS_LED_MODE_AM_PM));
@@ -2217,7 +2209,7 @@ void clockConfigPageHandler() {
   response_message += getDropDownFooter();
 
   // Status LED mode Right
-  response_message += getDropDownHeader("Right Status LED Mode:", "statusModeR", true);
+  response_message += getDropDownHeader("Right Status LED Mode:", "statusModeR", true, false);
   response_message += getDropDownOption("0", "NTP", (current_config.statusModeR == STATUS_LED_MODE_NTP));
   response_message += getDropDownOption("1", "Connected", (current_config.statusModeR == STATUS_LED_MODE_ONLINE));
   response_message += getDropDownOption("2", "AM/PM", (current_config.statusModeR == STATUS_LED_MODE_AM_PM));
@@ -2226,7 +2218,7 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("5", "On", (current_config.statusModeR == STATUS_LED_MODE_ON));
   response_message += getDropDownFooter();
 
-  response_message += getDropDownHeader("Separator Dimming:", "separatorDimFactor", true);
+  response_message += getDropDownHeader("Separator Dimming:", "separatorDimFactor", true, false);
   response_message += getDropDownOption("1", "Bright", (current_config.separatorDimFactor == SEP_BRIGHT));
   response_message += getDropDownOption("2", "Dim", (current_config.separatorDimFactor == SEP_DIM));
   response_message += getDropDownFooter();
@@ -2261,7 +2253,7 @@ void clockConfigPageHandler() {
 
   server.send(200, "text/html", response_message);
 
-  debugMsg("Config page out");
+  debugManager.debugMsg("Config page out");
 }
 
 // ************************************************************
@@ -2329,7 +2321,7 @@ void setDisplayValuePageHandler() {
 // ************************************************************
 void utilityPageHandler()
 {
-  debugMsg("Utility page in");
+  debugManager.debugMsg("Utility page in");
 
 
   String response_message = getHTMLHead(getIsConnected());
@@ -2348,14 +2340,14 @@ void utilityPageHandler()
 
   response_message += getHTMLFoot();
   server.send(200, "text/html", response_message);
-  debugMsg("Utility page out");
+  debugManager.debugMsg("Utility page out");
 }
 
 // ************************************************************
 // Reset just the wifi
 // ************************************************************
 void resetWiFiPageHandler() {
-  debugMsg("Reset WiFi page in");
+  debugManager.debugMsg("Reset WiFi page in");
 
   WiFiManager wifiManager;
   wifiManager.resetSettings();
@@ -2366,7 +2358,7 @@ void resetWiFiPageHandler() {
   response_message += "<script> var timer = setTimeout(function() {window.location='/'}, 10000);</script>";
   response_message += getHTMLFoot();
   server.send(200, "text/html", response_message);
-  debugMsg("Reset WiFi page out");
+  debugManager.debugMsg("Reset WiFi page out");
   delay(1000);    // wait to deliver response
   ESP.restart();  // should reboot
 }
@@ -2375,49 +2367,49 @@ void resetWiFiPageHandler() {
 // Do an NTP update now
 // ************************************************************
 void ntpUpdatePageHandler() {
-  debugMsg("NTP Update page in");
+  debugManager.debugMsg("NTP Update page in");
 
   ntpAsync.getTimeFromNTP();
 
   server.sendHeader("Location", "/utility", true);
   server.send(302, "text/plain", "");
 
-  debugMsg("NTP Update page out");
+  debugManager.debugMsg("NTP Update page out");
 }
 
 // ************************************************************
 // Reset all the settings
 // ************************************************************
 void factoryResetPageHandler() {
-  debugMsg("Factory Reset page in");
+  debugManager.debugMsg("Factory Reset page in");
 
   factoryReset();
 
   server.sendHeader("Location", "/utility", true);
   server.send(302, "text/plain", "");
 
-  debugMsg("Factory Reset page out");
+  debugManager.debugMsg("Factory Reset page out");
 }
 
 // ************************************************************
 // Reset just the wifi
 // ************************************************************
 void debugPageHandler() {
-  debugMsg("Debug page in");
+  debugManager.debugMsg("Debug page in");
 
-  toggleDebug();
+  debugManager.setUp(true);
 
   server.sendHeader("Location", "/utility", true);
   server.send(302, "text/plain", "");
 
-  debugMsg("Debug page out");
+  debugManager.debugMsg("Debug page out");
 }
 
 // ************************************************************
 // Called if requested page is not found
 // ************************************************************
 void handleNotFound() {
-  debugMsg("404 page in");
+  debugManager.debugMsg("404 page in");
 
   String message = "File Not Found\n\n";
   message += "URI: ";
@@ -2435,7 +2427,7 @@ void handleNotFound() {
 
   server.send(404, "text/plain", message);
 
-  debugMsg("404 page out");
+  debugManager.debugMsg("404 page out");
 }
 
 // ************************************************************
@@ -2462,7 +2454,7 @@ boolean getIsConnected() {
 // Tell the Diag LED that we have connected
 // ************************************************************
 void configModeCallback(WiFiManager *myWiFiManager) {
-  debugMsg("*** Entered config mode");
+  debugManager.debugMsg("*** Entered config mode");
   setDiagnosticLED(DIAGS_WIFI, STATUS_BLUE);
   OutputManager::Instance().loadNumberArrayPOSTMessage(AP_MODE);
   OutputManager::Instance().outputDisplayDiags();
@@ -2474,7 +2466,7 @@ void configModeCallback(WiFiManager *myWiFiManager) {
 void reconnectDroppedConnection() {
   // Try to reconnect if we are  not connected
   if (WiFi.status() != WL_CONNECTED) {
-    debugMsg("Attepting to reconnect dropped connection WiFi connection to " + WiFi.SSID());
+    debugManager.debugMsg("Attepting to reconnect dropped connection WiFi connection to " + WiFi.SSID());
     ETS_UART_INTR_DISABLE();
     wifi_station_disconnect();
     ETS_UART_INTR_ENABLE();
@@ -2554,4 +2546,8 @@ void setServerPageHandlers() {
   server.on("/local.css",   localCSSHandler);
 
   server.onNotFound(handleNotFound);
+}
+
+void debugMsgLocal(String message) {
+  debugManager.debugMsg(message);
 }

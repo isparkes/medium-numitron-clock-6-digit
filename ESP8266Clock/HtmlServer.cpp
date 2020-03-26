@@ -243,7 +243,7 @@ String getCheckBox(String checkbox_name, String value, String text, boolean chec
   return result;
 }
 
-String getDropDownHeader(String heading, String group_name, boolean wide) {
+String getDropDownHeader(String heading, String group_name, boolean wide, boolean disabled) {
   String result = "<div class=\"form-group\"><label class=\"control-label col-xs-3\">";
   result += heading;
   if (wide) {
@@ -252,7 +252,9 @@ String getDropDownHeader(String heading, String group_name, boolean wide) {
     result += "</label><div class=\"col-xs-2\"><select class=\"form-control\" name=\"";
   }
   result += group_name;
-  result += "\">";
+  result += "\"";
+  if (disabled) result += " disabled";
+  result += ">";
   return result;
 }
 

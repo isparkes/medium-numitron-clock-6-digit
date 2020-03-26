@@ -49,7 +49,7 @@ String getRadioGroupHeader(String header);
 String getRadioButton(String group_name, String text, String value, boolean checked);
 String getRadioGroupFooter();
 String getCheckBox(String checkbox_name, String value, String text, boolean checked);
-String getDropDownHeader(String heading, String group_name, boolean wide);
+String getDropDownHeader(String heading, String group_name, boolean wide, boolean disabled);
 String getDropDownOption (String value, String text, boolean checked);
 String getDropDownFooter();
 String getNumberInput(String heading, String input_name, unsigned int minVal, unsigned int maxVal, unsigned int value, boolean disabled);

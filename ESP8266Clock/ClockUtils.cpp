@@ -76,30 +76,11 @@ unsigned char hex2bcd (unsigned char x) {
 // ------------------------------------------ Debug functions -----------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-void setupDebug(boolean setUseDebug) {
-  useDebug = setUseDebug;
-  if (useDebug) Serial.begin(115200);
-}
-
-boolean getDebug() {
-  return useDebug;
-}
-
 void debugMsg(String message) {
   if (useDebug) {
     Serial.println(message);
     Serial.flush();
   }
-}
-
-void debugMsgCont(String message) {
-  if (useDebug) {
-    Serial.print(message); 
-  }
-}
-
-void toggleDebug() {
-  setupDebug(!useDebug);
 }
 
 void hexCharacterStringToBytes(byte *byteArray, const char *hexString) {
