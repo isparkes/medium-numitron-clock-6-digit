@@ -46,9 +46,9 @@ void OutputManager::setConfigObject(spiffs_config_t* ccPtr) {
 // Do a single complete display
 // ************************************************************
 void OutputManager::outputDisplay() {
-  byte digits[6];
-  static byte prevNumberArray[6];
-  static bool smoothRunning[6];
+  byte digits[DIGIT_COUNT];
+  static byte prevNumberArray[DIGIT_COUNT];
+  static bool smoothRunning[DIGIT_COUNT];
 
   // Deal with blink, calculate if we are on or off
   _blinkCounter--;
@@ -176,9 +176,9 @@ void OutputManager::blankDigits(byte *digits, byte *prevNums, bool *smoothRun) {
 // Smoothing of changing digits
 // ************************************************************
 void OutputManager::smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) {
-  static unsigned long smoothStartMillis[6];
+  static unsigned long smoothStartMillis[DIGIT_COUNT];
   ledManager.setSyncColourTime(false);
-  for (int i = 0; i <= 5; i++) {
+  for (int i = 0; i < DIGIT_COUNT; i++) {
     if (_digit_buffer.numberArray[i] != prevNums[i]) {
       digits[i] |= digitData[prevNums[i]];
       if (!smoothRun[i]) {
@@ -610,7 +610,7 @@ void OutputManager::allBlanked() {
 void OutputManager::loadDisplaySetValueType() {
   _digit_buffer.displayType[5] = _value_buffer.valueDisplayType[5] & 0xf;
   _digit_buffer.displayType[4] = _value_buffer.valueDisplayType[4] & 0xf;
-  _digit_buffer.displayType[5] = _value_buffer.valueDisplayType[3] & 0xf;
+  _digit_buffer.displayType[3] = _value_buffer.valueDisplayType[3] & 0xf;
   _digit_buffer.displayType[2] = _value_buffer.valueDisplayType[2] & 0xf;
   _digit_buffer.displayType[1] = _value_buffer.valueDisplayType[1] & 0xf;
   _digit_buffer.displayType[0] = _value_buffer.valueDisplayType[0] & 0xf;
