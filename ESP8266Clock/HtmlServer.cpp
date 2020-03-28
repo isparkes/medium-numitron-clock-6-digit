@@ -114,7 +114,9 @@ String getHTMLHead(boolean isConnected) {
   } else {
     header += "<link href=\"local.css\" rel=\"stylesheet\">";
   }
-  header += "<title>ESP Numitron Clock</title></head>";
+  header += "<title>";
+  header += HTML_TITLE;
+  header += "</title></head>";
   header += "<body>";
   return header;
 }
