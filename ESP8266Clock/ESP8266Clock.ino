@@ -953,7 +953,6 @@ void processCurrentMode(int displayMode) {
           OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
 
         } else {
-
           if (current_config.slotsMode > SLOTS_MODE_MIN) {
 
             // Which slots transition are we using?
@@ -2288,12 +2287,7 @@ void setDisplayValuePageHandler() {
   }
 
   if (formatValid) {
-    byte dispType[DIGIT_COUNT] = {0,0,0};
-    dispType[2] = hex2bcd(valueFormat % 100);
-    valueFormat = valueFormat / 100;
-    dispType[1] = hex2bcd(valueFormat % 100);
-    valueFormat = valueFormat / 100;
-    dispType[0] = hex2bcd(valueFormat % 100);
+    OutputManager::Instance().setValueFormat(valueFormat);
   }
 
   String response_message = getHTMLHead(getIsConnected());
@@ -2308,7 +2302,8 @@ void setDisplayValuePageHandler() {
   } else {
     response_message += "<div class=\"alert alert-error fade in\"><strong>";
     response_message += "You need to set at least the \"value\" parameter! A valid command line is http://<clock.ip.addres>/setvalue?value=123456&time=60&format=333333";
-    response_message += "</strong></div></div>";
+    response_message += "</strong><br>";
+    response_message += "The format values are: 0 = blanked digit, 1 = normal display, 2 = blinking digit</div></div>";
   }
 
   response_message += getHTMLFoot();

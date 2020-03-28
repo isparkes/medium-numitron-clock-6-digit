@@ -66,27 +66,28 @@ extern boolean blankTubes;
 #define LETTER_b SEG_C | SEG_D | SEG_E | SEG_F | SEG_G
 #define LETTER_d SEG_B | SEG_C | SEG_D | SEG_E | SEG_G
 
-#define PREHEAT_MIN            1
-#define PREHEAT_V_STRONG       1
-#define PREHEAT_STRONG         2
-#define PREHEAT_WEAK           3
-#define PREHEAT_V_WEAK         4
-#define PREHEAT_OFF            5
-#define PREHEAT_DEFAULT        PREHEAT_WEAK
-#define PREHEAT_MAX            5
+#define PREHEAT_MIN           1
+#define PREHEAT_V_STRONG      1
+#define PREHEAT_STRONG        2
+#define PREHEAT_WEAK          3
+#define PREHEAT_V_WEAK        4
+#define PREHEAT_OFF           5
+#define PREHEAT_DEFAULT       PREHEAT_WEAK
+#define PREHEAT_MAX           5
 
 // Display mode, set per digit
-#define BLANKED  0
-#define NORMAL   1
-#define BLINK    2
-#define BLINK_COUNT_ON         70                      // The number of impressions blinking digits are ON
-#define BLINK_COUNT_OFF        55                      // The number of impressions blinking digits are OFF
+#define BLANKED               0
+#define NORMAL                1
+#define BLINK                 2
+#define FORMAT_MAX            BLINK
+#define BLINK_COUNT_ON        70                      // The number of impressions blinking digits are ON
+#define BLINK_COUNT_OFF       55                      // The number of impressions blinking digits are OFF
                                                       // Blink is asymetrical because Numitrons light up slowly
-#define SEP_DIM_MIN            1
-#define SEP_BRIGHT             1
-#define SEP_DIM                2
-#define SEP_DIM_MAX            2
-#define SEP_DIM_DEFAULT        SEP_DIM
+#define SEP_DIM_MIN           1
+#define SEP_BRIGHT            1
+#define SEP_DIM               2
+#define SEP_DIM_MAX           2
+#define SEP_DIM_DEFAULT       SEP_DIM
 
 // ************************** Pin Allocations *************************
 
@@ -114,13 +115,13 @@ class OutputManager {
   public:
     static void CreateInstance();
     static OutputManager& Instance();
-    
+
     void setUp();
     void setConfigObject(spiffs_config_t* ccPtr);
     void outputDisplay();
     void outputDisplayDiags();
     void setLDRValue(unsigned int newBrightness);
-    
+
     void loadNumberArrayTime();
     void loadNumberArrayDate();
     void loadNumberArraySameValue(byte val);
@@ -133,9 +134,8 @@ class OutputManager {
     void loadNumberArrayLDR();
     void loadNumberArrayESPID(String ID);
     void loadNumberArrayValueToShow();
-    
     void loadDisplaySetValueType();
-    
+
     void allNormal(bool leadingBlank);
     void highlight0and1();
     void highlight2and3();
@@ -146,11 +146,12 @@ class OutputManager {
     void displayConfig();
     void allBlanked();
 
+    // Arbitrary value
     void setValueDisplayTime(int timeToDisplay);
     int  getValueDisplayTime();
     void decValueDisplayTime();
-
     void setValueToShow(int newValue);
+    void setValueFormat(int newValueFormat);
 
     // used for transition stunts
     byte getNumberArrayIndexedValue(byte idx);

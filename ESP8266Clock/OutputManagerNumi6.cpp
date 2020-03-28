@@ -608,12 +608,12 @@ void OutputManager::allBlanked() {
 // Display preset
 // ************************************************************
 void OutputManager::loadDisplaySetValueType() {
-  _digit_buffer.displayType[5] = _value_buffer.valueDisplayType[5] & 0xf;
-  _digit_buffer.displayType[4] = _value_buffer.valueDisplayType[4] & 0xf;
-  _digit_buffer.displayType[3] = _value_buffer.valueDisplayType[3] & 0xf;
-  _digit_buffer.displayType[2] = _value_buffer.valueDisplayType[2] & 0xf;
-  _digit_buffer.displayType[1] = _value_buffer.valueDisplayType[1] & 0xf;
-  _digit_buffer.displayType[0] = _value_buffer.valueDisplayType[0] & 0xf;
+  _digit_buffer.displayType[5] = _value_buffer.valueDisplayType[5];
+  _digit_buffer.displayType[4] = _value_buffer.valueDisplayType[4];
+  _digit_buffer.displayType[3] = _value_buffer.valueDisplayType[3];
+  _digit_buffer.displayType[2] = _value_buffer.valueDisplayType[2];
+  _digit_buffer.displayType[1] = _value_buffer.valueDisplayType[1];
+  _digit_buffer.displayType[0] = _value_buffer.valueDisplayType[0];
 }
 
 // ************************************************************
@@ -638,6 +638,18 @@ void OutputManager::setValueDisplayTime(int timeToDisplay) {
 }
 
 // ************************************************************
+// Set the format to use for the value display
+// ************************************************************
+void OutputManager::setValueFormat(int newValueFormat) {
+  for (int idx = 0 ; idx < DIGIT_COUNT ; idx++ ) {
+    byte digitFormat = newValueFormat % 10;
+    if (digitFormat > FORMAT_MAX) digitFormat = NORMAL;
+    _value_buffer.valueDisplayType[DIGIT_COUNT - idx - 1] = digitFormat;
+    newValueFormat = newValueFormat / 10;
+  }
+}
+
+// ************************************************************
 // Get the time we are going to do the value display for
 // ************************************************************
 int OutputManager::getValueDisplayTime() {
@@ -655,7 +667,8 @@ void OutputManager::decValueDisplayTime() {
 // Set the value to display
 // ************************************************************
 void OutputManager::setValueToShow(int newValue) {
-  _value_buffer.valueToShow = newValue;
+  int maskVal = 10^DIGIT_COUNT;
+  _value_buffer.valueToShow = newValue % maskVal;
 }
 
 // ************************************************************
