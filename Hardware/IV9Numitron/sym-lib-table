@@ -1,4 +1,5 @@
 (sym_lib_table
-  (lib (name DA2000)(type Legacy)(uri /data/sdb/Clocks/DA2000Numitron/DA2000Numitron/DA2000.lib)(options "")(descr ""))
   (lib (name ti)(type Legacy)(uri ${KIPRJMOD}/ti.lib)(options "")(descr ""))
+  (lib (name IV9Numitron-rescue)(type Legacy)(uri ${KIPRJMOD}/IV9Numitron-rescue.lib)(options "")(descr ""))
+  (lib (name NixieClockMaster)(type Legacy)(uri /data/Copy/Nixie/KiCAD/libraries/NixieClockMaster.lib)(options "")(descr ""))
 )
