@@ -111,7 +111,8 @@ void setup()
     ESP.restart();
   }
 
-  if (!spiffs.getConfigFromSpiffs(&current_config)) {
+  if (!spiffs.getConfigFromSpiffs(&current_config) ||
+      !spiffs.getEventsFromSpiffs(Strike)) {
     if (spiffs.testMountSpiffs()) {
       debugManager.debugMsg("No config found - resetting everything");
       factoryReset();
@@ -359,6 +360,10 @@ void loop()
     }
   }
 
+  // Process ongoing strike events requiring sub-second timing.
+  if (Strike.eventHiRes())
+    Strike.executeEvent(nowMillis);
+  
   // Check button, we evaluate below
   button1.checkButton(nowMillis);
 
@@ -495,6 +500,15 @@ void performOncePerSecondProcessing() {
   // Set the indicator states
   ledLState = processStatusMode(current_config.statusModeL);
   ledRState = processStatusMode(current_config.statusModeR);
+
+  // Update the strike silencing state.
+  Strike.setSilencing(current_config.strikeSilenced, current_config.strikeLdrSilencing,
+		      current_config.strikeLdrSilenceThrsh, sensorLDRSmoothed,
+		      current_config.strikeSilenceHours, current_config.strikeSilenceHourStart,
+		      current_config.strikeSilenceHourEnd);
+
+  // Process pending strike events.
+  Strike.executeEvent(nowMillis);
 }
 
 // ************************************************************
@@ -536,6 +550,9 @@ void performOncePerMinuteProcessing() {
 void performOncePerHourProcessing() {
   debugManager.debugMsg("---> OncePerHourProcessing");
   reconnectDroppedConnection();
+
+  // Search for the next strike event within the next two hours.
+  Strike.scheduleEvent();
 }
 
 // ************************************************************
@@ -544,6 +561,10 @@ void performOncePerHourProcessing() {
 void performOncePerDayProcessing() {
   debugManager.debugMsg("---> OncePerDayProcessing");
   spiffs.saveStatsToSpiffs(&current_stats);
+
+  // Save events automatically changed to inactive once per day.
+  spiffs.saveEventsToSpiffs(Strike);
+
   ledManager.setDayOfWeek(weekday());
 }
 
@@ -897,6 +918,9 @@ void processCurrentMode(int displayMode) {
 
             tempDisplayModeDuration = TEMP_DISPLAY_MODE_DUR_MS;
           }
+
+	  // Turn off active strike or alarm with a momentary button press.
+	  Strike.silence();
         }
 
         if (tempDisplayModeDuration > 0) {
@@ -1735,8 +1759,31 @@ void factoryReset() {
   cc->preheatStrength = PREHEAT_DEFAULT;
   cc->extDimFactor = EXT_DIM_FACTOR_DEFAULT;
   cc->separatorDimFactor = SEP_DIM_DEFAULT;
+  cc->strikeSilenced = SILENCING_DEFAULT;
+  cc->strikeLdrSilencing = LDR_SILENCING_DEFAULT;
+  cc->strikeLdrSilenceThrsh = LDR_SILENCING_THRSH_DEFAULT;
+  cc->strikeSilenceHours = SILENCE_HOURS_DEFAULT;
+  cc->strikeSilenceHourStart = 0;
+  cc->strikeSilenceHourEnd = 7;
 
   spiffs.saveConfigToSpiffs(cc);
+
+  // Reset Strikes and Alarms
+  while (strikeEvent *e = Strike.getNextEvent(nullptr)) {
+    Strike.deleteEvent(e);
+  }
+  TimeElements tim;
+  tim.Year = WILD;
+  tim.Month = WILD;
+  tim.Day = WILD;
+  tim.Wday = WILD;
+  tim.Hour = WILD;
+  tim.Minute = 0;
+  tim.Second = 0;
+  class Strike s;
+  s.addEvent(&tim, STRIKE_DEFAULT, EVENT_REPEAT_DEFAULT, EVENT_INACTIVE);
+  spiffs.saveEventsToSpiffs(s);
+  spiffs.getEventsFromSpiffs(Strike);
 }
 
 // ************************************************************
@@ -1803,6 +1850,8 @@ void rootPageHandler() {
     overdueInd = " overdue";
     absNextUpdate = -absNextUpdate;
   }
+  response_message += getTableRow2Col("Strikes and Alarms", Strike.silentMode() ? "Alarms Only" : "Enabled");
+
   response_message += getTableRow2Col("Time before next update", secsToReadableString(absNextUpdate) + overdueInd);
 
   response_message += getTableRow2Col("Version", SOFTWARE_VERSION);
@@ -2359,6 +2408,176 @@ void resetWiFiPageHandler() {
 }
 
 // ************************************************************
+// Clock Strikes and Alarms
+// ************************************************************
+void clockStrikePageHandler() {
+  debugManager.debugMsg("Strike page in");
+
+  boolean changed = false;
+
+  checkServerArgBoolean("strikeSilenced", "Strike Silenced", "on", "off", changed, current_config.strikeSilenced);
+  checkServerArgBoolean("strikeLdrSilencing", "LDR Silencing", "on", "off", changed, current_config.strikeLdrSilencing);
+  checkServerArgInt("strikeLdrSilenceThrsh", "LDR Silence Threshold", changed, current_config.strikeLdrSilenceThrsh);
+  checkServerArgBoolean("strikeSilenceHours", "Strike Silence Hours", "on", "off", changed, current_config.strikeSilenceHours);
+  checkServerArgByte("strikeSilenceHourStart", "Silence from", changed, current_config.strikeSilenceHourStart);
+  checkServerArgByte("strikeSilenceHourEnd", "Silence to", changed, current_config.strikeSilenceHourEnd);
+  saveToSpiffsIfChanged(changed);
+
+  // Delete an event.
+  if (server.hasArg("Del") && server.hasArg("eventKey")) {
+    strikeEvent *key = (strikeEvent *)atol(server.arg("eventKey").c_str());
+    Strike.deleteEvent(key);
+    spiffs.saveEventsToSpiffs(Strike);
+  }
+
+  // Replace the edited event with the desired event.
+  if (server.hasArg("Set") && server.hasArg("eventKey")) {
+    TimeElements tim;
+    tim.Second = (server.arg("second") == "*") ? WILD : atoi(server.arg("second").c_str());
+    tim.Minute = (server.arg("minute") == "*") ? WILD : atoi(server.arg("minute").c_str());
+    tim.Hour = (server.arg("hour") == "*") ? WILD : atoi(server.arg("hour").c_str());
+    tim.Wday = (server.arg("wday") == "*") ? WILD : atoi(server.arg("wday").c_str());
+    tim.Day = (server.arg("day") == "*") ? WILD : atoi(server.arg("day").c_str());
+    tim.Month = (server.arg("month") == "*") ? WILD : atoi(server.arg("month").c_str());
+    tim.Year = (server.arg("year") == "*") ? WILD :CalendarYrToTm(atoi(server.arg("year").c_str()));
+    uint8_t strike = atoi(server.arg("strike").c_str());
+    uint8_t repeat = atoi(server.arg("repeat").c_str());
+    uint8_t active = atoi(server.arg("active").c_str());
+    Strike.addEvent(&tim, strike, repeat, active);
+
+    strikeEvent *key = (strikeEvent *)atol(server.arg("eventKey").c_str());
+    Strike.deleteEvent(key);
+    spiffs.saveEventsToSpiffs(Strike);
+  }
+
+  // Add a new event.
+  if (server.hasArg("Add Event")) {
+    TimeElements tim;
+    tim.Second = 0;
+    tim.Minute = 0;
+    tim.Hour = WILD;
+    tim.Wday = WILD;
+    tim.Day = WILD;
+    tim.Month = WILD;
+    tim.Year = WILD;
+    Strike.addEvent(&tim, STRIKE_DEFAULT, EVENT_REPEAT_DEFAULT, EVENT_ACTIVE);
+    spiffs.saveEventsToSpiffs(Strike);
+  }
+
+  // -----------------------------------------------------------------------------
+  String response_message = getHTMLHead(getIsConnected());
+  response_message += getNavBar();
+
+  // -----------------------------------------------------------------------------
+
+  // Header for event table.
+  response_message += getTableHeadEvent("Current Strikes and Alarms", "Year", "Month",
+					"Date", "Day", "Hour",
+					"Minute", "Second", "Pattern",
+					"Repeat", "Active", "Edit");
+
+  // Send this out in chunks to avoid blowing away the stack.
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Expires", "-1");
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, "text/html", response_message);
+
+  // Create and output the event table.
+  strikeEvent *s = nullptr;
+  while (s = Strike.getNextEvent(s)) {
+    response_message = getTableRowEvent(s);
+    server.sendContent(response_message);
+  }
+
+  // A button to allow adding events.
+  response_message = "<tr><td><form><input type=\"submit\" ";
+  response_message += "class=\"btn btn-primary btn-sm\" ";
+  response_message += "name=\"Add Event\" value=\"Add Event\"> </form></td></tr>";
+  response_message += getTableFoot();
+
+  // Strike silencing.
+  response_message += getFormHead("Strike Silencing");
+  response_message += getExplanationText("Strikes (but not the Fibonacci alarm) may be silenced \
+	manually, by schedule, or through the Light Dependent Resistor");
+  response_message += getRadioGroupHeader("Strike Silenced:");
+  if (current_config.strikeSilenced) {
+    response_message += getRadioButton("strikeSilenced", "On", "on", true);
+    response_message += getRadioButton("strikeSilenced", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("strikeSilenced", "On", "on", false);
+    response_message += getRadioButton("strikeSilenced", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
+
+  // LDR Silencing
+  response_message += getRadioGroupHeader("LDR Silencing:");
+  if (current_config.strikeLdrSilencing) {
+    response_message += getRadioButton("strikeLdrSilencing", "On", "on", true);
+    response_message += getRadioButton("strikeLdrSilencing", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("strikeLdrSilencing", "On", "on", false);
+    response_message += getRadioButton("strikeLdrSilencing", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
+
+  // LDR threshold
+  response_message += getNumberInput("LDR Silence Threshold:", "strikeLdrSilenceThrsh", SENSOR_THRSH_MIN, SENSOR_VALUE_MAX, current_config.strikeLdrSilenceThrsh, false);
+
+  // Silence hours enable
+  response_message += getRadioGroupHeader("Strike Silence Hours");
+  if (current_config.strikeSilenceHours) {
+    response_message += getRadioButton("strikeSilenceHours", "On", "on", true);
+    response_message += getRadioButton("strikeSilenceHours", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("strikeSilenceHours", "On", "on", false);
+    response_message += getRadioButton("strikeSilenceHours", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
+
+  // Silence hours from
+  response_message += getNumberInput("Silence from:", "strikeSilenceHourStart", 0, 23, current_config.strikeSilenceHourStart, !current_config.strikeSilenceHours);
+
+  // Silence hours to
+  response_message += getNumberInput("Silence to:", "strikeSilenceHourEnd", 0, 23, current_config.strikeSilenceHourEnd, !current_config.strikeSilenceHours);
+
+  response_message += getSubmitButton("Set");
+  response_message += getFormFoot();
+  server.sendContent(response_message);
+
+  // Some notes and instructions.  Put them in flash.
+  static const char notes[] PROGMEM = \
+   "<div class=\"col-xs-11\"><h3 class=\"sub-header\"> Notes: </h3> \
+    <P>For day of week, 1 = Sunday, 7 = Saturday</P> \
+    <P>Alarms can be set to repeat indefinately or become inactive after a \
+       single execution</P> \
+    <P>The single pattern will produce a single strike.  The hours pattern \
+       will strike once for each hour.  The ship's bells pattern will strike \
+       once at 8:30, 12:30, and 4:30, increasing by one strike each \
+       half-hour until \"8 bells\", which occurs at 8:00, 12:00, and 4:00, \
+       coinciding with the traditional change of shifts.</P> \
+    <P>The Fibonacci sequence starts at one bell per minute and over the \
+       course of several minutes increases in frequency to one bell every \
+       five seconds.  It is intended as a gentle awakening alarm.</P> \
+    <P>An ongoing strike or alarm can be silenced by momentarily pressing the \
+      button.</P> \
+    <P>A common clock strike pattern would result from setting an event to \
+       strike the hours on the hour, and another to strike a single strike on \
+       the half-hour.</P> \
+    <P>A traditional ship's bells strike would result from setting one event \
+       to strike it on the hour and another on the half-hour.</P> \
+   </div>";
+  server.sendContent_P(notes);
+
+  response_message = getHTMLFoot();
+
+  server.sendContent(response_message);
+  server.sendContent("");		  // Send out an empty message to finish.
+
+  debugManager.debugMsg("Strike page out");
+}
+
+// ************************************************************
 // Do an NTP update now
 // ************************************************************
 void ntpUpdatePageHandler() {
@@ -2430,7 +2649,7 @@ void handleNotFound() {
 // ************************************************************
 void localCSSHandler()
 {
-  PGM_P cssStr = PSTR(".navbar,.table{margin-bottom:20px}.nav>li,.nav>li>a,article,aside,details,figcaption,figure,footer,header,hgroup,main,menu,nav,section,summary{display:block}.btn,.form-control,.navbar-toggle{background-image:none}.table,label{max-width:100%}.sub-header{padding-bottom:10px;border-bottom:1px solid #eee}.h3,h3{font-size:24px}.table{width:100%}table{background-color:transparent;border-spacing:0;border-collapse:collapse}.table-striped>tbody>tr:nth-of-type(2n+1){background-color:#f9f9f9}.table>caption+thead>tr:first-child>td,.table>caption+thead>tr:first-child>th,.table>colgroup+thead>tr:first-child>td,.table>colgroup+thead>tr:first-child>th,.table>thead:first-child>tr:first-child>td,.table>thead:first-child>tr:first-child>th{border-top:0}.table>thead>tr>th{border-bottom:2px solid #ddd}.table>tbody>tr>td,.table>tbody>tr>th,.table>tfoot>tr>td,.table>tfoot>tr>th,.table>thead>tr>td,.table>thead>tr>th{padding:8px;line-height:1.42857143;vertical-align:top;border-top:1px solid #ddd}th{text-align:left}td,th{padding:0}.navbar>.container .navbar-brand,.navbar>.container-fluid .navbar-brand{margin-left:-15px}.container,.container-fluid{padding-right:15px;padding-left:15px;margin-right:auto;margin-left:auto}.navbar-inverse .navbar-brand{color:#9d9d9d}.navbar-brand{float:left;height:50px;padding:15px;font-size:18px;line-height:20px}a{color:#337ab7;text-decoration:none;background-color:transparent}.navbar-fixed-top{border:0;top:0;border-width:0 0 1px}.navbar-inverse{background-color:#222;border-color:#080808}.navbar-fixed-bottom,.navbar-fixed-top{border-radius:0;position:fixed;right:0;left:0;z-index:1030}.nav>li,.nav>li>a,.navbar,.navbar-toggle{position:relative}.navbar{border-radius:4px;min-height:50px;border:1px solid transparent}.container{width:750px}.navbar-right{float:right!important;margin-right:-15px}.navbar-nav{float:left;margin:7.5px -15px}.nav{padding-left:0;margin-bottom:0;list-style:none}.navbar-nav>li{float:left}.navbar-inverse .navbar-nav>li>a{color:#9d9d9d}.navbar-nav>li>a{padding-top:10px;padding-bottom:10px;line-height:20px}.nav>li>a{padding:10px 15px}.navbar-inverse .navbar-toggle{border-color:#333}.navbar-toggle{display:none;float:right;padding:9px 10px;margin-top:8px;margin-right:15px;margin-bottom:8px;background-color:transparent;border:1px solid transparent;border-radius:4px}button,select{text-transform:none}button{overflow:visible}button,html input[type=button],input[type=reset],input[type=submit]{-webkit-appearance:button;cursor:pointer}.btn-primary{color:#fff;background-color:#337ab7;border-color:#2e6da4}.btn{display:inline-block;padding:6px 12px;margin-bottom:0;font-size:14px;font-weight:400;line-height:1.42857143;text-align:center;white-space:nowrap;vertical-align:middle;-ms-touch-action:manipulation;touch-action:manipulation;cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;border:1px solid transparent;border-radius:4px}button,input,select,textarea{font-family:inherit;font-size:inherit;line-height:inherit}input{line-height:normal}button,input,optgroup,select,textarea{margin:0;font:inherit;color:inherit}.form-control,body{font-size:14px;line-height:1.42857143}.form-horizontal .form-group{margin-right:-15px;margin-left:-15px}.form-group{margin-bottom:15px}.form-horizontal .control-label{padding-top:7px;margin-bottom:0;text-align:right}.form-control{display:block;width:100%;height:34px;padding:6px 12px;color:#555;background-color:#fff;border:1px solid #ccc;border-radius:4px;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075);box-shadow:inset 0 1px 1px rgba(0,0,0,.075);-webkit-transition:border-color ease-in-out .15s,-webkit-box-shadow ease-in-out .15s;-o-transition:border-color ease-in-out .15s,box-shadow ease-in-out .15s;transition:border-color ease-in-out .15s,box-shadow ease-in-out .15s}.col-xs-8{width:66.66666667%}.col-xs-3{width:25%}.col-xs-1,.col-xs-10,.col-xs-11,.col-xs-12,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9{float:left}.col-lg-1,.col-lg-10,.col-lg-11,.col-lg-12,.col-lg-2,.col-lg-3,.col-lg-4,.col-lg-5,.col-lg-6,.col-lg-7,.col-lg-8,.col-lg-9,.col-md-1,.col-md-10,.col-md-11,.col-md-12,.col-md-2,.col-md-3,.col-md-4,.col-md-5,.col-md-6,.col-md-7,.col-md-8,.col-md-9,.col-sm-1,.col-sm-10,.col-sm-11,.col-sm-12,.col-sm-2,.col-sm-3,.col-sm-4,.col-sm-5,.col-sm-6,.col-sm-7,.col-sm-8,.col-sm-9,.col-xs-1,.col-xs-10,.col-xs-11,.col-xs-12,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9{position:relative;min-height:1px;padding-right:15px;padding-left:15px}label{display:inline-block;margin-bottom:5px;font-weight:700}*{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}body{font-family:\"Helvetica Neue\",Helvetica,Arial,sans-serif;color:#333}html{font-size:10px;font-family:sans-serif;-webkit-text-size-adjust:100%}");
+#include "CSS.h"
   server.send(200, "text/css", String(cssStr));
 }
 
@@ -2515,6 +2734,13 @@ void setServerPageHandlers() {
       return server.requestAuthentication();
     }
     return clockConfigPageHandler();
+  });
+
+  server.on("/alarms", []() {
+    if (getWebAuthentication() && (!server.authenticate(getWebUserName().c_str(), getWebPassword().c_str()))) {
+      return server.requestAuthentication();
+    }
+    return clockStrikePageHandler();
   });
 
   server.on("/setvalue", []() {

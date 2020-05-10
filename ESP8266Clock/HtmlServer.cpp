@@ -129,7 +129,7 @@ String getNavBar() {
   navbar += "<div class=\"container-fluid\"><div class=\"navbar-header\"><button type=\"button\" class=\"navbar-toggle collapsed\" data-toggle=\"collapse\" data-target=\"#navbar\" aria-expanded=\"false\" aria-controls=\"navbar\">";
   navbar += "<span class=\"sr-only\">Toggle navigation</span><span class=\"icon-bar\"></span><span class=\"icon-bar\"></span><span class=\"icon-bar\"></span></button>";
   navbar += "<a class=\"navbar-brand\" href=\"https://www.nixieclock.biz\">ESP Numitron Clock</a></div><div id=\"navbar\" class=\"navbar-collapse collapse\"><ul class=\"nav navbar-nav navbar-right\">";
-  navbar += "<li><a href=\"/\">Summary</a></li><li><a href=\"/time\">Configure Time Server</a></li><li><a href=\"/clockconfig\">Configure clock settings</a></li><li><a href=\"/utility\">Utility</a></li></ul></div></div></nav>";
+  navbar += "<li><a href=\"/\">Summary</a></li><li><a href=\"/alarms\">Strikes and Alarms</a></li><li><a href=\"/time\">Configure Time Server</a></li><li><a href=\"/clockconfig\">Configure clock settings</a></li><li><a href=\"/utility\">Utility</a></li></ul></div></div></nav>";
   return navbar;
 } 
 
@@ -175,6 +175,146 @@ String getTableRow2Col(String col1Val, int col2Val) {
 
 String getTableFoot() {
   return "</tbody></table></div></div>";
+}
+
+/**
+   Get the header for an event table
+*/
+String getTableHeadEvent(String tableHeader, String col1Header, String col2Header,
+			 String col3Header, String col4Header, String col5Header,
+			 String col6Header, String col7Header, String col8Header,
+			 String col9Header, String col10Header, String col11Header) {
+
+  String tableHead = "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">";
+  tableHead += tableHeader;
+  tableHead += "</h3><div class=\"table-responsive\"><table class=\"table table-striped\"><thead><tr><th class=\"col-xs-1\">";
+  tableHead += col1Header;
+  tableHead += "</th><th class=\"col-xs-1\">";
+  tableHead += col2Header;
+  tableHead += "</th><th class=\"col-xs-1\">";
+  tableHead += col3Header;
+  tableHead += "</th><th class=\"col-xs-1\">";
+  tableHead += col4Header;
+  tableHead += "</th><th class=\"col-xs-1\">";
+  tableHead += col5Header;
+  tableHead += "</th><th class=\"col-xs-1\">";
+  tableHead += col6Header;
+  tableHead += "</th><th class=\"col-xs-1\">";
+  tableHead += col7Header;
+  tableHead += "</th><th class=\"col-xs-1\">";
+  tableHead += col8Header;
+  tableHead += "</th><th class=\"col-xs-1\">";
+  tableHead += col9Header;
+  tableHead += "</th><th class=\"col-xs-1\">";
+  tableHead += col10Header;
+  tableHead += "</th><th class=\"col-xs-2\">";
+  tableHead += col11Header;
+  tableHead += "</th></tr></thead><tbody>";
+
+  return tableHead;
+}
+
+String getTableRowEvent(strikeEvent *s) {
+  String tableRow = "\n<form> <tr><td>";
+  tableRow += getEventIntTimeSelection("year", year(), year() + 15,
+				       tmYearToCalendar(s->Event.Year),
+				       s->Event.Year == WILD);
+  tableRow += "</td><td>";
+  tableRow += getEventIntTimeSelection("month", 1, 12, s->Event.Month,
+				      s->Event.Month == WILD);
+  tableRow += "</td><td>";
+  tableRow += getEventIntTimeSelection("day", 0, 31, s->Event.Day,
+				      s->Event.Day == WILD);
+  tableRow += "</td><td>";
+  tableRow += getEventIntTimeSelection("wday", 1, 7, s->Event.Wday,
+				      s->Event.Wday == WILD);
+  tableRow += "</td><td>";
+  tableRow += getEventIntTimeSelection("hour", 0, 23, s->Event.Hour,
+				      s->Event.Hour == WILD);
+  tableRow += "</td><td>";
+  tableRow += getEventIntTimeSelection("minute", 0, 59, s->Event.Minute,
+				      s->Event.Minute == WILD);
+  tableRow += "</td><td>";
+  tableRow += getEventIntTimeSelection("second", 0, 59, s->Event.Second,
+				      s->Event.Second == WILD);
+  tableRow += "</td><td>";
+  String strikeOpts[4] = {"Single", "Hours", "Ship's Bells", "Fibonacchi"};
+  tableRow += getEventOptsSelection("strike", strikeOpts, 4, s->strikePattern);
+  tableRow += "</td><td>";
+  String repeatOpts[2] = {"Yes", "No"};
+  tableRow += getEventOptsSelection("repeat", repeatOpts, 2, s->eventRepeat);
+  tableRow += "</td><td>";
+  String activeOpts[2] = {"Yes", "No"};
+  tableRow += getEventOptsSelection("active", activeOpts, 2, s->eventActive);
+  tableRow += "</td><td>";
+  tableRow += getEventSubmitButtons("Set", "Del");
+  tableRow += "\n<input type=\"hidden\" name=\"eventKey\" value=\"";
+  tableRow += (unsigned long) s;
+  tableRow += "\">";
+  tableRow += "</td></tr></form>\n";
+
+  return tableRow;
+}
+
+String getEventOptsSelection(String name, String opts[], int nopts, byte selected) {
+  String result = "\n";
+  result += "<select class=\"form-control\" name=\"";
+  result += name;
+  result += "\">";
+  for (int i = 1; i <= nopts; i++) {
+    result += "<option ";
+    if (i == selected) {
+      result += "selected ";
+    }
+    result += "value =\"";
+    result += i;
+    result += "\">";
+    result += opts[i-1];
+    result += "</option>";
+  }
+  result += "</select>";
+  return result;
+}
+
+String getEventIntTimeSelection(String name, int low, int high, int selected,
+				boolean wild) {
+  String result = "\n";
+  result += "<select class=\"form-control\" name=\"";
+  result += name;
+  result += "\">";
+  result += "<option ";
+  if (wild)
+    result += "selected ";
+  result += "value =\"*\">*</option>";
+  for (int i = low; i <= high; i++) {
+    result += "<option ";
+    if (i == selected && !wild) {
+      result += "selected ";
+    }
+    result += "value =\"";
+    result += i;
+    result += "\">";
+    result += i;
+    result += "</option>";
+  }
+  result += "</select>";
+  return result;
+}
+
+String getEventSubmitButtons(String buttonText1, String buttonText2) {
+  String result = "<input type=\"submit\" class=\"btn btn-primary btn-sm\" ";
+  result += "name=\"";
+  result += buttonText1;
+  result += "\" value=\"";
+  result += buttonText1;
+  result += "\">&nbsp;";
+  result += "<input type=\"submit\" class=\"btn btn-primary btn-sm\" ";
+  result += "name=\"";
+  result += buttonText2;
+  result += "\" value=\"";
+  result += buttonText2;
+  result += "\">";
+  return result;
 }
 
 /**

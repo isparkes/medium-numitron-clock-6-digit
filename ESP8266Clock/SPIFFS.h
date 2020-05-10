@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
 
 #include "ClockDefs.h"
+#include "Strike.h"
 
 // ------------------------ Types ------------------------
 
@@ -51,6 +52,13 @@ typedef struct {
   byte preheatStrength;
   byte extDimFactor;
   byte separatorDimFactor;
+
+  boolean strikeSilenced;
+  boolean strikeLdrSilencing;
+  int strikeLdrSilenceThrsh;
+  boolean strikeSilenceHours;
+  byte strikeSilenceHourStart;
+  byte strikeSilenceHourEnd;
 } spiffs_config_t;
 
 typedef struct {
@@ -74,6 +82,9 @@ class SPIFFS_CLOCK
 
     boolean getStatsFromSpiffs(spiffs_stats_t* spiffs_stats);
     void    saveStatsToSpiffs(spiffs_stats_t* spiffs_stats);
+
+    boolean getEventsFromSpiffs(Strike&);
+    void    saveEventsToSpiffs(Strike&);
 
     // callbacks
     void setDebugCallback(DebugCallback dbcb);

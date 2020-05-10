@@ -27,6 +27,7 @@
 #define SENSOR_THRSH_MIN      0   // Bright is when we have LDR value = 0, when we read less than this value, we have full brightness
 #define SENSOR_THRSH_MAX      500
 #define SENSOR_THRSH_DEFAULT  200
+#define SENSOR_VALUE_MAX      900 // Maximum sensor reading (in darkness)
 
 #define SENSOR_SMOOTH_READINGS_MIN     1
 #define SENSOR_SMOOTH_READINGS_MAX     255
@@ -171,6 +172,11 @@
 #define EXT_DIM_FACTOR_MAX              100
 #define EXT_DIM_FACTOR_DEFAULT          100
 
+// -------------------------------------------------------------------------------
+#define SILENCING_DEFAULT		false
+#define LDR_SILENCING_DEFAULT		false
+#define LDR_SILENCING_THRSH_DEFAULT	700
+#define SILENCE_HOURS_DEFAULT		false
 // -------------------------------------------------------------------------------
 // RTC address
 #define RTC_I2C_ADDRESS                 0x68

@@ -153,6 +153,24 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
           spiffs_config->separatorDimFactor = json["separatorDimFactor"];
           debugMsg("Loaded separatorDimFactor: " + String(spiffs_config->separatorDimFactor));
 
+          spiffs_config->strikeSilenced = json["strikeSilenced"].as<bool>();
+          debugMsg("Loaded strikeSilenced: " + String(spiffs_config->strikeSilenced));
+
+          spiffs_config->strikeLdrSilencing = json["strikeLdrSilencing"].as<bool>();
+          debugMsg("Loaded strikeLdrSilencing: " + String(spiffs_config->strikeLdrSilencing));
+
+          spiffs_config->strikeLdrSilenceThrsh = json["strikeLdrSilenceThrsh"];
+          debugMsg("Loaded strikeLdrSilenceThrsh: " + String(spiffs_config->strikeLdrSilenceThrsh));
+
+          spiffs_config->strikeSilenceHours = json["strikeSilenceHours"].as<bool>();
+          debugMsg("Loaded strikeSilenceHours: " + String(spiffs_config->strikeSilenceHours));
+
+          spiffs_config->strikeSilenceHourStart = json["strikeSilenceHourStart"];
+          debugMsg("Loaded strikeSilenceHourStart: " + String(spiffs_config->strikeSilenceHourStart));
+
+          spiffs_config->strikeSilenceHourEnd = json["strikeSilenceHourEnd"];
+          debugMsg("Loaded strikeSilenceHourEnd: " + String(spiffs_config->strikeSilenceHourEnd));
+
           loaded = true;
         } else {
           debugMsg("failed to load json config");
@@ -215,6 +233,12 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
     json["preheatStrength"] = spiffs_config->preheatStrength;
     json["extDimFactor"] = spiffs_config->extDimFactor;
     json["separatorDimFactor"] = spiffs_config->separatorDimFactor;
+    json["strikeSilenced"] = spiffs_config->strikeSilenced;
+    json["strikeLdrSilencing"] = spiffs_config->strikeLdrSilencing;
+    json["strikeLdrSilenceThrsh"] = spiffs_config->strikeLdrSilenceThrsh;
+    json["strikeSilenceHours"] = spiffs_config->strikeSilenceHours;
+    json["strikeSilenceHourStart"] = spiffs_config->strikeSilenceHourStart;
+    json["strikeSilenceHourEnd"] = spiffs_config->strikeSilenceHourEnd;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -310,6 +334,116 @@ void SPIFFS_CLOCK::saveStatsToSpiffs(spiffs_stats_t* spiffs_stats) {
     json.printTo(statsFile);
     statsFile.close();
     debugMsg("Saved stats");
+    //end save
+  } else {
+    debugMsg("failed to mount FS");
+  }
+  SPIFFS.end();
+}
+
+// ************************************************************
+// Get the stike/alarm records from the SPIFFS
+// ************************************************************
+boolean SPIFFS_CLOCK::getEventsFromSpiffs(Strike& Strike) {
+  boolean loaded = false;
+
+  if (SPIFFS.begin()) {
+    debugMsg("mounted file system");
+    if (SPIFFS.exists("/events.json")) {
+      //file exists, reading and loading
+      debugMsg("reading events file");
+      File eventsFile = SPIFFS.open("/events.json", "r");
+      if (eventsFile) {
+        debugMsg("opened events file");
+        size_t size = eventsFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        eventsFile.readBytes(buf.get(), size);
+        DynamicJsonBuffer jsonBuffer;
+        JsonArray& array = jsonBuffer.parseArray(buf.get());
+        array.printTo(Serial);
+        debugMsg("\n");
+
+        if (array.success()) {
+          debugMsg("parsed events json");
+
+	  int count = array.size();
+	  for (int i = 0; i < count; i++) {
+	    TimeElements tim;
+	    byte eventRepeat, eventActive, strikePattern;
+	    JsonObject& json = array[i];
+
+	    tim.Year = json["Year"];
+	    tim.Month = json["Month"];
+	    tim.Day = json["Day"];
+	    tim.Wday = json["Wday"];
+	    tim.Hour = json["Hour"];
+	    tim.Minute = json["Minute"];
+	    tim.Second = json["Second"];
+	    eventRepeat = json["eventRepeat"];
+	    eventActive = json["eventActive"];
+	    strikePattern = json["strikePattern"];
+	    Strike.addEvent(&tim, strikePattern, eventRepeat, eventActive);
+	  }
+          loaded = true;
+	} else {
+          debugMsg("failed to load event records");
+        }
+        debugMsg("Closing events file");
+        eventsFile.close();
+      }
+    }
+  } else {
+    debugMsg("failed to mount FS");
+  }
+
+  SPIFFS.end();
+  return loaded;
+}
+
+// ************************************************************
+// Save the strike/alarm records back to the SPIFFS
+// ************************************************************
+void SPIFFS_CLOCK::saveEventsToSpiffs(Strike& Strike) {
+  if (SPIFFS.begin()) {
+    debugMsg("mounted file system");
+    debugMsg("saving stats");
+
+    DynamicJsonBuffer jsonBuffer;
+    JsonArray& array = jsonBuffer.createArray();
+
+    strikeEvent *e = nullptr;
+    while (e = Strike.getNextEvent(e)) {
+      JsonObject& json = jsonBuffer.createObject();
+
+      json["Year"] = e->Event.Year;
+      json["Month"] = e->Event.Month;
+      json["Day"] = e->Event.Day;
+      json["Wday"] = e->Event.Wday;
+      json["Hour"] = e->Event.Hour;
+      json["Minute"] = e->Event.Minute;
+      json["Second"] = e->Event.Second;
+      json["eventRepeat"] = e->eventRepeat;
+      json["eventActive"] = e->eventActive;
+      json["strikePattern"] = e->strikePattern;
+
+      array.add(json);
+    }
+
+    File eventsFile = SPIFFS.open("/events.json", "w");
+    if (!eventsFile) {
+      debugMsg("failed to open events file for writing");
+      eventsFile.close();
+      return;
+    }
+
+    array.printTo(Serial);
+    debugMsg("\n");
+
+    array.printTo(eventsFile);
+    eventsFile.close();
+    debugMsg("Saved events");
     //end save
   } else {
     debugMsg("failed to mount FS");

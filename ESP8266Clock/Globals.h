@@ -7,6 +7,7 @@
 #include "DA2000-Transition.h"
 #include "ESP_DS1307.h"
 #include "ClockButton.h"
+#include "Strike.h"
 
 // ----------------------- Components ----------------------------
 
@@ -76,4 +77,6 @@ boolean led2State;
 boolean ledLState;
 boolean ledRState;
 
+// ------------------- Strikes/Alarms ------------------
+Strike Strike;
 #endif

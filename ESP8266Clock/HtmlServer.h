@@ -5,6 +5,7 @@
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
 #include "ClockUtils.h"
+#include "Strike.h"
 
 // ----------------------- Auth ------------------------
 
@@ -43,6 +44,14 @@ String getExplanationText(String textToprint);
 String getTableHead2Col(String tableHeader, String col1Header, String col2Header);
 String getTableRow2Col(String col1Val, String col2Val);
 String getTableRow2Col(String col1Val, int col2Val);
+String getTableHeadEvent(String tableHeader, String col1Header, String col2Header,
+			 String col3Header, String col4Header, String col5Header,
+			 String col6Header, String col7Header, String col8Header,
+			 String col9Header, String col10Header, String col11Header);
+String getTableRowEvent(strikeEvent *);
+String getEventSubmitButtons(String buttonText1, String buttonText2);
+String getEventOptsSelection(String name, String opts[], int nopts, byte selected);
+String getEventIntTimeSelection(String name, int low, int high, int selected, boolean wild);
 String getTableFoot();
 String getFormHead(String formTitle);
 String getFormFoot();
