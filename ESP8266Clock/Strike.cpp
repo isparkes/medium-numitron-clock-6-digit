@@ -49,7 +49,7 @@ Strike::addEvent(TimeElements *Event,
 }
 
 // Remove an event from the list of strike events.
-void
+boolean
 Strike::deleteEvent(strikeEvent *strikeEvent) {
 
   // Validate that the argument is a pointer to a current strikeEvent.
@@ -62,7 +62,7 @@ Strike::deleteEvent(strikeEvent *strikeEvent) {
     }
   }
   if (!validated)
-    return;
+    return false;
 
   // If this is the only event, delete the list.
   if (strikeEvent->prevEvent == nullptr && strikeEvent->nextEvent == nullptr)
@@ -87,7 +87,7 @@ Strike::deleteEvent(strikeEvent *strikeEvent) {
   // Recalculate next event.
   scheduleEvent();
 
-  return;
+  return true;
 }
 
 // Executed each hour and after every event completes, pick the next event
@@ -106,8 +106,10 @@ Strike::scheduleEvent() {
   time_t t = now() + ((CHIME_CHARGE_MILLIS / 1000) + 1) + 1;
 
   // Find the next event.
+  // First, find all suitable events within the next two hours.
   for (strikeEvent *e = strikeEvents; e; e = e->nextEvent) {
-    // Skip events that are inactive or more than two hours away.
+    // Skip events that are inactive, more than two hours away, or that
+    // do not match the current year, month, day, or weekday.
     if (e->eventActive == EVENT_INACTIVE)
       continue;
     if (e->Event.Year != WILD && tmYearToCalendar(e->Event.Year) != year(t))
@@ -122,25 +124,32 @@ Strike::scheduleEvent() {
 	e->Event.Hour != ((hour(t) + 1) % 24))
       continue;
 
-    // It makes no sense to have a wildcarded second, so we just treat them
-    // as a zero.  This modification becomes visible in the GUI.
+    // It makes no sense to have a wildcarded second, so we just change them
+    // to zero.
     if (e->Event.Second == WILD)
       e->Event.Second = 0;
 
     // Determine how many seconds between t and the event.  A wildcard means
     // we look for the closest possible time greater than t.
+    // Hours
     int millisToThisEvent =
       e->Event.Hour == WILD ? 0 : ((int)e->Event.Hour - hour(t) + 24) % 24 * 60;
 
-    millisToThisEvent += e->Event.Minute == WILD ? 0 : (int)e->Event.Minute - minute(t);
-    if (millisToThisEvent < 0)
-      millisToThisEvent = (millisToThisEvent + 60) % 60;
+    // Minutes
+    millisToThisEvent += e->Event.Minute == WILD ? 0 : ((int)e->Event.Minute - minute(t) + 60) % 60;
+    if (e->Event.Hour != WILD && (int)e->Event.Minute < minute(t))
+      millisToThisEvent -= 60;
     millisToThisEvent *= 60;
 
-    millisToThisEvent += (int)e->Event.Second - second(t);
-    if (millisToThisEvent < 0)
-      millisToThisEvent = (millisToThisEvent + 60) % 60;
+    // Seconds
+    millisToThisEvent += ((int)e->Event.Second - second(t) + 60) % 60;
+    if (e->Event.Minute != WILD && (int)e->Event.Second < second(t))
+      millisToThisEvent -= 60;
     millisToThisEvent *= 1000;
+
+    // Skip the event if it is in the past.
+    if (millisToThisEvent < 0)
+      continue;
 
     // If this is a nearer event, pick it.  If it is a tie, the alarm gets precedence.
     if (millisToThisEvent < millisToNearestEvent ||

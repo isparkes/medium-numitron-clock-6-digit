@@ -67,7 +67,7 @@ class Strike {
     strikeEvent *addEvent(TimeElements *Event, byte strikePattern, byte eventRepeat,
 			  byte eventActive);
     strikeEvent *getNextEvent(strikeEvent *);
-    void deleteEvent(strikeEvent *strikeEvent);
+    boolean deleteEvent(strikeEvent *strikeEvent);
     void executeEvent(unsigned long nowMillis);
     boolean eventHiRes();
     boolean silentMode();
