@@ -2483,11 +2483,44 @@ void clockStrikePageHandler() {
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, "text/html", response_message);
 
-  // Create and output the event table.
-  strikeEvent *s = nullptr;
-  while (s = Strike.getNextEvent(s)) {
-    response_message = getTableRowEvent(s);
-    server.sendContent(response_message);
+  // Sort the events and output a sorted table of events.
+  {
+    int n = 0;
+    strikeEvent *e = nullptr;
+    while (e = Strike.getNextEvent(e)) {
+      n++;
+    }
+
+    struct eventKeyPair {unsigned long key; strikeEvent *s;} sortedEvents[n];
+
+    // Build an array of event/keys to sort by.
+    // Sort by decreasing duration, put wildcards and lower time values first.
+    e = Strike.getNextEvent(nullptr);
+    for (int i = 0; i < n && e; i++, e = Strike.getNextEvent(e)) {
+      sortedEvents[i].s = e;
+      sortedEvents[i].key = \
+	(e->Event.Year == WILD ? 0 : ((unsigned long)(e->Event.Year + 1)) << 6 * 8) +
+	(e->Event.Month == WILD ? 0 : ((unsigned long)(e->Event.Month + 1)) << 5 * 8) +
+	(e->Event.Day == WILD ? 0 : ((unsigned long)(e->Event.Day + 1)) << 4 * 8) +
+	(e->Event.Wday == WILD ? 0 : ((unsigned long)(e->Event.Wday + 1)) << 3 * 8) +
+	(e->Event.Hour == WILD ? 0 : ((unsigned long)(e->Event.Hour + 1)) << 2 * 8) +
+	(e->Event.Minute == WILD ? 0 : ((unsigned long)(e->Event.Minute + 1)) << 1 * 8) +
+	(e->Event.Second == WILD ? 0 : ((unsigned long)(e->Event.Second + 1)) << 0 * 8);
+    }
+
+    auto cmpEvents = [] (const void *a, const void *b) {
+      if (((eventKeyPair *)a)->key == ((eventKeyPair *)b)->key)
+	return 0;
+      return ((eventKeyPair *)a)->key > ((eventKeyPair *)b)->key ? 1 : -1;
+    };
+
+    qsort(sortedEvents, n, sizeof(eventKeyPair), cmpEvents);
+
+    // Create and output the event table.
+    for (int i = 0; i < n; i++) {
+      response_message = getTableRowEvent(sortedEvents[i].s);
+      server.sendContent(response_message);
+    }
   }
 
   // A button to allow adding events.
