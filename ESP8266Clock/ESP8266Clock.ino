@@ -2513,7 +2513,6 @@ void clockStrikePageHandler() {
 	return 0;
       return ((eventKeyPair *)a)->key > ((eventKeyPair *)b)->key ? 1 : -1;
     };
-
     qsort(sortedEvents, n, sizeof(eventKeyPair), cmpEvents);
 
     // Create and output the event table.
