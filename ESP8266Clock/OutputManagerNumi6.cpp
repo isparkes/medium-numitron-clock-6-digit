@@ -73,27 +73,14 @@ void OutputManager::outputDisplay() {
 // the stable display when we are not cross-fading.
 // ************************************************************
 void OutputManager::shiftDigitsOut(byte *displayDigits) {
-  if (cc->separatorDimFactor == SEP_DIM) {
-    _separatorDim++;
-    if (_separatorDim & 0x01) {
-      // Add in the orange separator "colon" LEDs
-      displayDigits[2] |= SEG_IND * led1State;
-      displayDigits[1] |= SEG_IND * led2State;
-      displayDigits[3] |= SEG_IND * led2State;
-      displayDigits[4] |= SEG_IND * led1State;
-      
-      // Add in the red indicator LEDs
-      displayDigits[0] |= SEG_IND * ledLState;
-      displayDigits[5] |= SEG_IND * ledRState;
-    } else {
-    }
-  } else {
+  if (cc->separatorDimFactor == SEP_DIM_MIN ||
+      _separatorDim++ % cc->separatorDimFactor == 0) {
     // Add in the orange separator "colon" LEDs
     displayDigits[2] |= SEG_IND * led1State;
     displayDigits[1] |= SEG_IND * led2State;
     displayDigits[3] |= SEG_IND * led2State;
     displayDigits[4] |= SEG_IND * led1State;
-    
+
     // Add in the red indicator LEDs
     displayDigits[0] |= SEG_IND * ledLState;
     displayDigits[5] |= SEG_IND * ledRState;
