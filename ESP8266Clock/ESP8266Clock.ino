@@ -2443,11 +2443,11 @@ void clockStrikePageHandler() {
     uint8_t strike = atoi(server.arg("strike").c_str());
     uint8_t repeat = atoi(server.arg("repeat").c_str());
     uint8_t active = atoi(server.arg("active").c_str());
-    Strike.addEvent(&tim, strike, repeat, active);
 
     strikeEvent *key = (strikeEvent *)atol(server.arg("eventKey").c_str());
-    Strike.deleteEvent(key);
-    spiffs.saveEventsToSpiffs(Strike);
+    if (Strike.deleteEvent(key)) 
+      Strike.addEvent(&tim, strike, repeat, active);
+      spiffs.saveEventsToSpiffs(Strike);
   }
 
   // Add a new event.
