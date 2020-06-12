@@ -46,6 +46,21 @@ void checkServerArgInt(String argument, String argumentName, boolean &changed, i
 }
 
 // ************************************************************
+// Check server args for a float value and note if it has changed
+// ************************************************************
+void checkServerArgFloat(String argument, String argumentName, boolean &changed, float &value) {
+  if (server.hasArg(argument)) {
+    debugMsg("Got " + argumentName + " : " + server.arg(argument));
+    float newValue = atof(server.arg(argument).c_str());
+    if (newValue != value) {
+      changed = true;
+      value = newValue;
+      debugMsg("-> Set " + argumentName + ": " + String(value));
+    }
+  }
+}
+
+// ************************************************************
 // Check server args for a byte value and note if it has changed
 // ************************************************************
 void checkServerArgByte(String argument, String argumentName, boolean &changed, byte &value) {
@@ -282,6 +297,20 @@ String getNumberInput(String heading, String input_name, unsigned int minVal, un
   String result = "<div class=\"form-group\"><label class=\"control-label col-xs-3\" for=\"" + input_name + "\">" + heading;
   result += "</label><div class=\"col-xs-2\"><input type=\"number\" class=\"form-control\" name=\"" + input_name;
   result += "\" id=\"" + input_name;
+  result += "\" min=\"" + String(minVal);
+  result += "\" max=\"" + String(maxVal);
+  result += "\" value=\"" + String(value) + "\"";
+  if (disabled) result += " disabled";
+  result += "></div></div>";
+
+  return result;
+}
+
+String getFloatNumberInput(String heading, String input_name, float step, float minVal, float maxVal, float value, boolean disabled) {
+  String result = "<div class=\"form-group\"><label class=\"control-label col-xs-3\" for=\"" + input_name + "\">" + heading;
+  result += "</label><div class=\"col-xs-2\"><input type=\"number\" class=\"form-control\" name=\"" + input_name;
+  result += "\" id=\"" + input_name;
+  result += "\" step=\"" + String(step);
   result += "\" min=\"" + String(minVal);
   result += "\" max=\"" + String(maxVal);
   result += "\" value=\"" + String(value) + "\"";

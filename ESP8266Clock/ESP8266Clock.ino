@@ -36,6 +36,7 @@
 #include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis 1.5.0) // https://github.com/michaelmargolis/arduino_time
 #include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.14.0)
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
+#include <MoonRise.h>		// https://github.com/signetica/MoonRise (signetica 1.0)
 
 // Other parts of the code, broken out for clarity
 #include "Globals.h"
@@ -176,19 +177,19 @@ void setup()
         if (secCount == 8) {
           ledLState = processStatusMode(STATUS_LED_MODE_ON);
           ledRState = processStatusMode(STATUS_LED_MODE_ON);
-          led1State = true;
-          led2State = true;
+          led1LState = led1RState = true;
+          led2LState = led2RState = true;
         } else {
           ledLState = processStatusMode(STATUS_LED_MODE_OFF);
           ledRState = processStatusMode(STATUS_LED_MODE_OFF);
-          led1State = true;
-          led2State = false;
+          led1LState = led1RState = true;
+          led2LState = led2RState = false;
         }
       } else {
         ledLState = processStatusMode(STATUS_LED_MODE_ON);
         ledRState = processStatusMode(STATUS_LED_MODE_ON);
-        led1State = false;
-        led2State = true;
+        led1LState = led1RState = false;
+        led2LState = led2RState = true;
       }
 
       OutputManager::Instance().outputDisplay();
@@ -573,69 +574,157 @@ void setLeds()
     case LED_RAILROAD:
       {
         if (upOrDown) {
-          led1State = true;
-          led2State = false;
+          led1LState = led1RState = true;
+          led2LState = led2RState = false;
         } else {
-          led1State = false;
-          led2State = true;
+          led1LState = led1RState = false;
+          led2LState = led2RState = true;
         }
         break;
       }
     case LED_RAILROAD_X:
       {
         if (upOrDown) {
-          led1State = true;
-          led2State = true;
+          led1LState = led2RState = true;
+          led2LState = led1RState = false;
         } else {
-          led1State = false;
-          led2State = false;
+          led1LState = led2RState = false;
+          led2LState = led1RState = true;
         }
         break;
       }
     case LED_BLINK_SLOW:
       {
         if (upOrDown) {
-          led1State = true;
-          led2State = true;
+          led1LState = led1RState = true;
+          led2LState = led2RState = true;
         } else {
-          led1State = false;
-          led2State = false;
+          led1LState = led1RState = false;
+          led2LState = led2RState = false;
         }
         break;
       }
     case LED_BLINK_FAST:
       {
         if (secsDeltaAbs < 500) {
-          led1State = true;
-          led2State = true;
+          led1LState = led1RState = true;
+          led2LState = led2RState = true;
         } else {
-          led1State = false;
-          led2State = false;
+          led1LState = led1RState = false;
+          led2LState = led2RState = false;
         }
         break;
       }
     case LED_BLINK_DBL:
       {
         if ((secsDeltaAbs < 100) || ((secsDeltaAbs > 200) && (secsDeltaAbs < 300))) {
-          led1State = true;
-          led2State = true;
+          led1LState = led1RState = true;
+          led2LState = led2RState = true;
         } else {
-          led1State = false;
-          led2State = false;
+          led1LState = led1RState = false;
+          led2LState = led2RState = false;
         }
         break;
       }
     case LED_ON:
       {
-        led1State = true;
-        led2State = true;
+        led1LState = led1RState = true;
+        led2LState = led2RState = true;
         break;
       }
     case LED_OFF:
       {
-        led1State = false;
-        led2State = false;
+        led1LState = led1RState = false;
+        led2LState = led2RState = false;
         break;
+      }
+
+    case LED_LUNAR:
+      {
+	// There are twelve possible led patterns, of which we use nine.
+	// All on - up with no rise or set time (in polar latitudes)
+	// All off - down with no rise or set time
+	// Single or consecutive led(s) on -
+	//  moon up, led(s) indicates position, rising on left and setting on right
+	// Single or consecutive led(s) on and blinking -
+	//  moon down, led(s) indicates position, rising on left and setting on right
+	static int lunarPatternInitialized = 0;
+	static unsigned char pattern = 0;
+
+        led1LState = led1RState = false;
+        led2LState = led2RState = false;
+
+	// Only perform the calculation to determine the location of the moon
+	// and update the LED pattern once per minute.
+	if (lunarPatternInitialized == 1 && second() == 12)
+	  lunarPatternInitialized = 2;
+	if (lunarPatternInitialized == 2 && second() == 13)
+	  lunarPatternInitialized = 0;
+
+	if (lunarPatternInitialized == 0) {
+	  lunarPatternInitialized = 1;
+
+	  // Because of inconsistent approaches to Arduino time, we have to
+	  // figure out the difference between whatever is residing in now()
+	  // and GMT, then add and subtract it to convert to and from GMT.
+	  // The value of time() seems even more inscrutable and less useful.
+	  time_t t = now();
+	  struct tm gmt_tm = *gmtime(&t);
+	  gmt_tm.tm_isdst = -1;
+	  time_t gmtOffset = mktime(&gmt_tm) - t;
+
+	  // Find the last and next lunar set and rise.
+	  MoonRise mr(current_config.latitude, current_config.longitude, t + gmtOffset);
+
+	  // Set global status indicators.
+	  moonVisible = mr.isVisible;
+	  moonHasRise = mr.hasRise;
+	  moonHasSet = mr.hasSet;
+	  moonRiseAz = mr.riseAz;
+	  moonSetAz = mr.setAz;
+	  moonQueryTime = mr.queryTime - gmtOffset;
+
+	  // Convert returned value from GMT to local time zone.
+	  moonRiseTime = mr.riseTime - gmtOffset;
+	  moonSetTime = mr.setTime - gmtOffset;
+
+	  // Round to nearest minute.
+	  moonRiseTime = moonRiseTime / 60 * 60 + (moonRiseTime % 60 < 30 ? 0 : 60);
+	  moonSetTime = moonSetTime / 60 * 60 + (moonSetTime % 60 < 30 ? 0 : 60);
+
+	  if (!mr.hasRise || !mr.hasSet) {
+	    // If we do not have a nearby moon rise or set, just turn on or off
+	    // all the separator LEDs to indicate if the moon is visible.
+	    if (mr.isVisible)
+	      pattern = 0xf;
+	    else
+	      pattern = 0x0;
+	  } else {
+	    // Display a pattern on the four separator LEDs corresponding to
+	    // the location of the moon.
+	    float interval = mr.setTime - mr.riseTime;
+	    int angle = abs((int)trunc((mr.queryTime - mr.riseTime) / interval * 7)) % 7;
+	    if (interval < 0) {
+	      angle = 6 - angle;
+	    }
+	    // 0,1,2,3,4,5,6 -> 1,3,2,6,4,12,8: 0x1<<(n/2) + (0x1<<(n/2+1))*(n%2)
+	    pattern = (0x1<<(angle/2)) + (0x1<<(angle/2+1))*(angle%2);
+	  }
+	}
+
+	// If the moon is not visible, blink the location instead of holding it steady.
+	if (moonVisible || upOrDown) {
+	  led1LState = pattern & 0x1;
+	  led2LState = pattern & 0x2;
+	  led2RState = pattern & 0x4;
+	  led1RState = pattern & 0x8;
+	} else {
+	  led1LState = false;
+	  led2LState = false;
+	  led2RState = false;
+	  led1RState = false;
+	}
+	break;
       }
   }
 
@@ -1722,6 +1811,8 @@ void factoryReset() {
   cc->slotsMode = SLOTS_MODE_DEFAULT;
   cc->usePIRPullup = USE_PIR_PULLUP_DEFAULT;
   cc->ledMode = LED_BLINK_DEFAULT;
+  cc->latitude = LATITUDE_DEFAULT;
+  cc->longitude = LONGITUDE_DEFAULT;
   cc->testMode = true;
   setWebAuthentication(WEB_AUTH_DEFAULT);
   cc->webAuthentication = getWebAuthentication();
@@ -1820,6 +1911,38 @@ void rootPageHandler() {
 
   response_message += getTableFoot();
 
+  // ******************** Astronomical Info table ********************
+  // Moon Phase and related information
+  if (current_config.ledMode == LED_LUNAR) {
+    String moonTime;
+
+    response_message += getTableHead2Col("Astronomical Information", "Name", "Value");
+
+    String position = String(current_config.latitude) + " / " + String(current_config.longitude);
+    response_message += getTableRow2Col("Latitude / Longitude", position);
+
+    response_message += getTableRow2Col("Moon", moonVisible ? "Visible" : "Not Visible");
+
+    if (moonHasRise) {
+      moonTime = asctime(gmtime(&moonRiseTime));
+      moonTime += " @ azimuth " + String(moonRiseAz);
+    } else {
+      moonTime = "No moon rise in last 24 hours";
+    }
+    response_message += getTableRow2Col("Moon Rise", moonTime);
+				      
+    if (moonHasSet) {
+      moonTime = asctime(gmtime(&moonSetTime));
+      moonTime += " @ azimuth " + String(moonSetAz);
+    } else {
+      moonTime = "No moon set in last 24 hours";
+    }
+    response_message += getTableRow2Col("Moon Set", moonTime);
+
+    response_message += getTableFoot();
+  }
+
+
   // ******************** Clock Info table ***************************
   float digitBrightness = (1023 - ldrValue) * 100.0 / 1023.0;
   String motionSensorState = checkPIRInstalled() ? getPIRStateDisplay() : "Not installed";
@@ -1862,7 +1985,7 @@ void rootPageHandler() {
   response_message += getTableRow2Col("Sketch hash", ESP.getSketchMD5());
   response_message += getTableRow2Col("Free heap", ESP.getFreeHeap());
   response_message += getTableRow2Col("Boot version", ESP.getBootVersion());
-  response_message += getTableRow2Col("CPU Freqency (MHz)", ESP.getCpuFreqMHz());
+  response_message += getTableRow2Col("CPU Frequency (MHz)", ESP.getCpuFreqMHz());
   response_message += getTableRow2Col("Flash speed (MHz)", ESP.getFlashChipSpeed() / 1000000);
   response_message += getTableRow2Col("SDK version", ESP.getSdkVersion());
   response_message += getTableRow2Col("Chip ID", String(ESP.getChipId(), HEX));
@@ -1974,6 +2097,8 @@ void clockConfigPageHandler() {
   checkServerArgInt("pirTimeout", "pirTimeout", changed, current_config.pirTimeout);
   checkServerArgBoolean("usePIRPullup", "Use PIR pullup", "on", "off", changed, current_config.usePIRPullup);
   checkServerArgByte("ledMode", "ledMode", changed, current_config.ledMode);
+  checkServerArgFloat("latitude", "latitude", changed, current_config.latitude);
+  checkServerArgFloat("longitude", "longitude", changed, current_config.longitude);
   checkServerArgByte("statusModeL", "statusModeL", changed, current_config.statusModeL);
   checkServerArgByte("statusModeR", "statusModeR", changed, current_config.statusModeR);
   boolean webConfigChanged = false;
@@ -2190,12 +2315,18 @@ void clockConfigPageHandler() {
   // LED mode
   response_message += getDropDownHeader("LED Mode:", "ledMode", true, false);
   response_message += getDropDownOption("0", "RailRoad", (current_config.ledMode == LED_RAILROAD));
-  response_message += getDropDownOption("1", "Slow flash", (current_config.ledMode == LED_BLINK_SLOW));
-  response_message += getDropDownOption("2", "Fast flash", (current_config.ledMode == LED_BLINK_FAST));
-  response_message += getDropDownOption("3", "Double flash", (current_config.ledMode == LED_BLINK_DBL));
-  response_message += getDropDownOption("4", "Always On", (current_config.ledMode == LED_ON));
-  response_message += getDropDownOption("5", "Always Off", (current_config.ledMode == LED_OFF));
+  response_message += getDropDownOption("1", "RailRoad X", (current_config.ledMode == LED_RAILROAD_X));
+  response_message += getDropDownOption("2", "Slow flash", (current_config.ledMode == LED_BLINK_SLOW));
+  response_message += getDropDownOption("3", "Fast flash", (current_config.ledMode == LED_BLINK_FAST));
+  response_message += getDropDownOption("4", "Double flash", (current_config.ledMode == LED_BLINK_DBL));
+  response_message += getDropDownOption("5", "Lunar Position", (current_config.ledMode == LED_LUNAR));
+  response_message += getDropDownOption("6", "Always On", (current_config.ledMode == LED_ON));
+  response_message += getDropDownOption("7", "Always Off", (current_config.ledMode == LED_OFF));
   response_message += getDropDownFooter();
+
+  // Lunar Position LED mode: Latitude and Longitude
+  response_message += getFloatNumberInput("Latitude:", "latitude", 0.01, -90, 90, current_config.latitude, (current_config.ledMode != LED_LUNAR));
+  response_message += getFloatNumberInput("Longitude:", "longitude", 0.01, -180, 180, current_config.longitude, (current_config.ledMode != LED_LUNAR));
 
   // Status LED mode Left
   response_message += getDropDownHeader("Left Status LED Mode:", "statusModeL", true, false);

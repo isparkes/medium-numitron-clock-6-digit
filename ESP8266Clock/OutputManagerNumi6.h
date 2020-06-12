@@ -8,8 +8,10 @@
 
 #define DIGIT_COUNT 6
 
-extern boolean led1State;
-extern boolean led2State;
+extern boolean led1RState;
+extern boolean led1LState;
+extern boolean led2RState;
+extern boolean led2LState;
 extern boolean ledLState;
 extern boolean ledRState;
 extern boolean blankTubes;

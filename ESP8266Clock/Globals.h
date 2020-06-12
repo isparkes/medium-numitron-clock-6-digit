@@ -71,9 +71,23 @@ int ldrValue = 0;
 boolean upOrDown;
 
 // Used to control the separator LEDs
-boolean led1State;
-boolean led2State;
+boolean led1RState;
+boolean led1LState;
+boolean led2RState;
+boolean led2LState;
 boolean ledLState;
 boolean ledRState;
+
+// ------------- Astronomical Information  -------------
+double latitude;
+double longitude;
+boolean moonVisible;
+boolean moonHasRise;
+boolean moonHasSet;
+time_t moonQueryTime;
+time_t moonSetTime;
+time_t moonRiseTime;
+float moonRiseAz;
+float moonSetAz;
 
 #endif

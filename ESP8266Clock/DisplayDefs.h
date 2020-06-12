@@ -13,14 +13,15 @@
 
 #define LED_MODE_MIN        0
 #define LED_RAILROAD        0
-#define LED_BLINK_SLOW      1
-#define LED_BLINK_FAST      2
-#define LED_BLINK_DBL       3
-#define LED_ON              4
-#define LED_OFF             5
+#define LED_RAILROAD_X      1
+#define LED_BLINK_SLOW      2
+#define LED_BLINK_FAST      3
+#define LED_BLINK_DBL       4
+#define LED_LUNAR	    5
+#define LED_ON              6
+#define LED_OFF             7
 #define LED_BLINK_DEFAULT   LED_RAILROAD
-#define LED_RAILROAD_X      -1 // Not yet implemented
-#define LED_MODE_MAX        5
+#define LED_MODE_MAX        7
 
 #define STATUS_LED_MODE_MIN    0
 #define STATUS_LED_MODE_NTP    0

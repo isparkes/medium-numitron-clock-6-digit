@@ -126,6 +126,12 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
           spiffs_config->ledMode = json["ledMode"];
           debugMsg("Loaded ledMode: " + String(spiffs_config->ledMode));
 
+          spiffs_config->latitude = json["latitude"];
+          debugMsg("Loaded latitude: " + String(spiffs_config->latitude));
+
+          spiffs_config->longitude = json["longitude"];
+          debugMsg("Loaded longitude: " + String(spiffs_config->longitude));
+
           spiffs_config->webAuthentication = json["webAuthentication"].as<bool>();
           debugMsg("Loaded webAuthentication: " + String(spiffs_config->webAuthentication));
 
@@ -206,6 +212,8 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
     json["usePIRPullup"] = spiffs_config->usePIRPullup;
     json["testMode"] = spiffs_config->testMode;
     json["ledMode"] = spiffs_config->ledMode;
+    json["latitude"] = spiffs_config->latitude;
+    json["longitude"] = spiffs_config->longitude;
     json["webAuthentication"] = spiffs_config->webAuthentication;
     json["webUsername"] = spiffs_config->webUsername;
     json["webPassword"] = spiffs_config->webPassword;

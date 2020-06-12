@@ -15,6 +15,11 @@
 #define SOFTWARE_VERSION      6
 
 // -------------------------------------------------------------------------------
+// Location of the clock for astronomical displays
+#define LATITUDE_DEFAULT      51.48   // Greenwich, UK
+#define LONGITUDE_DEFAULT     0
+
+// -------------------------------------------------------------------------------
 #define MIN_DIM_DEFAULT       400  // The default minimum dim count
 #define MIN_DIM_MIN           100  // The minimum dim count
 #define MIN_DIM_MAX           800  // The maximum dim count

@@ -41,6 +41,8 @@ typedef struct {
   boolean blankLeading;
   byte dateFormat;
   byte ledMode;
+  float latitude;
+  float longitude;
   byte statusModeL;
   byte statusModeR;
   byte backlightDimFactor;

@@ -30,6 +30,7 @@ void setWebPassword(String newValue);
 void setServerPageHandlers();
 void checkServerArgBoolean(String argument, String argumentName, String trueLiteral, String falseLiteral, boolean &changed, boolean &value);
 void checkServerArgInt(String argument, String argumentName, boolean &changed, int &value);
+void checkServerArgFloat(String argument, String argumentName, boolean &changed, float &value);
 void checkServerArgByte(String argument, String argumentName, boolean &changed, byte &value);
 void checkServerArgString(String argument, String argumentName, boolean &changed, String &value);
 
@@ -55,6 +56,7 @@ String getDropDownHeader(String heading, String group_name, boolean wide, boolea
 String getDropDownOption (String value, String text, boolean checked);
 String getDropDownFooter();
 String getNumberInput(String heading, String input_name, unsigned int minVal, unsigned int maxVal, unsigned int value, boolean disabled);
+String getFloatNumberInput(String heading, String input_name, float step, float minVal, float maxVal, float value, boolean disabled);
 String getNumberInputWide(String heading, String input_name, byte minVal, byte maxVal, byte value, boolean disabled);
 String getTextInput(String heading, String input_name, String value, boolean disabled);
 String getTextInputWide(String heading, String input_name, String value, boolean disabled);
