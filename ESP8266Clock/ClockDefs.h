@@ -175,7 +175,7 @@
 // -------------------------------------------------------------------------------
 #define SILENCING_DEFAULT		false
 #define LDR_SILENCING_DEFAULT		false
-#define LDR_SILENCING_THRSH_DEFAULT	700
+#define LDR_SILENCING_THRSH_DEFAULT	800
 #define SILENCE_HOURS_DEFAULT		false
 // -------------------------------------------------------------------------------
 // RTC address

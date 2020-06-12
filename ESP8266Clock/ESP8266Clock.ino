@@ -2581,7 +2581,7 @@ void clockStrikePageHandler() {
   static const char notes[] PROGMEM = \
    "<div class=\"col-xs-11\"><h3 class=\"sub-header\"> Notes: </h3> \
     <P>For day of week, 1 = Sunday, 7 = Saturday</P> \
-    <P>Alarms can be set to repeat indefinately or become inactive after a \
+    <P>Alarms can be set to repeat indefinitely or become inactive after a \
        single execution</P> \
     <P>The single pattern will produce a single strike.  The hours pattern \
        will strike once for each hour.  The ship's bells pattern will strike \
