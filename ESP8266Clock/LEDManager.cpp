@@ -148,6 +148,162 @@ void LEDManager::processLedStatus() {
                             getLEDAdjustedUL(dayOfWeekB[_dow]));
           break;
         }
+      case BACKLIGHT_MOON_PHASE: {
+	  // Illuminate a fraction of the backlights corresponding to the phase
+	  // of the moon.  We go from right to left as seen in the northern hemisphere.
+
+	  // Once per second processing.
+	  int s = second();
+	  if (_lastSecond != s) {
+	    _lastSecond = s;
+
+	    // Update sun rise/set & moon phase data.
+	    if (s == 45) {
+	      // Because of inconsistent approaches to Arduino time, we have to
+	      // figure out the difference between whatever is residing in now()
+	      // and GMT, then add and subtract it to convert to and from GMT.
+	      // The value of time() seems even more inscrutable and less useful.
+	      time_t t = now();
+	      struct tm gmt_tm = *gmtime(&t);
+	      gmt_tm.tm_isdst = -1;
+	      time_t gmtOffset = mktime(&gmt_tm) - t;
+
+	      sunRise.calculate(cc->latitude, cc->longitude, t + gmtOffset);
+
+	      // Convert returned values from UTC to local time zone.
+	      sunRise.queryTime -= gmtOffset;
+	      sunRise.riseTime -= gmtOffset;
+	      sunRise.setTime -= gmtOffset;
+
+	      // Round to nearest minute.
+	      sunRise.riseTime = sunRise.riseTime / 60 * 60 +
+				(sunRise.riseTime % 60 < 30 ? 0 : 60);
+	      sunRise.setTime = sunRise.setTime / 60 * 60 +
+			       (sunRise.setTime % 60 < 30 ? 0 : 60);
+
+	      // Update the moon phase data.
+	      moonPhase.calculate(now());
+
+	      // Illuminate the level of each backlight corresponding to the moon phase.
+	      float phase = moonPhase.phase;
+	      for (int i = 0; i < DIGIT_COUNT; i++) {
+		int n = DIGIT_COUNT - i - 1;
+		if (phase <= 0.5)
+		  _levels[i] = (2 * phase - (float)n / DIGIT_COUNT) * DIGIT_COUNT;
+		else
+		  _levels[i] = (2 * (1.0 - phase) - (float)i / DIGIT_COUNT) * DIGIT_COUNT;
+		if (_levels[i] < 0)
+		  _levels[i] = 0;
+		if (_levels[i] > 1)
+		  _levels[i] = 1;
+	      }
+	    }
+
+	    // Transient clouds sweep across the moon.
+	    //  Clouds have abrupt edges.
+	    //
+	    //  cloudLocation (left -> right, indicates leading edge of cloud):
+	    //    Range: 0 - 7
+	    //  cloudSize (size of cloud in digits):
+	    //    Range: 1 - 6
+	    //  cloudWxTimer (how often the weather changes, in minutes):
+	    //    Range: 1 - 30
+	    //  Weather:
+	    //   cloudSpeed (digits/sec):
+	    //    Range: 0.5 - 4
+	    //   cloudDensity (probability of a new cloud per second):
+	    //    Range: 5 - 20
+
+	    // Change weather (cloud speed and direction, number of clouds)
+	    if (_cloudWxTimer-- == 0) {
+	      if (_cloudSize) {				  // Wait for cloud to pass.
+		_cloudWxTimer += _cloudSize + DIGIT_COUNT;
+	      } else {
+//		_cloudWxTimer = random(1, 31) * 60;	  // Weather changes
+		_cloudWxTimer = random(1, 3) * 60;	  // Weather changes
+		_cloudSpeed = (float)random(5, 41) / 10.0 * (random(0, 2) == 1 ? 1 : -1);
+		_cloudDensity = random(5, 21);		  // Probability of cloud / sec.
+	      }
+	    }
+
+	    // New cloud
+	    if (_cloudSize == 0 && random(_cloudDensity) == 1) {
+	      _cloudSize = (float)random(10, 61) / 10.0;
+	      _cloudLocation = _cloudSpeed > 0 ? 0 : 7;
+	      _cloudMillis = millis();
+	    }
+
+	    // Delete cloud
+	    if (_cloudSize &&
+		_cloudLocation < 0 - _cloudSize || _cloudLocation > 7 + _cloudSize)
+	      _cloudSize = 0;
+	  }
+
+	  // Move cloud
+	  if (_cloudSize) {
+	    unsigned long newCloudMillis = millis();
+	    _cloudLocation += _cloudSpeed * (newCloudMillis - _cloudMillis) / 1000.0;
+	    _cloudMillis = newCloudMillis;
+	  }
+
+	  // Calculate cloud opacity per digit.
+	  float cloudLevels[DIGIT_COUNT];
+	  if (_cloudSize) {
+	    float hiRange, loRange;
+	    if (_cloudSpeed > 0) {
+	      hiRange = _cloudLocation;
+	      loRange = _cloudLocation - _cloudSize;
+	    } else {
+	      loRange = _cloudLocation;
+	      hiRange = _cloudLocation + _cloudSize;
+	    }
+	    for (int i = 0; i < DIGIT_COUNT; i++) {
+	      if (hiRange >= i + 1 && loRange <= i)
+		cloudLevels[i] = 1;
+	      else if (hiRange <= i || loRange >= i + 1)
+		cloudLevels[i] = 0;
+	      else if (hiRange >= i + 1)
+		cloudLevels[i] = (i + 1) - loRange;
+	      else
+		cloudLevels[i] = hiRange - i;
+	    }
+	  }
+
+	  // Blend the night or day background color with the moon color
+	  // according the the levels determined above.
+	  for (int i = 0; i < DIGIT_COUNT; i++) {
+	    RgbColor result;
+	    if (sunRise.isVisible) {
+	      result = RgbColor::LinearBlend(RgbColor(DAY_SKY_COLOR),
+						      RgbColor(MOON_COLOR),
+						      _levels[i]);
+	    } else {
+	      result = RgbColor::LinearBlend(RgbColor(NIGHT_SKY_COLOR),
+						      RgbColor(MOON_COLOR),
+						      _levels[i]);
+	    }
+
+	    // Add cloud cover
+	    if (_cloudSize) {
+	      if (sunRise.isVisible)
+		result = RgbColor::LinearBlend(result,
+					       RgbColor(DAY_CLOUD_COLOR),
+					       cloudLevels[i]);
+	      else
+		result = RgbColor::LinearBlend(result,
+					       RgbColor(NIGHT_CLOUD_COLOR),
+					       cloudLevels[i]);
+	    }
+
+	    ledRb[i] = getLEDAdjustedBL(result.R);
+	    ledGb[i] = getLEDAdjustedBL(result.G);
+	    ledBb[i] = getLEDAdjustedBL(result.B);
+	    ledRu[i] = getLEDAdjustedBL(result.R);
+	    ledGu[i] = getLEDAdjustedBL(result.G);
+	    ledBu[i] = getLEDAdjustedBL(result.B);
+	  }
+          break;
+      }
     }
   }
 

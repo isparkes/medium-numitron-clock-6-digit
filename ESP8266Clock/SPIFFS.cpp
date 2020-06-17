@@ -1,5 +1,14 @@
 #include "SPIFFS.h"
 
+// Config from SPIFFS
+spiffs_config_t current_config;
+
+// Stats from SPIFFS
+spiffs_stats_t current_stats;
+
+// SPIFFS component
+SPIFFS_CLOCK spiffs;
+
 //**********************************************************************************
 //**********************************************************************************
 //*                               SPIFFS functions                                 *

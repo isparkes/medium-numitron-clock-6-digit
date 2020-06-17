@@ -2,7 +2,10 @@
 #define ledmanager_h
 
 #include "Arduino.h"
+#include <TimeLib.h>
 #include <NeoPixelBus.h>        // https://github.com/Makuna/NeoPixelBus (Makuna 2.3.4)
+#include <MoonPhase.h>
+#include <SunRise.h>
 #include "SPIFFS.h"
 #include "OutputManagerNumi6.h"
 
@@ -11,8 +14,9 @@
 #define BACKLIGHT_FIXED                 0  // Just define a colour and stick to it
 #define BACKLIGHT_CYCLE                 1  // cycle through random colours, strategy 3
 #define BACKLIGHT_COLOUR_TIME           2  // use "ColourTime" - different colours for each digit value
-#define BACKLIGHT_DAY_OF_WEEK           3  // use "ColourTime" - different colours for each digit value
-#define BACKLIGHT_MAX                   3
+#define BACKLIGHT_DAY_OF_WEEK           3  // different colour for each day of the week
+#define BACKLIGHT_MOON_PHASE		4  // Indicate moon phase with colour pattern.
+#define BACKLIGHT_MAX                   4
 #define BACKLIGHT_DEFAULT               1
 
 // -------------------------------------------------------------------------------
@@ -32,6 +36,17 @@
 #define STATUS_YELLOW 1
 #define STATUS_GREEN  2
 #define STATUS_BLUE   3
+
+// ---------------------------- RGB moon, sky, and cloud colors .-----------------
+#define MOON_COLOR	  255, 240, 160
+#define NIGHT_SKY_COLOR	  100, 100, 255
+#define NIGHT_CLOUD_COLOR 150, 150, 150
+#define DAY_SKY_COLOR	  255,  151, 50
+//#define DAY_SKY_COLOR	  200,  65, 65  //red
+//#define DAY_SKY_COLOR	  200,  115, 65 //orange
+//#define DAY_SKY_COLOR	  255,  151, 25
+//#define DAY_SKY_COLOR	  255,  190, 50
+#define DAY_CLOUD_COLOR	  205, 190, 125
 
 // ************************** Pin Allocations *************************
 #define LED_DOUT                        3     // RX defined by DMA output of library
@@ -92,6 +107,16 @@ class LEDManager
     byte ledGu[DIGIT_COUNT];
     byte ledBu[DIGIT_COUNT];
 
+    // Moon Phase & Clouds
+    unsigned long _lastSecond = 0;
+    float _levels[DIGIT_COUNT];
+    unsigned long _cloudMillis;
+    float _cloudLocation;
+    float _cloudSize = 0;
+    float _cloudSpeed;
+    int _cloudWxTimer = 0;
+    int _cloudDensity;
+
     void setBacklightLEDs(byte red, byte green, byte blue);
     void setUnderlightLEDs(byte red, byte green, byte blue);
     void outputLEDBuffer();
@@ -149,5 +174,10 @@ const byte dayOfWeekB[] = {   0, 153, 192, 255, 255, 153,   0};
 // ----------------- Exported Variables ------------------
 
 static LEDManager ledManager;
+
+// ----------------- Imported Variables ------------------
+
+extern MoonPhase moonPhase;
+extern SunRise sunRise;
 
 #endif

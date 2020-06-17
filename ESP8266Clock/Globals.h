@@ -1,6 +1,9 @@
 #ifndef __ESP_GLOBALS_H__
 #define __ESP_GLOBALS_H__
 
+#include <MoonPhase.h>
+#include <MoonRise.h>
+#include <SunRise.h>
 #include "HtmlServer.h"
 #include "DisplayDefs.h"
 #include "ClockDefs.h"
@@ -79,15 +82,8 @@ boolean ledLState;
 boolean ledRState;
 
 // ------------- Astronomical Information  -------------
-double latitude;
-double longitude;
-boolean moonVisible;
-boolean moonHasRise;
-boolean moonHasSet;
-time_t moonQueryTime;
-time_t moonSetTime;
-time_t moonRiseTime;
-float moonRiseAz;
-float moonSetAz;
+MoonRise moonRise;
+MoonPhase moonPhase;
+SunRise sunRise;
 
 #endif

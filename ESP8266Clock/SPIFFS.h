@@ -89,12 +89,12 @@ class SPIFFS_CLOCK
 // ----------------- Exported Variables ------------------
 
 // Config from SPIFFS
-static spiffs_config_t current_config;
+extern spiffs_config_t current_config;
 
 // Stats from SPIFFS
-static spiffs_stats_t current_stats;
+extern spiffs_stats_t current_stats;
 
 // SPIFFS component
-static SPIFFS_CLOCK spiffs;
+extern SPIFFS_CLOCK spiffs;
 
 #endif

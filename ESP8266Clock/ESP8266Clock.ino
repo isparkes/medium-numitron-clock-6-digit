@@ -36,7 +36,9 @@
 #include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis 1.5.0) // https://github.com/michaelmargolis/arduino_time
 #include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.14.0)
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
-#include <MoonRise.h>		// https://github.com/signetica/MoonRise (signetica 1.0)
+#include <MoonPhase.h>		// https://github.com/signetica/MoonPhase (signetica 1.0.1)
+#include <MoonRise.h>		// https://github.com/signetica/MoonRise (signetica 2.0.0)
+#include <SunRise.h>		// https://github.com/signetica/SunRise (signetica 1.0.0)
 
 // Other parts of the code, broken out for clarity
 #include "Globals.h"
@@ -674,36 +676,32 @@ void setLeds()
 	  time_t gmtOffset = mktime(&gmt_tm) - t;
 
 	  // Find the last and next lunar set and rise.
-	  MoonRise mr(current_config.latitude, current_config.longitude, t + gmtOffset);
-
-	  // Set global status indicators.
-	  moonVisible = mr.isVisible;
-	  moonHasRise = mr.hasRise;
-	  moonHasSet = mr.hasSet;
-	  moonRiseAz = mr.riseAz;
-	  moonSetAz = mr.setAz;
-	  moonQueryTime = mr.queryTime - gmtOffset;
+	  moonRise.calculate(current_config.latitude, current_config.longitude,
+			     t + gmtOffset);
 
 	  // Convert returned value from GMT to local time zone.
-	  moonRiseTime = mr.riseTime - gmtOffset;
-	  moonSetTime = mr.setTime - gmtOffset;
+	  moonRise.queryTime -= gmtOffset;
+	  moonRise.riseTime -= gmtOffset;
+	  moonRise.setTime -= gmtOffset;
 
 	  // Round to nearest minute.
-	  moonRiseTime = moonRiseTime / 60 * 60 + (moonRiseTime % 60 < 30 ? 0 : 60);
-	  moonSetTime = moonSetTime / 60 * 60 + (moonSetTime % 60 < 30 ? 0 : 60);
+	  moonRise.riseTime = moonRise.riseTime / 60 * 60 +
+			      (moonRise.riseTime % 60 < 30 ? 0 : 60);
+	  moonRise.setTime = moonRise.setTime / 60 * 60 +
+			     (moonRise.setTime % 60 < 30 ? 0 : 60);
 
-	  if (!mr.hasRise || !mr.hasSet) {
+	  if (!moonRise.hasRise || !moonRise.hasSet) {
 	    // If we do not have a nearby moon rise or set, just turn on or off
 	    // all the separator LEDs to indicate if the moon is visible.
-	    if (mr.isVisible)
+	    if (moonRise.isVisible)
 	      pattern = 0xf;
 	    else
 	      pattern = 0x0;
 	  } else {
 	    // Display a pattern on the four separator LEDs corresponding to
 	    // the location of the moon.
-	    float interval = mr.setTime - mr.riseTime;
-	    int angle = abs((int)trunc((mr.queryTime - mr.riseTime) / interval * 7)) % 7;
+	    float interval = moonRise.setTime - moonRise.riseTime;
+	    int angle = abs((int)trunc((moonRise.queryTime - moonRise.riseTime) / interval * 7)) % 7;
 	    if (interval < 0) {
 	      angle = 6 - angle;
 	    }
@@ -713,7 +711,7 @@ void setLeds()
 	}
 
 	// If the moon is not visible, blink the location instead of holding it steady.
-	if (moonVisible || upOrDown) {
+	if (moonRise.isVisible || upOrDown) {
 	  led1LState = pattern & 0x1;
 	  led2LState = pattern & 0x2;
 	  led2RState = pattern & 0x4;
@@ -1913,31 +1911,59 @@ void rootPageHandler() {
 
   // ******************** Astronomical Info table ********************
   // Moon Phase and related information
-  if (current_config.ledMode == LED_LUNAR) {
-    String moonTime;
+  if (current_config.ledMode == LED_LUNAR || current_config.backlightMode == BACKLIGHT_MOON_PHASE) {
 
     response_message += getTableHead2Col("Astronomical Information", "Name", "Value");
 
     String position = String(current_config.latitude) + " / " + String(current_config.longitude);
     response_message += getTableRow2Col("Latitude / Longitude", position);
 
-    response_message += getTableRow2Col("Moon", moonVisible ? "Visible" : "Not Visible");
+    if (current_config.ledMode == LED_LUNAR) {
 
-    if (moonHasRise) {
-      moonTime = asctime(gmtime(&moonRiseTime));
-      moonTime += " @ azimuth " + String(moonRiseAz);
-    } else {
-      moonTime = "No moon rise in last 24 hours";
-    }
-    response_message += getTableRow2Col("Moon Rise", moonTime);
+      response_message += getTableRow2Col("Moon", moonRise.isVisible ? "Visible" : "Not Visible");
+
+      String moonTime;
+      if (moonRise.hasRise) {
+	moonTime = asctime(gmtime(&moonRise.riseTime));
+	moonTime += " @ azimuth " + String(moonRise.riseAz);
+      } else {
+	moonTime = "No moon rise in last 24 hours";
+      }
+      response_message += getTableRow2Col("Moon Rise", moonTime);
 				      
-    if (moonHasSet) {
-      moonTime = asctime(gmtime(&moonSetTime));
-      moonTime += " @ azimuth " + String(moonSetAz);
-    } else {
-      moonTime = "No moon set in last 24 hours";
+      if (moonRise.hasSet) {
+	moonTime = asctime(gmtime(&moonRise.setTime));
+	moonTime += " @ azimuth " + String(moonRise.setAz);
+      } else {
+	moonTime = "No moon set in last 24 hours";
+      }
+      response_message += getTableRow2Col("Moon Set", moonTime);
     }
-    response_message += getTableRow2Col("Moon Set", moonTime);
+
+    if (current_config.backlightMode == BACKLIGHT_MOON_PHASE) {
+      response_message += getTableRow2Col("Moon Phase", moonPhase.phaseName);
+
+      response_message += getTableRow2Col("Moon is in", moonPhase.zodiacName);
+
+      response_message += getTableRow2Col("Sun", sunRise.isVisible ? "Visible" : "Not Visible");
+
+      String sunTime;
+      if (sunRise.hasRise) {
+	sunTime = asctime(gmtime(&sunRise.riseTime));
+	sunTime += " @ azimuth " + String(sunRise.riseAz);
+      } else {
+	sunTime = "No sun rise in last 24 hours";
+      }
+      response_message += getTableRow2Col("Sun Rise", sunTime);
+				      
+      if (sunRise.hasSet) {
+	sunTime = asctime(gmtime(&sunRise.setTime));
+	sunTime += " @ azimuth " + String(sunRise.setAz);
+      } else {
+	sunTime = "No sun set in last 24 hours";
+      }
+      response_message += getTableRow2Col("Sun Set", sunTime);
+    }
 
     response_message += getTableFoot();
   }
@@ -2264,6 +2290,7 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("1", "Cycling RGB backlight", (current_config.backlightMode == 1));
   response_message += getDropDownOption("2", "'Colourtime' backlight", (current_config.backlightMode == 2));
   response_message += getDropDownOption("3", "'Day of week' backlight", (current_config.backlightMode == 3));
+  response_message += getDropDownOption("4", "'Moon Phase' backlight", (current_config.backlightMode == 4));
   response_message += getDropDownFooter();
 
   // Cycle speed
@@ -2325,9 +2352,13 @@ void clockConfigPageHandler() {
   response_message += getDropDownFooter();
 
   // Lunar Position LED mode: Latitude and Longitude
-  response_message += getFloatNumberInput("Latitude:", "latitude", 0.01, -90, 90, current_config.latitude, (current_config.ledMode != LED_LUNAR));
-  response_message += getFloatNumberInput("Longitude:", "longitude", 0.01, -180, 180, current_config.longitude, (current_config.ledMode != LED_LUNAR));
-
+  response_message += getFloatNumberInput("Latitude:", "latitude", 0.01, -90, 90, current_config.latitude,
+					  (current_config.ledMode != LED_LUNAR &&
+					   current_config.backlightMode != BACKLIGHT_MOON_PHASE));
+  response_message += getFloatNumberInput("Longitude:", "longitude", 0.01, -180, 180, current_config.longitude,
+					  (current_config.ledMode != LED_LUNAR &&
+					   current_config.backlightMode != BACKLIGHT_MOON_PHASE));
+					   
   // Status LED mode Left
   response_message += getDropDownHeader("Left Status LED Mode:", "statusModeL", true, false);
   response_message += getDropDownOption("0", "NTP", (current_config.statusModeL == STATUS_LED_MODE_NTP));
