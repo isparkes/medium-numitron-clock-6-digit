@@ -36,9 +36,9 @@
 #include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis 1.5.0) // https://github.com/michaelmargolis/arduino_time
 #include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.14.0)
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
-#include <MoonPhase.h>		// https://github.com/signetica/MoonPhase (signetica 2.0.0)
-#include <MoonRise.h>		// https://github.com/signetica/MoonRise (signetica 2.0.0)
-#include <SunRise.h>		// https://github.com/signetica/SunRise (signetica 1.0.0)
+#include <MoonPhase.h>		// https://github.com/signetica/MoonPhase (signetica 2.0.1)
+#include <MoonRise.h>		// https://github.com/signetica/MoonRise (signetica 2.0.1)
+#include <SunRise.h>		// https://github.com/signetica/SunRise (signetica 1.0.1)
 
 // Other parts of the code, broken out for clarity
 #include "Globals.h"

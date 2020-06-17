@@ -206,23 +206,22 @@ void LEDManager::processLedStatus() {
 	    //    Range: 0 - 7
 	    //  cloudSize (size of cloud in digits):
 	    //    Range: 1 - 6
-	    //  cloudWxTimer (how often the weather changes, in minutes):
+	    //  cloudWxTimer (time until next weather change in minutes):
 	    //    Range: 1 - 30
 	    //  Weather:
 	    //   cloudSpeed (digits/sec):
 	    //    Range: 0.5 - 4
 	    //   cloudDensity (probability of a new cloud per second):
-	    //    Range: 5 - 20
+	    //    Range: 5 - 30
 
 	    // Change weather (cloud speed and direction, number of clouds)
 	    if (_cloudWxTimer-- == 0) {
 	      if (_cloudSize) {				  // Wait for cloud to pass.
 		_cloudWxTimer += _cloudSize + DIGIT_COUNT;
 	      } else {
-//		_cloudWxTimer = random(1, 31) * 60;	  // Weather changes
-		_cloudWxTimer = random(1, 3) * 60;	  // Weather changes
+		_cloudWxTimer = random(1, 31) * 60;	  // Weather changes
 		_cloudSpeed = (float)random(5, 41) / 10.0 * (random(0, 2) == 1 ? 1 : -1);
-		_cloudDensity = random(5, 21);		  // Probability of cloud / sec.
+		_cloudDensity = random(5, 31);		  // Probability of cloud / sec.
 	      }
 	    }
 

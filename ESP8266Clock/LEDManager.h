@@ -37,16 +37,20 @@
 #define STATUS_GREEN  2
 #define STATUS_BLUE   3
 
-// ---------------------------- RGB moon, sky, and cloud colors .-----------------
+// ---------------------------- RGB moon, sky, and cloud colors ------------------
 #define MOON_COLOR	  255, 240, 160
-#define NIGHT_SKY_COLOR	  100, 100, 255
-#define NIGHT_CLOUD_COLOR 150, 150, 150
-#define DAY_SKY_COLOR	  255,  151, 50
-//#define DAY_SKY_COLOR	  200,  65, 65  //red
-//#define DAY_SKY_COLOR	  200,  115, 65 //orange
-//#define DAY_SKY_COLOR	  255,  151, 25
-//#define DAY_SKY_COLOR	  255,  190, 50
-#define DAY_CLOUD_COLOR	  205, 190, 125
+
+#define DAY_SKY_COLOR	   70, 150, 255	    // Sky Blue
+#define DAY_CLOUD_COLOR   150, 150, 150	    // Matching clouds
+
+//#define DAY_SKY_COLOR	  100, 100, 255	    // Deep Blue
+//#define DAY_CLOUD_COLOR 150, 150, 150     // Matching clouds
+
+#define NIGHT_SKY_COLOR   200,  65,  65	    // Red
+#define NIGHT_CLOUD_COLOR 180, 140, 140	    // Matching clouds
+
+//#define NIGHT_SKY_COLOR   255, 151,  50   // Orange
+//#define NIGHT_CLOUD_COLOR 205, 190, 125   // Matching clouds
 
 // ************************** Pin Allocations *************************
 #define LED_DOUT                        3     // RX defined by DMA output of library
