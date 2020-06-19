@@ -316,6 +316,9 @@ void setup()
     setDiagnosticLED(DIAGS_DEBUG, STATUS_GREEN);
   }
 
+  // Initialize the random number generator with the current time.
+  randomSeed(now());
+
   debugManager.debugMsg("Exit startup");
   spiffs.getStatsFromSpiffs(&current_stats);
   ledManager.setDayOfWeek(weekday());
@@ -2290,7 +2293,8 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("1", "Cycling RGB backlight", (current_config.backlightMode == 1));
   response_message += getDropDownOption("2", "'Colourtime' backlight", (current_config.backlightMode == 2));
   response_message += getDropDownOption("3", "'Day of week' backlight", (current_config.backlightMode == 3));
-  response_message += getDropDownOption("4", "'Moon Phase' backlight", (current_config.backlightMode == 4));
+  response_message += getDropDownOption("4", "'Sweep seconds' backlight", (current_config.backlightMode == 4));
+  response_message += getDropDownOption("5", "'Moon Phase' backlight", (current_config.backlightMode == 5));
   response_message += getDropDownFooter();
 
   // Cycle speed

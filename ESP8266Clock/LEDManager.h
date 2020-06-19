@@ -15,8 +15,9 @@
 #define BACKLIGHT_CYCLE                 1  // cycle through random colours, strategy 3
 #define BACKLIGHT_COLOUR_TIME           2  // use "ColourTime" - different colours for each digit value
 #define BACKLIGHT_DAY_OF_WEEK           3  // different colour for each day of the week
-#define BACKLIGHT_MOON_PHASE		4  // Indicate moon phase with colour pattern.
-#define BACKLIGHT_MAX                   4
+#define BACKLIGHT_SWEEP			4  // Sweep colors through the display.
+#define BACKLIGHT_MOON_PHASE		5  // Indicate moon phase with colour pattern.
+#define BACKLIGHT_MAX                   5
 #define BACKLIGHT_DEFAULT               1
 
 // -------------------------------------------------------------------------------
@@ -46,8 +47,11 @@
 //#define DAY_SKY_COLOR	  100, 100, 255	    // Deep Blue
 //#define DAY_CLOUD_COLOR 150, 150, 150     // Matching clouds
 
-#define NIGHT_SKY_COLOR   200,  65,  65	    // Red
-#define NIGHT_CLOUD_COLOR 180, 140, 140	    // Matching clouds
+#define NIGHT_SKY_COLOR   255,  65,  25     // Red
+#define NIGHT_CLOUD_COLOR 175, 25, 5     // Matching clouds
+
+//#define NIGHT_SKY_COLOR   200,  65,  65     // Red Orange
+//#define NIGHT_CLOUD_COLOR 180, 140, 140     // Matching clouds
 
 //#define NIGHT_SKY_COLOR   255, 151,  50   // Orange
 //#define NIGHT_CLOUD_COLOR 205, 190, 125   // Matching clouds
@@ -110,6 +114,14 @@ class LEDManager
     byte ledRu[DIGIT_COUNT];
     byte ledGu[DIGIT_COUNT];
     byte ledBu[DIGIT_COUNT];
+
+    // Sweep
+    byte _oldColor[3] = {0, 0, 0};
+    byte _newColor[3] = {0xff, 0xff, 0xff};
+    float _lastPhase;
+    int _missingColor = 0, _saturatedColor = 1, _variableColor = 2;
+    int _white = 0;
+    unsigned long _lastMillis;
 
     // Moon Phase & Clouds
     unsigned long _lastSecond = 0;

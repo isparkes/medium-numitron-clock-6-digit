@@ -148,6 +148,71 @@ void LEDManager::processLedStatus() {
                             getLEDAdjustedUL(dayOfWeekB[_dow]));
           break;
         }
+      case BACKLIGHT_SWEEP: {
+	  // Synchonize the phase with the change of seconds.
+	  int sec = second();
+	  if (_lastSecond != sec) {
+	    _lastSecond = sec;
+	    _lastMillis = millis();
+	  }
+	  float phase = (float)((millis() - _lastMillis) % 1000) / 1000.0;
+
+	  // Select an interesting new color after old color is swept out.
+	  // Alternate white and the color selection.
+	  if (phase < _lastPhase) {
+	    for (int i = 0; i < 3; i++) {
+	      _oldColor[i] = _newColor[i];
+	    }
+
+	    if (_white++ % 2) {			    // White
+	      _newColor[_missingColor] = 0xff;
+	      _newColor[_saturatedColor] = 0xff;
+	      _newColor[_variableColor] = 0xff;
+	    } else {				    // Pick a new color that lies
+	      int s = _variableColor;		    // along the rim of the color wheel.
+	      _variableColor = _missingColor;
+	      _missingColor = _saturatedColor;
+	      _saturatedColor = s;
+	      if (random(2) == 1) {
+		s = _missingColor;
+		_missingColor = _variableColor;
+		_variableColor = s;
+	      }
+	      _newColor[_missingColor] = 0;
+	      _newColor[_saturatedColor] = 0xff;
+	      _newColor[_variableColor] = random(257);
+	    }
+	  }
+	  _lastPhase = phase;
+
+	  // Blend the colors of each backlight corresponding to the phase.
+	  for (int i = 0; i < DIGIT_COUNT; i++) {
+	    float level;
+
+	    int n, backForth = 0;				// Future config option
+	    if (backForth == 1)
+	      n = (_white % 2) ? i : DIGIT_COUNT - i - 1;	// Back-and-forth
+	    else
+	      n = i;						// Left-to-right
+	    level = (phase - (float)n / DIGIT_COUNT) * DIGIT_COUNT;
+	    if (level < 0)
+	      level = 0;
+	    if (level > 1)
+	      level = 1;
+
+	    RgbColor result;
+	    result = RgbColor::LinearBlend(RgbColor(_oldColor[0], _oldColor[1], _oldColor[2]),
+					   RgbColor(_newColor[0], _newColor[1], _newColor[2]),
+					   level);
+	    ledRb[i] = getLEDAdjustedBL(result.R);
+	    ledGb[i] = getLEDAdjustedBL(result.G);
+	    ledBb[i] = getLEDAdjustedBL(result.B);
+	    ledRu[i] = getLEDAdjustedBL(result.R);
+	    ledGu[i] = getLEDAdjustedBL(result.G);
+	    ledBu[i] = getLEDAdjustedBL(result.B);
+	  }
+	  break;
+	}
       case BACKLIGHT_MOON_PHASE: {
 	  // Illuminate a fraction of the backlights corresponding to the phase
 	  // of the moon.  We go from right to left as seen in the northern hemisphere.
@@ -158,7 +223,7 @@ void LEDManager::processLedStatus() {
 	    _lastSecond = s;
 
 	    // Update sun rise/set & moon phase data.
-	    if (s == 45) {
+	    if (s == 14) {
 	      // Because of inconsistent approaches to Arduino time, we have to
 	      // figure out the difference between whatever is residing in now()
 	      // and GMT, then add and subtract it to convert to and from GMT.
@@ -210,17 +275,17 @@ void LEDManager::processLedStatus() {
 	    //    Range: 1 - 30
 	    //  Weather:
 	    //   cloudSpeed (digits/sec):
-	    //    Range: 0.5 - 4
+	    //    Range: 0.25 - 4
 	    //   cloudDensity (probability of a new cloud per second):
 	    //    Range: 5 - 30
 
 	    // Change weather (cloud speed and direction, number of clouds)
-	    if (_cloudWxTimer-- == 0) {
-	      if (_cloudSize) {				  // Wait for cloud to pass.
-		_cloudWxTimer += _cloudSize + DIGIT_COUNT;
-	      } else {
+	    if (_cloudWxTimer-- <= 0) {
+	      if (!_cloudSize) {				  // Wait for cloud to pass.
 		_cloudWxTimer = random(1, 31) * 60;	  // Weather changes
-		_cloudSpeed = (float)random(5, 41) / 10.0 * (random(0, 2) == 1 ? 1 : -1);
+		float f = 1 + random(0, 31) / 10.0;	  // Distribute speeds nicely.
+		f = random(0, 2) == 1 ? f : 1 / f;
+		_cloudSpeed = f * (random(0, 2) == 1 ? 1 : -1);
 		_cloudDensity = random(5, 31);		  // Probability of cloud / sec.
 	      }
 	    }
