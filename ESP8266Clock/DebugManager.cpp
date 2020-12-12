@@ -1,19 +1,18 @@
 #include "DebugManager.h"
 
 void DebugManager::setUp(bool newDebug) {
-  if (!_debug && newDebug) {
+  _debug = newDebug;
+  if (_debug) {
     Serial.begin(115200);
+    // let Serial begin
+    delay(500);
     debugMsg("");
     debugMsg("--------------------- START ---------------------");
-  }
-  
-  if (_debug && !newDebug) {
+  } else {
     debugMsg("");
     debugMsg("---------------------- END ----------------------");
     Serial.end();
-  }
-  
-  _debug = newDebug;
+  }  
 }
 
 void DebugManager::debugMsg(String message) {

@@ -34,7 +34,7 @@
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
 #include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis 1.5.0) // https://github.com/michaelmargolis/arduino_time
-#include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.14.0)
+#include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.16.0)
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
 
 // Other parts of the code, broken out for clarity
@@ -224,20 +224,20 @@ void setup()
   OutputManager::Instance().outputDisplayDiags();
 
   boolean connected = false;
-  connected = wifiManager.autoConnect(WiFi.hostname().c_str(), "SetMeUp!");
+  myHostname = WiFi.hostname();
+  connected = wifiManager.autoConnect(myHostname.c_str(), "SetMeUp!");
 
   if (connected) {
     debugManager.debugMsg("Connected!");
     setDiagnosticLED(DIAGS_WIFI, STATUS_GREEN);
+    myIP = WiFi.localIP();
+    debugManager.debugMsg("IP address: " + formatIPAsString(myIP));
   } else {
     debugManager.debugMsg("Could NOT Connect");
     setDiagnosticLED(DIAGS_WIFI, STATUS_RED);
+    myIP = WiFi.softAPIP();
+    debugManager.debugMsg("AP IP address: " + formatIPAsString(myIP));
   }
-
-  IPAddress apIP = WiFi.softAPIP();
-  IPAddress myIP = WiFi.localIP();
-  debugManager.debugMsg("AP IP address: " + formatIPAsString(apIP));
-  debugManager.debugMsg("IP address: " + formatIPAsString(myIP));
 
   // If we lose the connection, we try to recover it
   WiFi.setAutoReconnect(true);
@@ -522,11 +522,11 @@ void performOncePerMinuteProcessing() {
   }
 
   if (getIsConnected()) {
-    IPAddress ip = WiFi.localIP();
-    debugManager.debugMsg("IP: " + formatIPAsString(ip));
+    myIP = WiFi.localIP();
+    debugManager.debugMsg("IP: " + formatIPAsString(myIP));
   } else {
-    IPAddress ip = WiFi.localIP();
-    debugManager.debugMsg("Not connected IP: " + formatIPAsString(ip));
+    myIP = WiFi.softAPIP();
+    debugManager.debugMsg("Not connected IP: " + formatIPAsString(myIP));
   }
 }
 
@@ -915,23 +915,11 @@ void processCurrentMode(int displayMode) {
           }
 
           if (tempDisplayMode == TEMP_IP_ADDR12) {
-            if (getIsConnected()) {
-              IPAddress myIP = WiFi.localIP();
-              OutputManager::Instance().loadNumberArrayIP(myIP[0], myIP[1]);
-            } else {
-              // we can't show the IP address if we have the RTC, just skip
-              tempDisplayMode++;
-            }
+            OutputManager::Instance().loadNumberArrayIP(myIP[0], myIP[1]);
           }
 
           if (tempDisplayMode == TEMP_IP_ADDR34) {
-            if (getIsConnected()) {
-              IPAddress myIP = WiFi.localIP();
-              OutputManager::Instance().loadNumberArrayIP(myIP[2], myIP[3]);
-            } else {
-              // we can't show the IP address if we have the RTC, just skip
-              tempDisplayMode++;
-            }
+            OutputManager::Instance().loadNumberArrayIP(myIP[2], myIP[3]);
           }
 
           if (tempDisplayMode == TEMP_ESP_ID) {
@@ -1587,6 +1575,13 @@ void setDiagnosticLED(byte stepNumber, byte state) {
   delay(500);
 }
 
+// ************************************************************
+// See if we have enough flash space for OTA
+// ************************************************************
+boolean getOTAvailable() {
+  return ESP.getSketchSize()*2 < ESP.getFlashChipRealSize();
+}
+
 //**********************************************************************************
 //**********************************************************************************
 //*                         RTC Module Time Provider                               *
@@ -1607,7 +1602,10 @@ String getRTCTime(boolean setInternalTime) {
     byte mins = Clock.minute;
     byte secs = Clock.second;
 
-    String returnValue = String(years) + ":" + String(months) + ":" + String(days) + " " + String(hours) + ":" + String(mins) + ":" + String(secs);
+    char buf1[20];
+    sprintf(buf1, "%04d:%02d:%02d %02d:%02d:%02d", years, months, days, hours, mins, secs);
+    String returnValue = String(buf1);
+  
     debugManager.debugMsg("Got RTC time: " + returnValue);
 
     if (setInternalTime) {
@@ -1617,6 +1615,8 @@ String getRTCTime(boolean setInternalTime) {
     }
 
     return returnValue;
+  } else {
+    return "RTC not available";
   }
 }
 
@@ -1735,6 +1735,7 @@ void factoryReset() {
   cc->preheatStrength = PREHEAT_DEFAULT;
   cc->extDimFactor = EXT_DIM_FACTOR_DEFAULT;
   cc->separatorDimFactor = SEP_DIM_DEFAULT;
+  cc->doNotDimIndLEDs = false;
 
   spiffs.saveConfigToSpiffs(cc);
 }
@@ -1766,45 +1767,47 @@ void rootPageHandler() {
   debugManager.debugMsg("Root page in");
 
   String response_message = getHTMLHead(getIsConnected());
-  response_message += getNavBar();
+  response_message += getNavBar(getIsConnected());
 
   // Status table
   response_message += getTableHead2Col("Current Status", "Name", "Value");
 
-  if (WiFi.status() == WL_CONNECTED)
+  if (getIsConnected())
   {
-    IPAddress ip = WiFi.localIP();
-    response_message += getTableRow2Col("WLAN IP", formatIPAsString(ip));
-    response_message += getTableRow2Col("WLAN MAC", WiFi.macAddress());
-    response_message += getTableRow2Col("WLAN SSID", WiFi.SSID());
+    response_message += getTableRow2Col("Current IP", formatIPAsString(myIP));
+    response_message += getTableRow2Col("MAC", WiFi.macAddress());
+    response_message += getTableRow2Col("Connected to SSID", WiFi.SSID());
     response_message += getTableRow2Col("NTP Pool", ntpAsync.getNtpPool());
-    response_message += getTableRow2Col("TZ", ntpAsync.getTZS());
+    response_message += getTableRow2Col("TZ string", ntpAsync.getTZS());
     response_message += getTableRow2Col("Last NTP time", ntpAsync.getLastTimeFromServer());
     String clockUrl = "http://" + WiFi.hostname() + ".local";
     clockUrl.toLowerCase();
     response_message += getTableRow2Col("Clock Name", WiFi.hostname() + " (<a href = \"" + clockUrl + "\">" + clockUrl + "</a>)");
-  }
-  else
-  {
-    IPAddress softapip = WiFi.softAPIP();
-    String ipStrAP = String(softapip[0]) + '.' + String(softapip[1]) + '.' + String(softapip[2]) + '.' + String(softapip[3]);
-    response_message += getTableRow2Col("AP IP", ipStrAP);
+    
+    long lastUpdateTimeSecs = ntpAsync.getLastUpdateTimeSecs(millis());
+    response_message += getTableRow2Col("Last time update", secsToReadableString(lastUpdateTimeSecs) + " ago");
+  
+    signed long absNextUpdate = abs(ntpAsync.getNextUpdate(millis()));
+    String overdueInd = "";
+    if (absNextUpdate < 0) {
+      overdueInd = " overdue";
+      absNextUpdate = -absNextUpdate;
+    }
+    response_message += getTableRow2Col("Time before next update", secsToReadableString(absNextUpdate) + overdueInd);
+  } else {
+    server.on("/reset-tmp", resetPageHandler);
+    
+    if (myHostname == "") {
+      myHostname = "ESP-"+String(ESP.getChipId(), HEX);
+      myHostname.toUpperCase();
+    }
+    response_message += getWarningAlert("Not connected to the Internet! Click <a href=\"/reset-tmp\">here</a> to restart and put the clock back into Access Mode for 60 seconds, then Connect to SSID " + myHostname + " and configure your WiFi!");
+    response_message += getTableRow2Col("AP IP", formatIPAsString(myIP));
     response_message += getTableRow2Col("AP MAC", WiFi.softAPmacAddress());
+    response_message += getTableRow2Col("AP SSID", myHostname);
   }
 
   response_message += getTableRow2Col("Uptime", secsToReadableString(millis() / 1000));
-
-  long lastUpdateTimeSecs = ntpAsync.getLastUpdateTimeSecs(millis());
-  response_message += getTableRow2Col("Last time update", secsToReadableString(lastUpdateTimeSecs) + " ago");
-
-  signed long absNextUpdate = abs(ntpAsync.getNextUpdate(millis()));
-  String overdueInd = "";
-  if (absNextUpdate < 0) {
-    overdueInd = " overdue";
-    absNextUpdate = -absNextUpdate;
-  }
-  response_message += getTableRow2Col("Time before next update", secsToReadableString(absNextUpdate) + overdueInd);
-
   response_message += getTableRow2Col("Version", SOFTWARE_VERSION);
 
   // Scan I2C bus
@@ -1818,6 +1821,41 @@ void rootPageHandler() {
     }
   }
 
+  String connectionInfo = "";
+  if (getIsConnected()) {
+    connectionInfo += "W";
+  } else {
+    connectionInfo += "w";
+  }
+  if (ntpAsync.ntpTimeValid(nowMillis)) {
+    connectionInfo += "N";
+  } else {
+    connectionInfo += "n";
+  }
+  if (spiffs.getSpiffsMounted()) {
+    connectionInfo += "S";
+  } else {
+    connectionInfo += "s";
+  }
+  if (getOTAvailable()) {
+    connectionInfo += "U";
+  } else {
+    connectionInfo += "u";
+  }
+  if (getWebAuthentication()) {
+    connectionInfo += "A";
+  } else {
+    connectionInfo += "a";
+  }
+
+#ifdef DEBUG
+  connectionInfo += "D";
+#else
+  connectionInfo += "d";
+#endif
+
+  response_message += getTableRow2Col("Status string", connectionInfo);
+  
   response_message += getTableFoot();
 
   // ******************** Clock Info table ***************************
@@ -1845,7 +1883,7 @@ void rootPageHandler() {
   response_message += getTableRow2Col("Digit brightness %", String(digitBrightness, 2));
   response_message += getTableRow2Col("Motion Sensor", motionSensorState);
   response_message += getTableRow2Col("Time Source", timeSource);
-  response_message += getTableRow2Col("Display Time", currentTime);
+  response_message += getTableRow2Col("Display Time", timeToReadableString(year(),month(),day(),hour(),minute(),second()));
   response_message += getTableRow2Col("Real Time Clock", rtcState);
   if (useRTC) {
     response_message += getTableRow2Col("RTC Time", getRTCTime(false));
@@ -1885,9 +1923,9 @@ void timeServerPageHandler() {
 
   boolean changed = false;
 
-  checkServerArgString("ntppool", "NTP Pool", changed, current_config.ntpPool);
-  checkServerArgInt("ntpupdate", "NTP update interval", changed, current_config.ntpUpdateInterval);
-  checkServerArgString("tzs", "Time Zone String", changed, current_config.tzs);
+  changed = changed | checkServerArgString("ntppool", "NTP Pool", current_config.ntpPool);
+  changed = changed | checkServerArgInt("ntpupdate", "NTP update interval", current_config.ntpUpdateInterval);
+  changed = changed | checkServerArgString("tzs", "Time Zone String", current_config.tzs);
   if (changed) {
     ntpAsync.setTZS(current_config.tzs);
     ntpAsync.setNtpPool(current_config.ntpPool);
@@ -1898,7 +1936,7 @@ void timeServerPageHandler() {
   // -----------------------------------------------------------------------------
 
   String response_message = getHTMLHead(getIsConnected());
-  response_message += getNavBar();
+  response_message += getNavBar(getIsConnected());
 
   // form header
   response_message += getFormHead("Select time server");
@@ -1924,14 +1962,7 @@ void timeServerPageHandler() {
 void resetPageHandler() {
   debugManager.debugMsg("Reset page in");
 
-  String response_message = getHTMLHead(getIsConnected());
-  response_message += getNavBar();
-
-  response_message += "<div class=\"alert alert-success fade in\"><strong>Success!</strong> Reset done.</div></div>";
-
-  response_message += getHTMLFoot();
-
-  server.send(200, "text/html", response_message);
+  server.send(302, "text/html", "<meta http-equiv=\"refresh\" content=\"5; URL=/\" />");
 
   debugManager.debugMsg("Reset page out");
 
@@ -1950,51 +1981,52 @@ void clockConfigPageHandler() {
 
   boolean changed = false;
 
-  checkServerArgBoolean("12h24hMode", "12/24h mode", "12h", "24h", changed, current_config.hourMode);
-  checkServerArgBoolean("blankLeading", "Leading zero", "blank", "show", changed, current_config.blankLeading);
-  checkServerArgBoolean("useLDR", "Use LDR", "on", "off", changed, current_config.useLDR);
-  checkServerArgInt("minDim", "minDim", changed, current_config.minDim);
-  checkServerArgInt("thresholdBright", "thresholdBright", changed, current_config.thresholdBright);
-  checkServerArgInt("sensitivityLDR", "sensitivityLDR", changed, current_config.sensitivityLDR);
-  checkServerArgByte("dateFormat", "dateFormat", changed, current_config.dateFormat);
-  checkServerArgByte("dayBlanking", "dayBlanking", changed, current_config.dayBlanking);
-  checkServerArgByte("blankHourStart", "blankHourStart", changed, current_config.blankHourStart);
-  checkServerArgByte("blankHourEnd", "blankHourEnd", changed, current_config.blankHourEnd);
-  checkServerArgByte("backlightMode", "backlightMode", changed, current_config.backlightMode);
-  checkServerArgBoolean("useBLPulse", "Use BL pulse", "on", "off", changed, current_config.useBLPulse);
-  checkServerArgBoolean("useBLDim", "Use BL dim", "on", "off", changed, current_config.useBLDim);
-  checkServerArgByte("redCnl", "redCnl", changed, current_config.redCnl);
-  checkServerArgByte("grnCnl", "grnCnl", changed, current_config.grnCnl);
-  checkServerArgByte("bluCnl", "bluCnl", changed, current_config.bluCnl);
-  checkServerArgByte("backlightDimFactor", "backlightDimFactor", changed, current_config.backlightDimFactor);
-  checkServerArgByte("extDimFactor", "extDimFactor", changed, current_config.extDimFactor);
-  checkServerArgByte("cycleSpeed", "cycleSpeed", changed, current_config.cycleSpeed);
-  checkServerArgByte("blankMode", "blankMode", changed, current_config.blankMode);
-  checkServerArgByte("slotsMode", "slotsMode", changed, current_config.slotsMode);
-  checkServerArgInt("pirTimeout", "pirTimeout", changed, current_config.pirTimeout);
-  checkServerArgBoolean("usePIRPullup", "Use PIR pullup", "on", "off", changed, current_config.usePIRPullup);
-  checkServerArgByte("ledMode", "ledMode", changed, current_config.ledMode);
-  checkServerArgByte("statusModeL", "statusModeL", changed, current_config.statusModeL);
-  checkServerArgByte("statusModeR", "statusModeR", changed, current_config.statusModeR);
+  changed = changed | checkServerArgBoolean("12h24hMode", "12/24h mode", "12h", "24h", current_config.hourMode);
+  changed = changed | checkServerArgBoolean("blankLeading", "Leading zero", "blank", "show", current_config.blankLeading);
+  changed = changed | checkServerArgBoolean("useLDR", "Use LDR", "on", "off", current_config.useLDR);
+  changed = changed | checkServerArgInt("minDim", "minDim", current_config.minDim);
+  changed = changed | checkServerArgInt("thresholdBright", "thresholdBright", current_config.thresholdBright);
+  changed = changed | checkServerArgInt("sensitivityLDR", "sensitivityLDR", current_config.sensitivityLDR);
+  changed = changed | checkServerArgByte("dateFormat", "dateFormat", current_config.dateFormat);
+  changed = changed | checkServerArgByte("dayBlanking", "dayBlanking", current_config.dayBlanking);
+  changed = changed | checkServerArgByte("blankHourStart", "blankHourStart", current_config.blankHourStart);
+  changed = changed | checkServerArgByte("blankHourEnd", "blankHourEnd", current_config.blankHourEnd);
+  changed = changed | checkServerArgByte("backlightMode", "backlightMode", current_config.backlightMode);
+  changed = changed | checkServerArgBoolean("useBLPulse", "Use BL pulse", "on", "off", current_config.useBLPulse);
+  changed = changed | checkServerArgBoolean("useBLDim", "Use BL dim", "on", "off", current_config.useBLDim);
+  changed = changed | checkServerArgByte("redCnl", "redCnl", current_config.redCnl);
+  changed = changed | checkServerArgByte("grnCnl", "grnCnl", current_config.grnCnl);
+  changed = changed | checkServerArgByte("bluCnl", "bluCnl", current_config.bluCnl);
+  changed = changed | checkServerArgByte("backlightDimFactor", "backlightDimFactor", current_config.backlightDimFactor);
+  changed = changed | checkServerArgByte("extDimFactor", "extDimFactor", current_config.extDimFactor);
+  changed = changed | checkServerArgByte("cycleSpeed", "cycleSpeed", current_config.cycleSpeed);
+  changed = changed | checkServerArgByte("blankMode", "blankMode", current_config.blankMode);
+  changed = changed | checkServerArgByte("slotsMode", "slotsMode", current_config.slotsMode);
+  changed = changed | checkServerArgInt("pirTimeout", "pirTimeout", current_config.pirTimeout);
+  changed = changed | checkServerArgBoolean("usePIRPullup", "Use PIR pullup", "on", "off", current_config.usePIRPullup);
+  changed = changed | checkServerArgByte("ledMode", "ledMode", current_config.ledMode);
+  changed = changed | checkServerArgByte("statusModeL", "statusModeL", current_config.statusModeL);
+  changed = changed | checkServerArgByte("statusModeR", "statusModeR", current_config.statusModeR);
   boolean webConfigChanged = false;
-  checkServerArgBoolean("webAuthentication", "Web Authentication", "on", "off", webConfigChanged, current_config.webAuthentication);
-  checkServerArgString("webUsername", "webUsername", webConfigChanged, current_config.webUsername);
-  checkServerArgString("webPassword", "webPassword", webConfigChanged, current_config.webPassword);
+  webConfigChanged = webConfigChanged | checkServerArgBoolean("webAuthentication", "Web Authentication", "on", "off", current_config.webAuthentication);
+  webConfigChanged = webConfigChanged | checkServerArgString("webUsername", "webUsername", current_config.webUsername);
+  webConfigChanged = webConfigChanged | checkServerArgString("webPassword", "webPassword", current_config.webPassword);
   if (webConfigChanged) {
     changed = true;
     setWebAuthentication(current_config.webAuthentication);
     setWebUserName(current_config.webUsername);
     setWebPassword(current_config.webPassword);
   }
-  checkServerArgByte("preheatStrength", "preheatStrength", changed, current_config.preheatStrength);
-  checkServerArgByte("separatorDimFactor", "separatorDimFactor", changed, current_config.separatorDimFactor);
+  changed = changed | checkServerArgByte("preheatStrength", "preheatStrength", current_config.preheatStrength);
+  changed = changed | checkServerArgByte("separatorDimFactor", "separatorDimFactor", current_config.separatorDimFactor);
+  changed = changed | checkServerArgBoolean("doNotDimIndLEDs", "doNotDimIndLEDs", "on", "off", current_config.doNotDimIndLEDs);
   saveToSpiffsIfChanged(changed);
   
   ledManager.recalculateVariables();
 
   // -----------------------------------------------------------------------------
   String response_message = getHTMLHead(getIsConnected());
-  response_message += getNavBar();
+  response_message += getNavBar(getIsConnected());
 
   // -----------------------------------------------------------------------------
   response_message += getFormHead("General options");
@@ -2222,6 +2254,17 @@ void clockConfigPageHandler() {
   response_message += getDropDownOption("2", "Dim", (current_config.separatorDimFactor == SEP_DIM));
   response_message += getDropDownFooter();
 
+  // Don't dim the indicators - for tubes with DPs used as indicators
+  response_message += getRadioGroupHeader("Indicators full bightness");
+  if (current_config.doNotDimIndLEDs) {
+    response_message += getRadioButton("doNotDimIndLEDs", "On", "on", true);
+    response_message += getRadioButton("doNotDimIndLEDs", "Off", "off", false);
+  } else {
+    response_message += getRadioButton("doNotDimIndLEDs", "On", "on", false);
+    response_message += getRadioButton("doNotDimIndLEDs", "Off", "off", true);
+  }
+  response_message += getRadioGroupFooter();
+
   response_message += getSubmitButton("Set");
 
   response_message += getFormFoot();
@@ -2261,24 +2304,31 @@ void clockConfigPageHandler() {
 void setDisplayValuePageHandler() {
   String resultMessage;
   byte timeValue = 0xff;
-  boolean valueValid = false;
-  boolean timeValid = false;
-  boolean formatValid = false;
 
   int valueToDisplay = 0;
   int valueTime = 0;
   int valueFormat = 0;
 
-  checkServerArgInt("value", "value", valueValid, valueToDisplay);
-  checkServerArgInt("time", "time", timeValid, valueTime);
-  checkServerArgInt("format", "format", formatValid, valueFormat);
+  String response_message = getHTMLHead(getIsConnected());
+  response_message += getNavBar(getIsConnected());
 
-  if (valueValid) {
+  response_message += "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">Show a value on the clock</h3>";
+
+  if (checkServerArgInt("value", "value", valueToDisplay)) {
+    response_message += "<div class=\"alert alert-success fade in\"><strong>";
+    response_message += "display value was set!";
+    response_message += "</strong></div></div>";
+    
     OutputManager::Instance().setValueToShow(valueToDisplay % 1000000);
     OutputManager::Instance().setValueDisplayTime(10);
+  } else {
+    response_message += "<div class=\"alert alert-error fade in\"><strong>";
+    response_message += "You need to set at least the \"value\" parameter! A valid command line is http://<clock.ip.addres>/setvalue?value=123456&time=60&format=333333";
+    response_message += "</strong><br>";
+    response_message += "The format values are: 0 = blanked digit, 1 = normal display, 2 = blinking digit</div></div>";
   }
 
-  if (timeValid) {
+  if (checkServerArgInt("time", "time", valueTime)) {
     if (valueTime >= 255) {
       OutputManager::Instance().setValueDisplayTime(255);
     } else {
@@ -2286,24 +2336,8 @@ void setDisplayValuePageHandler() {
     }
   }
 
-  if (formatValid) {
+  if (checkServerArgInt("format", "format", valueFormat)) {
     OutputManager::Instance().setValueFormat(valueFormat);
-  }
-
-  String response_message = getHTMLHead(getIsConnected());
-  response_message += getNavBar();
-
-  response_message += "<div class=\"container\" role=\"main\"><h3 class=\"sub-header\">Show a value on the clock</h3>";
-
-  if (valueValid) {
-    response_message += "<div class=\"alert alert-success fade in\"><strong>";
-    response_message += "display value was set!";
-    response_message += "</strong></div></div>";
-  } else {
-    response_message += "<div class=\"alert alert-error fade in\"><strong>";
-    response_message += "You need to set at least the \"value\" parameter! A valid command line is http://<clock.ip.addres>/setvalue?value=123456&time=60&format=333333";
-    response_message += "</strong><br>";
-    response_message += "The format values are: 0 = blanked digit, 1 = normal display, 2 = blinking digit</div></div>";
   }
 
   response_message += getHTMLFoot();
@@ -2320,7 +2354,7 @@ void utilityPageHandler()
 
 
   String response_message = getHTMLHead(getIsConnected());
-  response_message += getNavBar();
+  response_message += getNavBar(getIsConnected());
 
   // form header
   response_message += getFormHead("Clock Utilities");
@@ -2329,7 +2363,9 @@ void utilityPageHandler()
   response_message += "<hr><li><a href=\"/resetwifi\">Clear WiFi configuration and restart</a></li>";
   response_message += "<hr><li><a href=\"/reset\">Restart module</a></li>";
   response_message += "<hr><li><a href=\"/update\">Update firmware</a></li>";
-  response_message += "<hr><li><a href=\"/ntpupdate\">Force update from NTP now</a></li>";
+  if (getIsConnected()) {
+    response_message += "<hr><li><a href=\"/ntpupdate\">Force update from NTP now</a></li>";
+  }
   response_message += "<hr><li><a href=\"/factoryreset\">Perform factory reset without resetting Wifi configuration</a></li>";
   response_message += "</ul>";
 
@@ -2348,7 +2384,7 @@ void resetWiFiPageHandler() {
   wifiManager.resetSettings();
 
   String response_message = getHTMLHead(getIsConnected());
-  response_message += getNavBar();
+  response_message += getNavBar(getIsConnected());
   response_message += "<div class=\"alert alert-success fade in\"><strong>Attempting a restart.</strong>";
   response_message += "<script> var timer = setTimeout(function() {window.location='/'}, 10000);</script>";
   response_message += getHTMLFoot();
@@ -2430,7 +2466,7 @@ void handleNotFound() {
 // ************************************************************
 void localCSSHandler()
 {
-  PGM_P cssStr = PSTR(".navbar,.table{margin-bottom:20px}.nav>li,.nav>li>a,article,aside,details,figcaption,figure,footer,header,hgroup,main,menu,nav,section,summary{display:block}.btn,.form-control,.navbar-toggle{background-image:none}.table,label{max-width:100%}.sub-header{padding-bottom:10px;border-bottom:1px solid #eee}.h3,h3{font-size:24px}.table{width:100%}table{background-color:transparent;border-spacing:0;border-collapse:collapse}.table-striped>tbody>tr:nth-of-type(2n+1){background-color:#f9f9f9}.table>caption+thead>tr:first-child>td,.table>caption+thead>tr:first-child>th,.table>colgroup+thead>tr:first-child>td,.table>colgroup+thead>tr:first-child>th,.table>thead:first-child>tr:first-child>td,.table>thead:first-child>tr:first-child>th{border-top:0}.table>thead>tr>th{border-bottom:2px solid #ddd}.table>tbody>tr>td,.table>tbody>tr>th,.table>tfoot>tr>td,.table>tfoot>tr>th,.table>thead>tr>td,.table>thead>tr>th{padding:8px;line-height:1.42857143;vertical-align:top;border-top:1px solid #ddd}th{text-align:left}td,th{padding:0}.navbar>.container .navbar-brand,.navbar>.container-fluid .navbar-brand{margin-left:-15px}.container,.container-fluid{padding-right:15px;padding-left:15px;margin-right:auto;margin-left:auto}.navbar-inverse .navbar-brand{color:#9d9d9d}.navbar-brand{float:left;height:50px;padding:15px;font-size:18px;line-height:20px}a{color:#337ab7;text-decoration:none;background-color:transparent}.navbar-fixed-top{border:0;top:0;border-width:0 0 1px}.navbar-inverse{background-color:#222;border-color:#080808}.navbar-fixed-bottom,.navbar-fixed-top{border-radius:0;position:fixed;right:0;left:0;z-index:1030}.nav>li,.nav>li>a,.navbar,.navbar-toggle{position:relative}.navbar{border-radius:4px;min-height:50px;border:1px solid transparent}.container{width:750px}.navbar-right{float:right!important;margin-right:-15px}.navbar-nav{float:left;margin:7.5px -15px}.nav{padding-left:0;margin-bottom:0;list-style:none}.navbar-nav>li{float:left}.navbar-inverse .navbar-nav>li>a{color:#9d9d9d}.navbar-nav>li>a{padding-top:10px;padding-bottom:10px;line-height:20px}.nav>li>a{padding:10px 15px}.navbar-inverse .navbar-toggle{border-color:#333}.navbar-toggle{display:none;float:right;padding:9px 10px;margin-top:8px;margin-right:15px;margin-bottom:8px;background-color:transparent;border:1px solid transparent;border-radius:4px}button,select{text-transform:none}button{overflow:visible}button,html input[type=button],input[type=reset],input[type=submit]{-webkit-appearance:button;cursor:pointer}.btn-primary{color:#fff;background-color:#337ab7;border-color:#2e6da4}.btn{display:inline-block;padding:6px 12px;margin-bottom:0;font-size:14px;font-weight:400;line-height:1.42857143;text-align:center;white-space:nowrap;vertical-align:middle;-ms-touch-action:manipulation;touch-action:manipulation;cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;border:1px solid transparent;border-radius:4px}button,input,select,textarea{font-family:inherit;font-size:inherit;line-height:inherit}input{line-height:normal}button,input,optgroup,select,textarea{margin:0;font:inherit;color:inherit}.form-control,body{font-size:14px;line-height:1.42857143}.form-horizontal .form-group{margin-right:-15px;margin-left:-15px}.form-group{margin-bottom:15px}.form-horizontal .control-label{padding-top:7px;margin-bottom:0;text-align:right}.form-control{display:block;width:100%;height:34px;padding:6px 12px;color:#555;background-color:#fff;border:1px solid #ccc;border-radius:4px;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075);box-shadow:inset 0 1px 1px rgba(0,0,0,.075);-webkit-transition:border-color ease-in-out .15s,-webkit-box-shadow ease-in-out .15s;-o-transition:border-color ease-in-out .15s,box-shadow ease-in-out .15s;transition:border-color ease-in-out .15s,box-shadow ease-in-out .15s}.col-xs-8{width:66.66666667%}.col-xs-3{width:25%}.col-xs-1,.col-xs-10,.col-xs-11,.col-xs-12,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9{float:left}.col-lg-1,.col-lg-10,.col-lg-11,.col-lg-12,.col-lg-2,.col-lg-3,.col-lg-4,.col-lg-5,.col-lg-6,.col-lg-7,.col-lg-8,.col-lg-9,.col-md-1,.col-md-10,.col-md-11,.col-md-12,.col-md-2,.col-md-3,.col-md-4,.col-md-5,.col-md-6,.col-md-7,.col-md-8,.col-md-9,.col-sm-1,.col-sm-10,.col-sm-11,.col-sm-12,.col-sm-2,.col-sm-3,.col-sm-4,.col-sm-5,.col-sm-6,.col-sm-7,.col-sm-8,.col-sm-9,.col-xs-1,.col-xs-10,.col-xs-11,.col-xs-12,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9{position:relative;min-height:1px;padding-right:15px;padding-left:15px}label{display:inline-block;margin-bottom:5px;font-weight:700}*{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}body{font-family:\"Helvetica Neue\",Helvetica,Arial,sans-serif;color:#333}html{font-size:10px;font-family:sans-serif;-webkit-text-size-adjust:100%}");
+  PGM_P cssStr = PSTR(".navbar,.table{margin-bottom:20px}.nav>li,.nav>li>a,article,aside,details,figcaption,figure,footer,header,hgroup,main,menu,nav,section,summary{display:block}.btn,.form-control,.navbar-toggle{background-image:none}.table,label{max-width:100%}.sub-header{padding-bottom:10px;border-bottom:1px solid #eee}.h3,h3{font-size:24px}.table{width:100%}table{background-color:transparent;border-spacing:0;border-collapse:collapse}.table-striped>tbody>tr:nth-of-type(2n+1){background-color:#f9f9f9}.table>caption+thead>tr:first-child>td,.table>caption+thead>tr:first-child>th,.table>colgroup+thead>tr:first-child>td,.table>colgroup+thead>tr:first-child>th,.table>thead:first-child>tr:first-child>td,.table>thead:first-child>tr:first-child>th{border-top:0}.table>thead>tr>th{border-bottom:2px solid #ddd}.table>tbody>tr>td,.table>tbody>tr>th,.table>tfoot>tr>td,.table>tfoot>tr>th,.table>thead>tr>td,.table>thead>tr>th{padding:8px;line-height:1.42857143;vertical-align:top;border-top:1px solid #ddd}th{text-align:left}td,th{padding:0}.navbar>.container .navbar-brand,.navbar>.container-fluid .navbar-brand{margin-left:-15px}.container,.container-fluid{padding-right:15px;padding-left:15px;margin-right:auto;margin-left:auto}.navbar-inverse .navbar-brand{color:#9d9d9d}.navbar-brand{float:left;height:50px;padding:15px;font-size:18px;line-height:20px}a{color:#337ab7;text-decoration:none;background-color:transparent}.navbar-fixed-top{border:0;top:0;border-width:0 0 1px}.navbar-inverse{background-color:#222;border-color:#080808}.navbar-fixed-bottom,.navbar-fixed-top{border-radius:0;position:fixed;right:0;left:0;z-index:1030}.nav>li,.nav>li>a,.navbar,.navbar-toggle{position:relative}.navbar{border-radius:4px;min-height:50px;border:1px solid transparent}.container{width:750px}.navbar-right{float:right!important;margin-right:-15px}.navbar-nav{float:left;margin:7.5px -15px}.nav{padding-left:0;margin-bottom:0;list-style:none}.navbar-nav>li{float:left}.navbar-inverse .navbar-nav>li>a{color:#9d9d9d}.navbar-nav>li>a{padding-top:10px;padding-bottom:10px;line-height:20px}.nav>li>a{padding:10px 15px}.navbar-inverse .navbar-toggle{border-color:#333}.navbar-toggle{display:none;float:right;padding:9px 10px;margin-top:8px;margin-right:15px;margin-bottom:8px;background-color:transparent;border:1px solid transparent;border-radius:4px}button,select{text-transform:none}button{overflow:visible}button,html input[type=button],input[type=reset],input[type=submit]{-webkit-appearance:button;cursor:pointer}.btn-primary{color:#fff;background-color:#337ab7;border-color:#2e6da4}.btn{display:inline-block;padding:6px 12px;margin-bottom:0;font-size:14px;font-weight:400;line-height:1.42857143;text-align:center;white-space:nowrap;vertical-align:middle;-ms-touch-action:manipulation;touch-action:manipulation;cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;border:1px solid transparent;border-radius:4px}button,input,select,textarea{font-family:inherit;font-size:inherit;line-height:inherit}input{line-height:normal}button,input,optgroup,select,textarea{margin:0;font:inherit;color:inherit}.form-control,body{font-size:14px;line-height:1.42857143}.form-horizontal .form-group{margin-right:-15px;margin-left:-15px}.form-group{margin-bottom:15px}.form-horizontal .control-label{padding-top:7px;margin-bottom:0;text-align:right}.form-control{display:block;width:100%;height:34px;padding:6px 12px;color:#555;background-color:#fff;border:1px solid #ccc;border-radius:4px;-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,.075);box-shadow:inset 0 1px 1px rgba(0,0,0,.075);-webkit-transition:border-color ease-in-out .15s,-webkit-box-shadow ease-in-out .15s;-o-transition:border-color ease-in-out .15s,box-shadow ease-in-out .15s;transition:border-color ease-in-out .15s,box-shadow ease-in-out .15s}.col-xs-8{width:66.66666667%}.col-xs-3{width:25%}.col-xs-1,.col-xs-10,.col-xs-11,.col-xs-12,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9{float:left}.col-lg-1,.col-lg-10,.col-lg-11,.col-lg-12,.col-lg-2,.col-lg-3,.col-lg-4,.col-lg-5,.col-lg-6,.col-lg-7,.col-lg-8,.col-lg-9,.col-md-1,.col-md-10,.col-md-11,.col-md-12,.col-md-2,.col-md-3,.col-md-4,.col-md-5,.col-md-6,.col-md-7,.col-md-8,.col-md-9,.col-sm-1,.col-sm-10,.col-sm-11,.col-sm-12,.col-sm-2,.col-sm-3,.col-sm-4,.col-sm-5,.col-sm-6,.col-sm-7,.col-sm-8,.col-sm-9,.col-xs-1,.col-xs-10,.col-xs-11,.col-xs-12,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9{position:relative;min-height:1px;padding-right:15px;padding-left:15px}label{display:inline-block;margin-bottom:5px;font-weight:700}*{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}body{font-family:\"Helvetica Neue\",Helvetica,Arial,sans-serif;color:#333}html{font-size:10px;font-family:sans-serif;-webkit-text-size-adjust:100%}.alert{position:relative;padding:.75rem 1.25rem;margin-bottom:1rem;border:1px solid transparent;border-radius:.25rem;}.alert-warning{color:#856404;background-color:#fff3cd;border-color:#ffeeba}.alert-warning hr{border-top-color:#ffe8a1}");
   server.send(200, "text/css", String(cssStr));
 }
 

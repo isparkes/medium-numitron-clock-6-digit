@@ -86,6 +86,11 @@ void OutputManager::shiftDigitsOut(byte *displayDigits) {
       displayDigits[0] |= SEG_IND * ledLState;
       displayDigits[5] |= SEG_IND * ledRState;
     } else {
+      if (cc->doNotDimIndLEDs) {
+        // Add in the red indicator LEDs back in - don't dim
+        displayDigits[0] |= SEG_IND * ledLState;
+        displayDigits[3] |= SEG_IND * ledRState;
+      }
     }
   } else {
     // Add in the orange separator "colon" LEDs

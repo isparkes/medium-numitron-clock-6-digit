@@ -1,4 +1,5 @@
 #include "HtmlServer.h"
+#include "DebugManager.h"
 
 ESP8266WebServer server(80);            // port 80
 ESP8266HTTPUpdateServer httpUpdater;    // ESP8266HTTPUpdateServer.h
@@ -13,66 +14,74 @@ String webPassword = WEB_PASSWORD_DEFAULT;
 // ************************************************************
 // Check server args for a Boolean value and note if it has changed
 // ************************************************************
-void checkServerArgBoolean(String argument, String argumentName, String trueLiteral, String falseLiteral, boolean &changed, boolean &value) {
+boolean checkServerArgBoolean(String argument, String argumentName, String trueLiteral, String falseLiteral, boolean &value) {
+  boolean retval = false;
   if (server.hasArg(argument)) {
-    debugMsg("Got " + argumentName + " : " + server.arg(argument));
+    debugManager.debugMsg("Got " + argumentName + " : " + server.arg(argument));
     if ((server.arg(argument) == falseLiteral) && (value)) {
-      debugMsg("-> Set " + falseLiteral + " mode");
-      changed = true;
+      debugManager.debugMsg("-> Set " + falseLiteral + " mode");
+      retval = true;
       value = false;
     }
 
     if ((server.arg(argument) == trueLiteral) && (!value)) {
-      debugMsg("-> Set " + trueLiteral + " mode");
-      changed = true;
+      debugManager.debugMsg("-> Set " + trueLiteral + " mode");
+      retval = true;
       value = true;
     }
   }
+  return retval;
 }
 
 // ************************************************************
 // Check server args for an int value and note if it has changed
 // ************************************************************
-void checkServerArgInt(String argument, String argumentName, boolean &changed, int &value) {
+boolean checkServerArgInt(String argument, String argumentName, int &value) {
+  boolean retval = false;
   if (server.hasArg(argument)) {
-    debugMsg("Got " + argumentName + " : " + server.arg(argument));
+    debugManager.debugMsg("Got " + argumentName + " : " + server.arg(argument));
     int newValue = atoi(server.arg(argument).c_str());
     if (newValue != value) {
-      changed = true;
+      retval = true;
       value = newValue;
-      debugMsg("-> Set " + argumentName + ": " + String(value));
+      debugManager.debugMsg("-> Set " + argumentName + ": " + String(value));
     }
   }
+  return retval;
 }
 
 // ************************************************************
 // Check server args for a byte value and note if it has changed
 // ************************************************************
-void checkServerArgByte(String argument, String argumentName, boolean &changed, byte &value) {
+boolean checkServerArgByte(String argument, String argumentName, byte &value) {
+  boolean retval = false;
   if (server.hasArg(argument)) {
-    debugMsg("Got " + argumentName + " : " + server.arg(argument));
+    debugManager.debugMsg("Got " + argumentName + " : " + server.arg(argument));
     byte newValue = atoi(server.arg(argument).c_str());
     if (newValue != value) {
-      changed = true;
+      retval = true;
       value = newValue;
-      debugMsg("-> Set " + argumentName + ": " + String(value));
+      debugManager.debugMsg("-> Set " + argumentName + ": " + String(value));
     }
   }
+  return retval;
 }
 
 // ************************************************************
 // Check server args for a string value and note if it has changed
 // ************************************************************
-void checkServerArgString(String argument, String argumentName, boolean &changed, String &value) {
+boolean checkServerArgString(String argument, String argumentName, String &value) {
+  boolean retval = false;
   if (server.hasArg(argument)) {
-    debugMsg("Got " + argumentName + " : " + server.arg(argument));
+    debugManager.debugMsg("Got " + argumentName + " : " + server.arg(argument));
     String newValue = server.arg(argument);
     if (value != newValue) {
       value = newValue;
-      debugMsg("-> Set " + argumentName + " = " + value);
-      changed = true;
+      debugManager.debugMsg("-> Set " + argumentName + " = " + value);
+      retval = true;
     }
   }
+  return retval;
 }
 
 boolean getWebAuthentication() {
@@ -124,18 +133,28 @@ String getHTMLHead(boolean isConnected) {
 /**
    Get the bootstrap top row navbar, including the Bootstrap links
 */
-String getNavBar() {
+String getNavBar(boolean isConnected) {
   String navbar = "<nav class=\"navbar navbar-inverse navbar-fixed-top\">";
   navbar += "<div class=\"container-fluid\"><div class=\"navbar-header\"><button type=\"button\" class=\"navbar-toggle collapsed\" data-toggle=\"collapse\" data-target=\"#navbar\" aria-expanded=\"false\" aria-controls=\"navbar\">";
   navbar += "<span class=\"sr-only\">Toggle navigation</span><span class=\"icon-bar\"></span><span class=\"icon-bar\"></span><span class=\"icon-bar\"></span></button>";
-  navbar += "<a class=\"navbar-brand\" href=\"https://www.nixieclock.biz\">ESP Numitron Clock</a></div><div id=\"navbar\" class=\"navbar-collapse collapse\"><ul class=\"nav navbar-nav navbar-right\">";
-  navbar += "<li><a href=\"/\">Summary</a></li><li><a href=\"/time\">Configure Time Server</a></li><li><a href=\"/clockconfig\">Configure clock settings</a></li><li><a href=\"/utility\">Utility</a></li></ul></div></div></nav>";
+  navbar += "<a class=\"navbar-brand\" href=\"https://www.nixieclock.biz\">";
+  navbar += HTML_TITLE;
+  navbar += "</a></div><div id=\"navbar\" class=\"navbar-collapse collapse\"><ul class=\"nav navbar-nav navbar-right\">";
+  if (isConnected) {
+    navbar += "<li><a href=\"/\">Summary</a></li><li><a href=\"/time\">Configure Time Server</a></li><li><a href=\"/clockconfig\">Configure clock settings</a></li><li><a href=\"/utility\">Utility</a></li></ul></div></div></nav>";
+  } else {
+    navbar += "<li><a href=\"/\">Summary</a></li><li><a href=\"/utility\">Utility</a></li></ul></div></div></nav>";
+  }
   return navbar;
 } 
 
 
 String getExplanationText(String textToprint) {
   return "<span class=\"form-group\">" + textToprint + "</span>";
+}
+
+String getWarningAlert(String textToprint) {
+  return "<div class=\"alert alert-warning\" role=\"alert\">" + textToprint + "</div>";
 }
 
 /**

@@ -10,13 +10,20 @@
 // Test SPIFFS
 // ************************************************************
 boolean SPIFFS_CLOCK::testMountSpiffs() {
-  boolean mounted = false;
+  _spiffsMounted = false;
   if (SPIFFS.begin()) {
-    mounted = true;
+    _spiffsMounted = true;
     SPIFFS.end();
   }
 
-  return mounted;
+  return _spiffsMounted;
+}
+
+// ************************************************************
+// Return SPIFFS Mounted status
+// ************************************************************
+boolean SPIFFS_CLOCK::getSpiffsMounted() {
+  return _spiffsMounted;
 }
 
 // ************************************************************
@@ -25,7 +32,8 @@ boolean SPIFFS_CLOCK::testMountSpiffs() {
 boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
   boolean loaded = false;
   if (SPIFFS.begin()) {
-    debugMsg("mounted file system");
+    debugMsg("mounted file system config read");
+    _spiffsMounted = true;
     if (SPIFFS.exists("/config.json")) {
       //file exists, reading and loading
       debugMsg("reading config file");
@@ -39,7 +47,7 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
         configFile.readBytes(buf.get(), size);
         DynamicJsonBuffer jsonBuffer;
         JsonObject& json = jsonBuffer.parseObject(buf.get());
-        json.printTo(Serial);
+        if (_debug) json.printTo(Serial);
         debugMsg("\n");
 
         if (json.success()) {
@@ -65,6 +73,18 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
 
           spiffs_config->dayBlanking = json["dayBlanking"];
           debugMsg("Loaded dayBlanking: " + String(spiffs_config->dayBlanking));
+
+          spiffs_config->blankLeading = json["fade"].as<bool>();
+          debugMsg("Loaded fade: " + String(spiffs_config->fade));
+
+          spiffs_config->fadeSteps = json["fadeSteps"];
+          debugMsg("Loaded fadeSteps: " + String(spiffs_config->fadeSteps));
+
+          spiffs_config->scrollback = json["scrollback"].as<bool>();
+          debugMsg("Loaded scrollback: " + String(spiffs_config->scrollback));
+
+          spiffs_config->scrollSteps = json["scrollSteps"];
+          debugMsg("Loaded scrollSteps: " + String(spiffs_config->scrollSteps));
 
           spiffs_config->thresholdBright = json["thresholdBright"];
           debugMsg("Loaded thresholdBright: " + String(spiffs_config->thresholdBright));
@@ -153,6 +173,12 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
           spiffs_config->separatorDimFactor = json["separatorDimFactor"];
           debugMsg("Loaded separatorDimFactor: " + String(spiffs_config->separatorDimFactor));
 
+          spiffs_config->doNotDimIndLEDs = json["doNotDimIndLEDs"].as<bool>();
+          debugMsg("Loaded doNotDimIndLEDs: " + String(spiffs_config->doNotDimIndLEDs));
+
+          spiffs_config->antiGhost = json["antiGhost"];
+          debugMsg("Loaded antiGhost: " + String(spiffs_config->antiGhost));
+
           loaded = true;
         } else {
           debugMsg("failed to load json config");
@@ -174,8 +200,8 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
 // ************************************************************
 void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
   if (SPIFFS.begin()) {
-    debugMsg("mounted file system");
-    debugMsg("saving config");
+    debugMsg("mounted file system config write");
+    _spiffsMounted = true;
 
     DynamicJsonBuffer jsonBuffer;
     JsonObject& json = jsonBuffer.createObject();
@@ -186,6 +212,10 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
     json["blankLeading"] = spiffs_config->blankLeading;
     json["dateFormat"] = spiffs_config->dateFormat;
     json["dayBlanking"] = spiffs_config->dayBlanking;
+    json["fade"] = spiffs_config->fade;
+    json["scrollback"] = spiffs_config->scrollback;
+    json["fadeSteps"] = spiffs_config->fadeSteps;
+    json["scrollSteps"] = spiffs_config->scrollSteps;
     json["thresholdBright"] = spiffs_config->thresholdBright;
     json["sensitivityLDR"] = spiffs_config->sensitivityLDR;
     json["minDim"] = spiffs_config->minDim;
@@ -215,6 +245,8 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
     json["preheatStrength"] = spiffs_config->preheatStrength;
     json["extDimFactor"] = spiffs_config->extDimFactor;
     json["separatorDimFactor"] = spiffs_config->separatorDimFactor;
+    json["doNotDimIndLEDs"] = spiffs_config->doNotDimIndLEDs;
+    json["antiGhost"] = spiffs_config->antiGhost;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -223,7 +255,7 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
       return;
     }
 
-    json.printTo(Serial);
+    if (_debug) json.printTo(Serial);
     debugMsg("\n");
 
     json.printTo(configFile);
@@ -242,7 +274,8 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
 boolean SPIFFS_CLOCK::getStatsFromSpiffs(spiffs_stats_t* spiffs_stats) {
   boolean loaded = false;
   if (SPIFFS.begin()) {
-    debugMsg("mounted file system");
+    debugMsg("mounted file system stats read");
+    _spiffsMounted = true;
     if (SPIFFS.exists("/stats.json")) {
       //file exists, reading and loading
       debugMsg("reading stats file");
@@ -256,7 +289,8 @@ boolean SPIFFS_CLOCK::getStatsFromSpiffs(spiffs_stats_t* spiffs_stats) {
         statsFile.readBytes(buf.get(), size);
         DynamicJsonBuffer jsonBuffer;
         JsonObject& json = jsonBuffer.parseObject(buf.get());
-        json.printTo(Serial);
+        
+        if (_debug) json.printTo(Serial);
         debugMsg("\n");
 
         if (json.success()) {
@@ -289,8 +323,8 @@ boolean SPIFFS_CLOCK::getStatsFromSpiffs(spiffs_stats_t* spiffs_stats) {
 // ************************************************************
 void SPIFFS_CLOCK::saveStatsToSpiffs(spiffs_stats_t* spiffs_stats) {
   if (SPIFFS.begin()) {
-    debugMsg("mounted file system");
-    debugMsg("saving stats");
+    debugMsg("mounted file system stats write");
+    _spiffsMounted = true;
 
     DynamicJsonBuffer jsonBuffer;
     JsonObject& json = jsonBuffer.createObject();
@@ -304,7 +338,7 @@ void SPIFFS_CLOCK::saveStatsToSpiffs(spiffs_stats_t* spiffs_stats) {
       return;
     }
 
-    json.printTo(Serial);
+    if (_debug) json.printTo(Serial);
     debugMsg("\n");
 
     json.printTo(statsFile);

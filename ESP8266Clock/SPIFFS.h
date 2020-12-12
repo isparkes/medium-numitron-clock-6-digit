@@ -17,13 +17,14 @@ typedef struct {
   String tzs;
   boolean hourMode;
   int minDim;
-
-  int digitOffCount;
   byte dayBlanking;
+  boolean scrollback;
+  boolean fade;
+  byte fadeSteps;
+  byte scrollSteps;
   int thresholdBright;
   int sensitivityLDR;
   int sensorSmoothCountLDR;
-
   byte blankHourStart;
   byte blankHourEnd;
   byte blankMode;
@@ -51,6 +52,8 @@ typedef struct {
   byte preheatStrength;
   byte extDimFactor;
   byte separatorDimFactor;
+  boolean doNotDimIndLEDs;
+  byte antiGhost;
 } spiffs_config_t;
 
 typedef struct {
@@ -66,8 +69,9 @@ class SPIFFS_CLOCK
 {
   public:
     void setDebugOutput(bool newDebug);
-    
+
     boolean testMountSpiffs();
+    boolean getSpiffsMounted();
 
     boolean getConfigFromSpiffs(spiffs_config_t* spiffs_config);
     void    saveConfigToSpiffs(spiffs_config_t* spiffs_config);
@@ -80,6 +84,7 @@ class SPIFFS_CLOCK
   private:
     DebugCallback _dbcb;
     bool _debug = false;
+    bool _spiffsMounted = false;
 
     void debugMsg(String message);                        // print a debug message to the callback
 };

@@ -76,4 +76,9 @@ boolean led2State;
 boolean ledLState;
 boolean ledRState;
 
+// ------------------- IP management ------------------
+
+IPAddress myIP;
+String myHostname;
+
 #endif

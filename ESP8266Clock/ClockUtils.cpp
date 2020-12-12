@@ -65,6 +65,28 @@ void grabInts(String s, int *dest, String sep) {
   }
 }
 
+String timeToReadableString(int y, int m, int d, int h, int mi, int s) {
+  char buf1[20];
+  sprintf(buf1, "%04d:%02d:%02d %02d:%02d:%02d", y, m, d, h, mi, s);
+  return String(buf1);
+}
+
+String timeStringToReadableString(String timeString){
+  char* ptr = strtok((char *)timeString.c_str(), ",");
+  int y = atoi(ptr);
+  ptr = strtok(NULL, ",");
+  int m = atoi(ptr);
+  ptr = strtok(NULL, ",");
+  int d = atoi(ptr);
+  ptr = strtok(NULL, ",");
+  int h = atoi(ptr);
+  ptr = strtok(NULL, ",");
+  int mi = atoi(ptr);
+  ptr = strtok(NULL, ",");
+  int s = atoi(ptr);
+  return timeToReadableString(y,m,d,h,mi,s);
+}
+
 unsigned char hex2bcd (unsigned char x) {
   unsigned char y;
   y = (x / 10) << 4;
@@ -72,16 +94,10 @@ unsigned char hex2bcd (unsigned char x) {
   return (y);
 }
 
+
 // ----------------------------------------------------------------------------------------------------
 // ------------------------------------------ Debug functions -----------------------------------------
 // ----------------------------------------------------------------------------------------------------
-
-void debugMsg(String message) {
-  if (useDebug) {
-    Serial.println(message);
-    Serial.flush();
-  }
-}
 
 void hexCharacterStringToBytes(byte *byteArray, const char *hexString) {
   byte byteIndex = 0;

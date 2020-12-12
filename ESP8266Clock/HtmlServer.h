@@ -14,7 +14,7 @@
 
 // -----------------------------------------------------
 
-#define HTML_TITLE "ESP 6-Digit Numitron Clock"
+#define HTML_TITLE "ESP 4-Digit Numitron Clock"
 
 extern ESP8266WebServer server;
 extern ESP8266HTTPUpdateServer httpUpdater;
@@ -28,18 +28,19 @@ String getWebPassword();
 void setWebPassword(String newValue);
 
 void setServerPageHandlers();
-void checkServerArgBoolean(String argument, String argumentName, String trueLiteral, String falseLiteral, boolean &changed, boolean &value);
-void checkServerArgInt(String argument, String argumentName, boolean &changed, int &value);
-void checkServerArgByte(String argument, String argumentName, boolean &changed, byte &value);
-void checkServerArgString(String argument, String argumentName, boolean &changed, String &value);
+boolean checkServerArgBoolean(String argument, String argumentName, String trueLiteral, String falseLiteral, boolean &value);
+boolean checkServerArgInt(String argument, String argumentName, int &value);
+boolean checkServerArgByte(String argument, String argumentName, byte &value);
+boolean checkServerArgString(String argument, String argumentName, String &value);
 
 // ----------------------------------------------------------------------------------------------------
 // ------------------------------------------- HTML functions -----------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
 String getHTMLHead(boolean isConnected);
-String getNavBar();
+String getNavBar(boolean isConnected);
 String getExplanationText(String textToprint);
+String getWarningAlert(String textToprint);
 String getTableHead2Col(String tableHeader, String col1Header, String col2Header);
 String getTableRow2Col(String col1Val, String col2Val);
 String getTableRow2Col(String col1Val, int col2Val);

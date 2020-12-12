@@ -22,15 +22,12 @@ String getValue(String data, char separator, int index);
 void grabInts(String s, int *dest, String sep);
 unsigned char hex2bcd (unsigned char x);
 String secsToReadableString(long secsValue);
+String timeToReadableString(int y, int m, int d, int h, int mi, int s);
+String timeStringToReadableString(String timeString);
 
 // ----------------------------------------------------------------------------------------------------
 // --------------------------------------------- Debugging --------------------------------------------
 // ----------------------------------------------------------------------------------------------------
-void setupDebug(boolean setUseDebug);
-void debugMsg(String message);
-void debugMsgCont(String message);
-boolean getDebug();
-void toggleDebug();
 
 void hexCharacterStringToBytes(byte *byteArray, const char *hexString);
 byte nibble(char c);
