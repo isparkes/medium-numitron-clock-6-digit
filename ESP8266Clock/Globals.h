@@ -14,7 +14,7 @@ ClockButton button1(inputPin1, CLOCK_BUTTON_ACTIVE_LO);
 
 Transition transitionWipe(800, 700, 2800, SLOTS_MODE_WIPE_WIPE);  // Wipe In / Wipe Out (DA2000-Transition.h)  
 Transition transitionBang(400, 400, 3200, SLOTS_MODE_BANG_BANG);  // Bang In / Bang Out (DA2000-Transition.h)  
-Transition transitionDummy(0, 0, 0, SLOTS_MODE_NONE);             // Dummy transition for null pointer prevention
+Transition transitionDummy(0, 0, 0, SLOTS_MODE_BANG_BANG);             // Dummy transition for null pointer prevention
 Transition *activeTransition = &transitionDummy;                  // Pointer to selected transition object
 
 OutputManager outputManager;

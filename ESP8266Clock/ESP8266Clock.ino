@@ -769,18 +769,39 @@ void setNextMode(int displayMode) {
         OutputManager::Instance().displayConfig();
         break;
       }
-    case MODE_USE_LDR: {
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.useLDR, displayMode);
-        OutputManager::Instance().displayConfig();
-        break;
-      }
     case MODE_BLANK_MODE: {
         OutputManager::Instance().loadNumberArrayConfInt(current_config.blankMode, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
+    case MODE_USE_LDR: {
+        OutputManager::Instance().loadNumberArrayConfBool(current_config.useLDR, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_LDR_THRSH: {
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.thresholdBright, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_LDR_SENS: {
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensitivityLDR, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_MIN_DIM_UP:
+    case MODE_MIN_DIM_DOWN: {
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.minDim, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
     case MODE_SLOTS_MODE: {
         OutputManager::Instance().loadNumberArrayConfInt(current_config.slotsMode, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_SLOTS_FREQ: {
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.slotsFreq, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
@@ -801,7 +822,9 @@ void setNextMode(int displayMode) {
         break;
       }
     case MODE_RED_CNL: {
-        if ((current_config.backlightMode == BACKLIGHT_CYCLE) || (current_config.backlightMode == BACKLIGHT_COLOUR_TIME) || (current_config.backlightMode == BACKLIGHT_DAY_OF_WEEK)) {
+        if ((current_config.backlightMode == BACKLIGHT_CYCLE) || 
+            (current_config.backlightMode == BACKLIGHT_COLOUR_TIME) || 
+            (current_config.backlightMode == BACKLIGHT_DAY_OF_WEEK)) {
           setNewNextMode(MODE_CYCLE_SPEED);
         }
         OutputManager::Instance().loadNumberArrayConfInt(current_config.redCnl, displayMode);
@@ -821,15 +844,39 @@ void setNextMode(int displayMode) {
     case MODE_CYCLE_SPEED: {
         if (current_config.backlightMode != BACKLIGHT_CYCLE) {
           // Show only if we are in cycle mode
-          setNewNextMode(MODE_MIN_DIM_UP);
+          setNewNextMode(MODE_BL_DIM);
         }
         OutputManager::Instance().loadNumberArrayConfInt(current_config.cycleSpeed, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
-    case MODE_MIN_DIM_UP:
-    case MODE_MIN_DIM_DOWN: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.minDim, displayMode);
+    case MODE_BL_DIM: {
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.backlightDimFactor, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_UL_DIM: {
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.extDimFactor, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_SEP_DIM: {
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.separatorDimFactor, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_L_IND_MODE: {
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.statusModeL, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_R_IND_MODE: {
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.statusModeR, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_DO_NOT_DIM_INDS: {
+        OutputManager::Instance().loadNumberArrayConfBool(current_config.doNotDimIndLEDs, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
@@ -966,7 +1013,27 @@ void processCurrentMode(int displayMode) {
 
             // Initialise the slots transition values and start it
             if (second() == 50 && !msgDisplaying) {
-              activeTransition->start(nowMillis);
+              switch (current_config.slotsFreq) {
+                case SLOTS_FREQ_1_MIN:
+                {
+                  activeTransition->start(nowMillis);
+                  break;
+                }
+                case SLOTS_FREQ_5_MIN:
+                {
+                  if ((minute() % 5) == 0) {
+                    activeTransition->start(nowMillis);
+                  }
+                  break;
+                }
+                case SLOTS_FREQ_10_MIN:
+                {
+                  if ((minute() % 10) == 0) {
+                    activeTransition->start(nowMillis);
+                  }
+                  break;
+                }
+              }
             }
 
             // Continue slots transition
@@ -1127,6 +1194,50 @@ void processCurrentMode(int displayMode) {
         OutputManager::Instance().displayConfig();
         break;
       }
+    case MODE_LDR_THRSH: {
+        if (button1.isButtonPressedAndReleased()) {
+          current_config.thresholdBright += 10;
+          if (current_config.thresholdBright > SENSOR_THRSH_MAX) {
+            current_config.thresholdBright = SENSOR_THRSH_MIN;
+          }
+        }
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.thresholdBright, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_LDR_SENS: {
+        if (button1.isButtonPressedAndReleased()) {
+          current_config.sensitivityLDR += 10;
+          if (current_config.sensitivityLDR > SENSOR_SENSIT_MAX) {
+            current_config.sensitivityLDR = SENSOR_SENSIT_MIN;
+          }
+        }
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensitivityLDR, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_MIN_DIM_UP: {
+        if (button1.isButtonPressedAndReleased()) {
+          current_config.minDim += 10;
+          if (current_config.minDim > MIN_DIM_MAX) {
+            current_config.minDim = MIN_DIM_MAX;
+          }
+        }
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.minDim, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_MIN_DIM_DOWN: {
+        if (button1.isButtonPressedAndReleased()) {
+          current_config.minDim -= 10;
+          if (current_config.minDim < MIN_DIM_MIN) {
+            current_config.minDim = MIN_DIM_MIN;
+          }
+        }
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.minDim, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
     case MODE_SLOTS_MODE: {
         if (button1.isButtonPressedAndReleased()) {
           current_config.slotsMode++;
@@ -1135,6 +1246,17 @@ void processCurrentMode(int displayMode) {
           }
         }
         OutputManager::Instance().loadNumberArrayConfInt(current_config.slotsMode, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_SLOTS_FREQ: {
+        if (button1.isButtonPressedAndReleased()) {
+          current_config.slotsFreq++;
+          if (current_config.slotsFreq > SLOTS_FREQ_MAX) {
+            current_config.slotsFreq = SLOTS_FREQ_MIN;
+          }
+        }
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.slotsFreq, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
@@ -1226,25 +1348,66 @@ void processCurrentMode(int displayMode) {
         OutputManager::Instance().displayConfig();
         break;
       }
-    case MODE_MIN_DIM_UP: {
+    case MODE_BL_DIM: {
         if (button1.isButtonPressedAndReleased()) {
-          current_config.minDim += 10;
-          if (current_config.minDim > MIN_DIM_MAX) {
-            current_config.minDim = MIN_DIM_MAX;
+          current_config.backlightDimFactor = current_config.backlightDimFactor + 5;
+          if (current_config.backlightDimFactor > BACKLIGHT_DIM_FACTOR_MAX) {
+            current_config.backlightDimFactor = BACKLIGHT_DIM_FACTOR_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.minDim, displayMode);
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.backlightDimFactor, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
-    case MODE_MIN_DIM_DOWN: {
+    case MODE_UL_DIM: {
         if (button1.isButtonPressedAndReleased()) {
-          current_config.minDim -= 10;
-          if (current_config.minDim < MIN_DIM_MIN) {
-            current_config.minDim = MIN_DIM_MIN;
+          current_config.extDimFactor = current_config.extDimFactor + 5;
+          if (current_config.extDimFactor > EXT_DIM_FACTOR_MAX) {
+            current_config.extDimFactor = EXT_DIM_FACTOR_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.minDim, displayMode);
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.extDimFactor, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_SEP_DIM: {
+        if (button1.isButtonPressedAndReleased()) {
+          current_config.separatorDimFactor = current_config.separatorDimFactor++;
+          if (current_config.separatorDimFactor > SEP_DIM_MAX) {
+            current_config.separatorDimFactor = SEP_DIM_MIN;
+          }
+        }
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.separatorDimFactor, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_L_IND_MODE: {
+        if (button1.isButtonPressedAndReleased()) {
+          current_config.statusModeL = current_config.statusModeL++;
+          if (current_config.statusModeL > STATUS_LED_MODE_MAX) {
+            current_config.statusModeL = STATUS_LED_MODE_MIN;
+          }
+        }
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.statusModeL, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_R_IND_MODE: {
+        if (button1.isButtonPressedAndReleased()) {
+          current_config.statusModeR = current_config.statusModeR++;
+          if (current_config.statusModeR > STATUS_LED_MODE_MAX) {
+            current_config.statusModeR = STATUS_LED_MODE_MIN;
+          }
+        }
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.statusModeR, displayMode);
+        OutputManager::Instance().displayConfig();
+        break;
+      }
+    case MODE_DO_NOT_DIM_INDS: {
+        if (button1.isButtonPressedAndReleased()) {
+          current_config.doNotDimIndLEDs = !current_config.doNotDimIndLEDs;
+        }
+        OutputManager::Instance().loadNumberArrayConfBool(current_config.doNotDimIndLEDs, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
@@ -2006,6 +2169,7 @@ void clockConfigPageHandler() {
   changed = changed | checkServerArgByte("cycleSpeed", "cycleSpeed", current_config.cycleSpeed);
   changed = changed | checkServerArgByte("blankMode", "blankMode", current_config.blankMode);
   changed = changed | checkServerArgByte("slotsMode", "slotsMode", current_config.slotsMode);
+  changed = changed | checkServerArgByte("slotsFreq", "slotsFreq", current_config.slotsFreq);
   changed = changed | checkServerArgInt("pirTimeout", "pirTimeout", current_config.pirTimeout);
   changed = changed | checkServerArgBoolean("usePIRPullup", "Use PIR pullup", "on", "off", current_config.usePIRPullup);
   changed = changed | checkServerArgByte("ledMode", "ledMode", current_config.ledMode);
@@ -2066,9 +2230,16 @@ void clockConfigPageHandler() {
 
   // Slots Mode
   response_message += getDropDownHeader("Date Slots:", "slotsMode", true, false);
-  response_message += getDropDownOption("0", "Don't use slots mode", (current_config.slotsMode == 0));
-  response_message += getDropDownOption("1", "Wipe In, Wipe Out", (current_config.slotsMode == 1));
-  response_message += getDropDownOption("2", "Bang In, Bang Out", (current_config.slotsMode == 2));
+  response_message += getDropDownOption("0", "Wipe In, Wipe Out", (current_config.slotsMode == SLOTS_MODE_WIPE_WIPE));
+  response_message += getDropDownOption("1", "Bang In, Bang Out", (current_config.slotsMode == SLOTS_MODE_BANG_BANG));
+  response_message += getDropDownFooter();
+
+  // Slots Frequency
+  response_message += getDropDownHeader("Slots Frequency:", "slotsFreq", true, false);
+  response_message += getDropDownOption("0", "Never", (current_config.slotsFreq == SLOTS_FREQ_OFF));
+  response_message += getDropDownOption("1", "Every Minute", (current_config.slotsFreq == SLOTS_FREQ_1_MIN));
+  response_message += getDropDownOption("2", "Every 5 Minutes", (current_config.slotsFreq == SLOTS_FREQ_5_MIN));
+  response_message += getDropDownOption("3", "Every 10 Minutes", (current_config.slotsFreq == SLOTS_FREQ_10_MIN));
   response_message += getDropDownFooter();
 
   // preheat mode

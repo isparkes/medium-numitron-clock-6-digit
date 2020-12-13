@@ -16,6 +16,16 @@
 #define BACKLIGHT_DEFAULT               1
 
 // -------------------------------------------------------------------------------
+#define BACKLIGHT_DIM_FACTOR_MIN        10
+#define BACKLIGHT_DIM_FACTOR_MAX        100
+#define BACKLIGHT_DIM_FACTOR_DEFAULT    100
+
+// -------------------------------------------------------------------------------
+#define EXT_DIM_FACTOR_MIN              10
+#define EXT_DIM_FACTOR_MAX              100
+#define EXT_DIM_FACTOR_DEFAULT          100
+
+// -------------------------------------------------------------------------------
 #define CYCLE_SPEED_MIN                 4
 #define CYCLE_SPEED_MAX                 64
 #define CYCLE_SPEED_DEFAULT             10

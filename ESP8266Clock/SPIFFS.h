@@ -38,6 +38,7 @@ typedef struct {
   byte bluCnl;
   byte cycleSpeed;
   byte slotsMode;
+  byte slotsFreq;
   int pirTimeout;
   boolean blankLeading;
   byte dateFormat;

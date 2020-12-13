@@ -51,55 +51,63 @@
 #define MODE_MONTHS_SET                 5
 #define MODE_YEARS_SET                  6
 
-// Basic settings
-#define MODE_12_24                      7  // Mode "00" 0 = 24, 1 = 12
+#define MODE_12_24                      7  // 0 = 24, 1 = 12
 #define HOUR_MODE_DEFAULT               false
-#define MODE_LEAD_BLANK                 8  // Mode "01" 1 = blanked
+#define MODE_LEAD_BLANK                 8  // 1 = blanked
 #define LEAD_BLANK_DEFAULT              false
-#define MODE_DATE_FORMAT                9 // Mode "02"
-#define MODE_DAY_BLANKING               10 // Mode "03"
-#define MODE_HR_BLNK_START              11 // Mode "04" - skipped if not using hour blanking
-#define MODE_HR_BLNK_END                12 // Mode "05" - skipped if not using hour blanking
+#define MODE_DATE_FORMAT                9  // 
+#define MODE_DAY_BLANKING               10 // 
+#define MODE_HR_BLNK_START              11 // skipped if not using hour blanking
+#define MODE_HR_BLNK_END                12 // skipped if not using hour blanking
 
-#define MODE_USE_LDR                    13 // Mode "06" 1 = use LDR, 0 = don't (and have 100% brightness)
-#define MODE_USE_LDR_DEFAULT            true
-
-#define MODE_BLANK_MODE                 14 // Mode "07" 
+#define MODE_BLANK_MODE                 13 // 
 #define MODE_BLANK_MODE_DEFAULT         BLANK_MODE_BOTH
 
-#define MODE_SLOTS_MODE                 15 // Mode "08"
+#define MODE_USE_LDR                    14 // 1 = use LDR, 0 = don't (and have 100% brightness)
+#define MODE_USE_LDR_DEFAULT            true
 
-// Separator LED mode
-#define MODE_LED_BLINK                  16 // Mode "09"
+#define MODE_LDR_THRSH                  15 // 
+#define MODE_LDR_SENS                   16 // 
 
-// PIR
-#define MODE_PIR_TIMEOUT_UP             17// Mode "11"
-#define MODE_PIR_TIMEOUT_DOWN           18 // Mode "11"
+#define MODE_MIN_DIM_UP                 17 // 
+#define MODE_MIN_DIM_DOWN               18 // 
 
-// Back light
-#define MODE_BACKLIGHT_MODE             19 // Mode "12"
-#define MODE_RED_CNL                    20 // Mode "13"
-#define MODE_GRN_CNL                    21 // Mode "14"
-#define MODE_BLU_CNL                    22 // Mode "15"
-#define MODE_CYCLE_SPEED                23 // Mode "16"
+#define MODE_SLOTS_MODE                 19 // 
+#define MODE_SLOTS_FREQ                 20 // 
 
-// Minimum dimming value for old tubes
-#define MODE_MIN_DIM_UP                 24 // Mode "17"
-#define MODE_MIN_DIM_DOWN               25 // Mode "18"
+#define MODE_LED_BLINK                  21 // 
+
+#define MODE_PIR_TIMEOUT_UP             22 // 
+#define MODE_PIR_TIMEOUT_DOWN           23 // 
+
+#define MODE_BACKLIGHT_MODE             24 // 
+#define MODE_RED_CNL                    25 // 
+#define MODE_GRN_CNL                    26 // 
+#define MODE_BLU_CNL                    27 // 
+#define MODE_CYCLE_SPEED                28 // 
+
+#define MODE_BL_DIM                     29 // 
+#define MODE_UL_DIM                     30 // 
+
+#define MODE_SEP_DIM                    31 // 
+
+#define MODE_L_IND_MODE                 32 // 
+#define MODE_R_IND_MODE                 33 // 
+#define MODE_DO_NOT_DIM_INDS            34 // 
 
 // Use the PIR pin pullup resistor
-#define MODE_USE_PIR_PULLUP             26 // Mode "19" 1 = use Pullup
+#define MODE_USE_PIR_PULLUP             35 // 1 = use Pullup
 #define USE_PIR_PULLUP_DEFAULT          true
 
-#define MODE_PREHEAT                    27 // Mode "20"
+#define MODE_PREHEAT                    36 // 
 
 // Software Version
-#define MODE_VERSION                    28 // Mode "21"
+#define MODE_VERSION                    37 // 
 
 // Tube test - all six digits, so no flashing mode indicator
-#define MODE_TUBE_TEST                  29
+#define MODE_TUBE_TEST                  38
 
-#define MODE_MAX                        29
+#define MODE_MAX                        38
 
 #define TIME_SET_MODE_DUR_MS            10000
 
@@ -145,7 +153,7 @@
 #define BLANK_MODE_LEDS                 1  // Use blanking for LEDs only
 #define BLANK_MODE_BOTH                 2  // Use blanking for tubes and LEDs
 #define BLANK_MODE_MAX                  2
-#define BLANK_MODE_DEFAULT              2
+#define BLANK_MODE_DEFAULT              BLANK_MODE_BOTH
 
 // -------------------------------------------------------------------------------
 #define PIR_TIMEOUT_MIN                 60    // 1 minute in seconds
@@ -157,21 +165,18 @@
 
 // -------------------------------------------------------------------------------
 #define SLOTS_MODE_MIN                  0
-#define SLOTS_MODE_NONE                 0   // Don't use slots effect
-#define SLOTS_MODE_WIPE_WIPE            1   // use slots effect every minute, wipe in, wipe out
-#define SLOTS_MODE_BANG_BANG            2   // use slots effect every minute, bang in, bang out
-#define SLOTS_MODE_MAX                  2
-#define SLOTS_MODE_DEFAULT              1
+#define SLOTS_MODE_WIPE_WIPE            0   // use slots effect "wipe in, wipe out"
+#define SLOTS_MODE_BANG_BANG            1   // use slots effect "bang in, bang out"
+#define SLOTS_MODE_MAX                  1
+#define SLOTS_MODE_DEFAULT              SLOTS_MODE_WIPE_WIPE
 
-// -------------------------------------------------------------------------------
-#define BACKLIGHT_DIM_FACTOR_MIN        10
-#define BACKLIGHT_DIM_FACTOR_MAX        100
-#define BACKLIGHT_DIM_FACTOR_DEFAULT    100
-
-// -------------------------------------------------------------------------------
-#define EXT_DIM_FACTOR_MIN              10
-#define EXT_DIM_FACTOR_MAX              100
-#define EXT_DIM_FACTOR_DEFAULT          100
+#define SLOTS_FREQ_MIN                  0
+#define SLOTS_FREQ_OFF                  0   // do not use slots effect
+#define SLOTS_FREQ_1_MIN                1   // use slots effect every 1 minute
+#define SLOTS_FREQ_5_MIN                2   // use slots effect every 5 minutes
+#define SLOTS_FREQ_10_MIN               3   // use slots effect every 10 minutes
+#define SLOTS_FREQ_MAX                  3
+#define SLOTS_FREQ_DEFAULT              SLOTS_FREQ_1_MIN
 
 // -------------------------------------------------------------------------------
 // RTC address

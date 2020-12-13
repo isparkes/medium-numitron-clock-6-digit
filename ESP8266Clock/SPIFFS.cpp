@@ -137,6 +137,9 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
           spiffs_config->slotsMode = json["slotsMode"];
           debugMsg("Loaded slotsMode: " + String(spiffs_config->slotsMode));
 
+          spiffs_config->slotsFreq = json["slotsFreq"];
+          debugMsg("Loaded slotsFreq: " + String(spiffs_config->slotsFreq));
+
           spiffs_config->usePIRPullup = json["usePIRPullup"];
           debugMsg("Loaded usePIRPullup: " + String(spiffs_config->usePIRPullup));
 
@@ -233,6 +236,7 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
     json["pirTimeout"] = spiffs_config->pirTimeout;
     json["useLDR"] = spiffs_config->useLDR;
     json["slotsMode"] = spiffs_config->slotsMode;
+    json["slotsFreq"] = spiffs_config->slotsFreq;
     json["usePIRPullup"] = spiffs_config->usePIRPullup;
     json["testMode"] = spiffs_config->testMode;
     json["ledMode"] = spiffs_config->ledMode;
