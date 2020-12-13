@@ -101,6 +101,8 @@
 
 #define MODE_MAX                        29
 
+#define TIME_SET_MODE_DUR_MS            10000
+
 // -------------------------------------------------------------------------------
 // Temporary display modes - accessed by a short press ( < 1S ) on the button when in MODE_TIME
 #define TEMP_MODE_MIN                   0

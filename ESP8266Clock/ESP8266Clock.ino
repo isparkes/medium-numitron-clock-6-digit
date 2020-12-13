@@ -185,6 +185,7 @@ void setup()
           led2State = false;
         }
       } else {
+
         ledLState = processStatusMode(STATUS_LED_MODE_ON);
         ledRState = processStatusMode(STATUS_LED_MODE_ON);
         led1State = false;
@@ -195,7 +196,6 @@ void setup()
 
       setLeds();
 
-      // debugManager.debugMsg("Checing test mode exit condition");
       button1.checkButton(nowMillis);
       if (button1.isButtonPressedNow() && (secCount == 8)) {
         inLoop = false;
@@ -342,7 +342,11 @@ void loop()
     performOncePerSecondProcessing();
 
     if ((second() == 0) && (!triggeredThisSec)) {
+      // 
+
       if ((minute() == 0)) {
+      // 
+
         if (hour() == 0) {
           performOncePerDayProcessing();
         }
@@ -366,41 +370,28 @@ void loop()
   // What is previewed here will get actioned when
   // the button is released
   if (button1.isButtonPressed2S()) {
-    // Just jump back to the start
-    nextMode = MODE_MIN;
+    if (currentMode == MODE_TIME) {
+      // Enter settings mode
+      nextMode = currentMode + 1;
+      if (nextMode > MODE_MAX) nextMode = MODE_MIN + 1;
+      
+      tempDisplayModeDuration = TIME_SET_MODE_DUR_MS;
+    }
   } else if (button1.isButtonPressed1S()) {
     nextMode = currentMode + 1;
+    
+    tempDisplayModeDuration = TIME_SET_MODE_DUR_MS;
 
     if (nextMode > MODE_MAX) {
-      nextMode = MODE_MIN;
+      nextMode = MODE_MIN + 1;
     }
   }
 
   // ******* Set the display mode *******
   if (button1.isButtonPressedReleased2S()) {
-    currentMode = MODE_MIN;
-
-    // Store the latest config if we exit the config mode
-    spiffs.saveConfigToSpiffs(&current_config);
-
-    // Preset the display
-    OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
-
-    nextMode = currentMode;
+    currentMode = nextMode;    
   } else if (button1.isButtonPressedReleased1S()) {
-    currentMode++;
-
-    if (currentMode > MODE_MAX) {
-      currentMode = MODE_MIN;
-
-      // Store the latest config if we exit the config mode
-      spiffs.saveConfigToSpiffs(&current_config);
-
-      // Preset the display
-      OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
-    }
-
-    nextMode = currentMode;
+    currentMode = nextMode;
   }
 
   // ************* Process the modes *************
@@ -439,6 +430,19 @@ void performOncePerSecondProcessing() {
       tempDisplayModeDuration -= 1000;
     } else {
       tempDisplayModeDuration = 0;
+
+      // Exit from settings on timeout and save
+      if (currentMode > MODE_TIME) {
+        currentMode = MODE_MIN;
+  
+        // Store the latest config if we exit the config mode
+        spiffs.saveConfigToSpiffs(&current_config);
+  
+        // Preset the display
+        OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+  
+        nextMode = currentMode;
+      }
     }
   }
 
