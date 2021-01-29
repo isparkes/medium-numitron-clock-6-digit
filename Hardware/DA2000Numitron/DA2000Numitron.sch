@@ -1,6 +1,5 @@
 EESchema Schematic File Version 4
-LIBS:DA2000Numitron-cache
-EELAYER 26 0
+EELAYER 30 0
 EELAYER END
 $Descr A3 16535 11693
 encoding utf-8
@@ -15,7 +14,7 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L NixieClockMaster:DA-2000 N1
+L DA2000Numitron-rescue:DA-2000-NixieClockMaster N1
 U 1 1 5D147207
 P 9150 3150
 F 0 "N1" H 9650 3000 60  0000 L CNN
@@ -26,7 +25,7 @@ F 3 "" H 9150 3150 60  0001 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L NixieClockMaster:DA-2000 N2
+L DA2000Numitron-rescue:DA-2000-NixieClockMaster N2
 U 1 1 5D14C141
 P 11200 3150
 F 0 "N2" H 11700 2850 60  0000 L CNN
@@ -1022,7 +1021,7 @@ Connection ~ 11100 3650
 Text Label 10650 3750 0    50   ~ 0
 DATA1
 $Comp
-L NixieClockMaster:DA-2000 N3
+L DA2000Numitron-rescue:DA-2000-NixieClockMaster N3
 U 1 1 5D8C6621
 P 13250 3150
 F 0 "N3" H 13750 3000 60  0000 L CNN
@@ -1184,7 +1183,7 @@ Wire Wire Line
 Wire Wire Line
 	14700 2250 12600 2250
 $Comp
-L NixieClockMaster:DA-2000 N4
+L DA2000Numitron-rescue:DA-2000-NixieClockMaster N4
 U 1 1 5D95CF2E
 P 9150 6550
 F 0 "N4" H 9650 6400 60  0000 L CNN
@@ -1195,7 +1194,7 @@ F 3 "" H 9150 6550 60  0001 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L NixieClockMaster:DA-2000 N5
+L DA2000Numitron-rescue:DA-2000-NixieClockMaster N5
 U 1 1 5D95CF3A
 P 11200 6550
 F 0 "N5" H 11700 6250 60  0000 L CNN
@@ -1504,7 +1503,7 @@ Connection ~ 11100 7050
 Text Label 10650 7150 0    50   ~ 0
 DATA4
 $Comp
-L NixieClockMaster:DA-2000 N6
+L DA2000Numitron-rescue:DA-2000-NixieClockMaster N6
 U 1 1 5D95CFE0
 P 13250 6550
 F 0 "N6" H 13750 6400 60  0000 L CNN
