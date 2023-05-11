@@ -33,7 +33,7 @@
 
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
-#include <TimeLib.h>            // http://playground.arduino.cc/code/time (Margolis 1.5.0) // https://github.com/michaelmargolis/arduino_time
+#include <Time.h>               // http://playground.arduino.cc/code/time (Margolis 1.5.0) // https://github.com/michaelmargolis/arduino_time
 #include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.16.0)
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
 
@@ -75,7 +75,7 @@ void setup()
   NewTimeCallback ntcb = newTimeUpdateReceived;
   ntpAsync.setNewTimeCallback(ntcb);
 
-  bool debugVal = false;
+  bool debugVal = true;
   debugManager.setUp(debugVal);
   wifiManager.setDebugOutput(debugVal);
 
