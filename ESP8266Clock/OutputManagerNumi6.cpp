@@ -32,6 +32,7 @@ void OutputManager::setUp() {
   pinMode(DATAPin, OUTPUT);
   pinMode(BLANKPin, OUTPUT);  
 
+  analogWriteRange(1023);
   analogWrite(BLANKPin, 0);
 }
 
