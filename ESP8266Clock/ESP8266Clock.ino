@@ -1821,9 +1821,10 @@ int getDimmingFromLDR() {
     }
 
     // somwhere in the range, apply smoothing
-    sensorLDRSmoothed += ((adjustedLDRValue - sensorLDRSmoothed) / (float) current_config.sensorSmoothCountLDR);
+    if (sensorLDRSmoothed < adjustedLDRValue) sensorLDRSmoothed++;
+    else if (sensorLDRSmoothed > adjustedLDRValue) sensorLDRSmoothed--;
 
-    return (int) sensorLDRSmoothed;
+    return sensorLDRSmoothed;
   } else {
     return current_config.setDim;
   }
