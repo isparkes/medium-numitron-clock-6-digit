@@ -239,42 +239,46 @@ void setup()
     debugManager.debugMsg("AP IP address: " + formatIPAsString(myIP));
   }
 
-  // If we lose the connection, we try to recover it
-  WiFi.setAutoReconnect(true);
-
-  // See if we can already get the time
-  ntpAsync.getTimeFromNTP();
-  setDiagnosticLED(DIAGS_NTP, STATUS_YELLOW);
-  OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_NTP);
-  OutputManager::Instance().outputDisplayDiags();
-
-  long startSeachMs = millis();
-  bool needUpdate = true;
-  while (((millis() - startSeachMs) < 10000) && needUpdate) {
-    delay(1000);
+  if (connected) {
+    // If we lose the connection, we try to recover it
+    WiFi.setAutoReconnect(true);
+  
+    // See if we can already get the time
     ntpAsync.getTimeFromNTP();
-    if (ntpAsync.ntpTimeValid(millis()) > 0) {
-      debugManager.debugMsg("Got update from NTP, exiting loop");
-      needUpdate = false;
+    setDiagnosticLED(DIAGS_NTP, STATUS_YELLOW);
+    OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_NTP);
+    OutputManager::Instance().outputDisplayDiags();
+  
+    long startSeachMs = millis();
+    bool needUpdate = true;
+    while (((millis() - startSeachMs) < 10000) && needUpdate) {
+      delay(1000);
+      ntpAsync.getTimeFromNTP();
+      if (ntpAsync.ntpTimeValid(millis()) > 0) {
+        debugManager.debugMsg("Got update from NTP, exiting loop");
+        needUpdate = false;
+      }
     }
-  }
 
-  if (needUpdate) {
-    setDiagnosticLED(DIAGS_NTP, STATUS_RED);
+    if (needUpdate) {
+      setDiagnosticLED(DIAGS_NTP, STATUS_RED);
+    } else {
+      setDiagnosticLED(DIAGS_NTP, STATUS_GREEN);
+    }
+  
+    setServerPageHandlers();
+    server.begin();
+    debugManager.debugMsg("HTTP server started");
+  
+    // Enable OTA updates
+    httpUpdater.setup(&server, "/update", "admin", "update");
+  
+    if (mdns.begin(WiFi.hostname(), WiFi.localIP())) {
+      debugManager.debugMsg("MDNS responder started as http://" + WiFi.hostname() + ".local");
+      mdns.addService("http", "tcp", 80);
+    }
   } else {
-    setDiagnosticLED(DIAGS_NTP, STATUS_GREEN);
-  }
-
-  setServerPageHandlers();
-  server.begin();
-  debugManager.debugMsg("HTTP server started");
-
-  // Enable OTA updates
-  httpUpdater.setup(&server, "/update", "admin", "update");
-
-  if (mdns.begin(WiFi.hostname(), WiFi.localIP())) {
-    debugManager.debugMsg("MDNS responder started as http://" + WiFi.hostname() + ".local");
-    mdns.addService("http", "tcp", 80);
+      setDiagnosticLED(DIAGS_NTP, STATUS_RED);
   }
 
   setPIRPullup(current_config.usePIRPullup);
@@ -493,7 +497,7 @@ void performOncePerSecondProcessing() {
   // Reset PIR debounce
   pirConsecutiveCounts = 0;
 
-  if (ntpAsync.getNextUpdate(nowMillis) < 0) {
+  if (getIsConnected() && ntpAsync.getNextUpdate(nowMillis) < 0) {
     ntpAsync.getTimeFromNTP();
   }
 

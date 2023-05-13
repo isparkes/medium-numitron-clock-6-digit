@@ -88,7 +88,6 @@ unsigned long NtpAsync::getLastUpdate() {
   return _lastUpdateFromServer;
 }
 
-
 // ************************************************************
 // Invalidate the last update time and trigger a new NTP update
 // ************************************************************
@@ -130,11 +129,6 @@ void NtpAsync::setDebugOutput(bool newDebug) {
 // ************************************************************
 void NtpAsync::getTimeFromNTP() {
   debugMsg("Async NTP in");
-
-  if (WiFi.status() != WL_CONNECTED) {
-    debugMsg("WiFi not connected. Abort.");
-    return;
-  }
 
   IPAddress serverIP;
   WiFi.hostByName(_ntpPool.c_str(), serverIP);

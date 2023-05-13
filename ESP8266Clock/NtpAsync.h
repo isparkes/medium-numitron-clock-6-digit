@@ -31,7 +31,6 @@ class NtpAsync
     void setUp();
     void setDebugOutput(bool newDebug);
     void getTimeFromNTP();
-    bool getIsConnected();
     void resetDefaults();
     
     void setTZS(String newTzs);
