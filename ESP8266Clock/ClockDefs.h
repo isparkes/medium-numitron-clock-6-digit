@@ -15,22 +15,21 @@
 #define SOFTWARE_VERSION      7
 
 // -------------------------------------------------------------------------------
-#define MIN_DIM_DEFAULT       400  // The default minimum dim count
-#define MIN_DIM_MIN           100  // The minimum dim count
-#define MIN_DIM_MAX           800  // The maximum dim count
+#define SENSOR_DARK_MIN     100
+#define SENSOR_DARK_MAX     600
+#define SENSOR_DARK_DEFAULT 450
 
-// -------------------------------------------------------------------------------
-#define SENSOR_SENSIT_MIN     100 // Sensor Sensitivity
-#define SENSOR_SENSIT_MAX     400
-#define SENSOR_SENSIT_DEFAULT 300
+#define SENSOR_BRIGHT_MIN     600
+#define SENSOR_BRIGHT_MAX     1023
+#define SENSOR_BRIGHT_DEFAULT 1023
 
-#define SENSOR_THRSH_MIN      0   // Bright is when we have LDR value = 0, when we read less than this value, we have full brightness
-#define SENSOR_THRSH_MAX      500
-#define SENSOR_THRSH_DEFAULT  200
+#define SENSOR_FACTOR_MIN     50
+#define SENSOR_FACTOR_MAX     200
+#define SENSOR_FACTOR_DEFAULT 100
 
-#define SENSOR_SMOOTH_READINGS_MIN     1
-#define SENSOR_SMOOTH_READINGS_MAX     255
-#define SENSOR_SMOOTH_READINGS_DEFAULT 100  // Speed at which the brighness adapts to changes
+#define SENSOR_SMOOTH_READINGS_DEFAULT 500  // Speed at which the brighness adapts to changes
+
+#define SET_DIM_DEFAULT 1023
 
 // -------------------------------------------------------------------------------
 #define SECS_MAX  60
@@ -69,45 +68,42 @@
 #define MODE_LDR_THRSH                  15 // 
 #define MODE_LDR_SENS                   16 // 
 
-#define MODE_MIN_DIM_UP                 17 // 
-#define MODE_MIN_DIM_DOWN               18 // 
+#define MODE_SLOTS_MODE                 17 // 
+#define MODE_SLOTS_FREQ                 18 // 
 
-#define MODE_SLOTS_MODE                 19 // 
-#define MODE_SLOTS_FREQ                 20 // 
+#define MODE_LED_BLINK                  19 // 
 
-#define MODE_LED_BLINK                  21 // 
+#define MODE_PIR_TIMEOUT_UP             20 // 
+#define MODE_PIR_TIMEOUT_DOWN           21 // 
 
-#define MODE_PIR_TIMEOUT_UP             22 // 
-#define MODE_PIR_TIMEOUT_DOWN           23 // 
+#define MODE_BACKLIGHT_MODE             22 // 
+#define MODE_RED_CNL                    23 // 
+#define MODE_GRN_CNL                    24 // 
+#define MODE_BLU_CNL                    25 // 
+#define MODE_CYCLE_SPEED                26 // 
 
-#define MODE_BACKLIGHT_MODE             24 // 
-#define MODE_RED_CNL                    25 // 
-#define MODE_GRN_CNL                    26 // 
-#define MODE_BLU_CNL                    27 // 
-#define MODE_CYCLE_SPEED                28 // 
+#define MODE_BL_DIM                     27 // 
+#define MODE_UL_DIM                     28 // 
 
-#define MODE_BL_DIM                     29 // 
-#define MODE_UL_DIM                     30 // 
+#define MODE_SEP_DIM                    29 // 
 
-#define MODE_SEP_DIM                    31 // 
-
-#define MODE_L_IND_MODE                 32 // 
-#define MODE_R_IND_MODE                 33 // 
-#define MODE_DO_NOT_DIM_INDS            34 // 
+#define MODE_L_IND_MODE                 30 // 
+#define MODE_R_IND_MODE                 31 // 
+#define MODE_DO_NOT_DIM_INDS            32 // 
 
 // Use the PIR pin pullup resistor
-#define MODE_USE_PIR_PULLUP             35 // 1 = use Pullup
+#define MODE_USE_PIR_PULLUP             33 // 1 = use Pullup
 #define USE_PIR_PULLUP_DEFAULT          true
 
-#define MODE_PREHEAT                    36 // 
+#define MODE_PREHEAT                    34 // 
 
 // Software Version
-#define MODE_VERSION                    37 // 
+#define MODE_VERSION                    35 // 
 
 // Tube test - all six digits, so no flashing mode indicator
-#define MODE_TUBE_TEST                  38
+#define MODE_TUBE_TEST                  36
 
-#define MODE_MAX                        38
+#define MODE_MAX                        36
 
 #define TIME_SET_MODE_DUR_MS            10000
 

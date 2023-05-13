@@ -205,9 +205,9 @@ void OutputManager::smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) 
 // ************************************************************
 // set the PWM Brighness
 // ************************************************************
-void OutputManager::setLDRValue(unsigned int newBrightness) {
-  if (_ldrValue != newBrightness) {
-    _ldrValue = newBrightness;
+void OutputManager::setLDRValue(int newBrightness) {
+  if (_ldrValue != (1023 - newBrightness)) {
+    _ldrValue = (1023 - newBrightness);
     _tubeLag = (.000655 * pow(newBrightness, 2) + -.01159 * newBrightness + 148) / (6 - cc->preheatStrength);
   }
 }
@@ -460,7 +460,7 @@ void OutputManager::loadNumberArrayIP(byte byte1, byte byte2) {
 // Show an integer configuration value
 // ************************************************************
 void OutputManager::loadNumberArrayESPID(String ID) {
-  byte byteArray[5];
+  byte byteArray[6];
   hexCharacterStringToBytes(byteArray, ID.c_str());
   _digit_buffer.numberArray[5] = byteArray[5];
   _digit_buffer.numberArray[4] = byteArray[4];

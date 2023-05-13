@@ -120,7 +120,7 @@ class OutputManager {
     void setConfigObject(spiffs_config_t* ccPtr);
     void outputDisplay();
     void outputDisplayDiags();
-    void setLDRValue(unsigned int newBrightness);
+    void setLDRValue(int newBrightness);
 
     void loadNumberArrayTime();
     void loadNumberArrayDate();

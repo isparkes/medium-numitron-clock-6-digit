@@ -61,10 +61,10 @@ boolean blankTubes = false;
 boolean blankLEDs = false;
 
 // --------------- Ambient light dimming ---------------
-
-double sensorLDRSmoothed = 0;
-double sensorFactor = (double)SENSOR_SENSIT_DEFAULT / 100.0;
-int ldrValue = 0;
+float sensorLDRSmoothed;
+int rawLDRValue;
+int adjustedLDRValue;
+int ldrValue;
 
 // ------------------- LED management ------------------
 

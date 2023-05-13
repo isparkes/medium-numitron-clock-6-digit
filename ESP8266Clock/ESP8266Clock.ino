@@ -780,18 +780,12 @@ void setNextMode(int displayMode) {
         break;
       }
     case MODE_LDR_THRSH: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.thresholdBright, displayMode);
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensorLDRMinValue, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
     case MODE_LDR_SENS: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensitivityLDR, displayMode);
-        OutputManager::Instance().displayConfig();
-        break;
-      }
-    case MODE_MIN_DIM_UP:
-    case MODE_MIN_DIM_DOWN: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.minDim, displayMode);
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensorLDRMaxValue, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
@@ -1196,45 +1190,23 @@ void processCurrentMode(int displayMode) {
       }
     case MODE_LDR_THRSH: {
         if (button1.isButtonPressedAndReleased()) {
-          current_config.thresholdBright += 10;
-          if (current_config.thresholdBright > SENSOR_THRSH_MAX) {
-            current_config.thresholdBright = SENSOR_THRSH_MIN;
+          current_config.sensorLDRMinValue += 10;
+          if (current_config.sensorLDRMinValue > SENSOR_DARK_MAX) {
+            current_config.sensorLDRMinValue = SENSOR_DARK_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.thresholdBright, displayMode);
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensorLDRMinValue, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
     case MODE_LDR_SENS: {
         if (button1.isButtonPressedAndReleased()) {
-          current_config.sensitivityLDR += 10;
-          if (current_config.sensitivityLDR > SENSOR_SENSIT_MAX) {
-            current_config.sensitivityLDR = SENSOR_SENSIT_MIN;
+          current_config.sensorLDRMaxValue += 10;
+          if (current_config.sensorLDRMaxValue > SENSOR_BRIGHT_MAX) {
+            current_config.sensorLDRMaxValue = SENSOR_BRIGHT_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensitivityLDR, displayMode);
-        OutputManager::Instance().displayConfig();
-        break;
-      }
-    case MODE_MIN_DIM_UP: {
-        if (button1.isButtonPressedAndReleased()) {
-          current_config.minDim += 10;
-          if (current_config.minDim > MIN_DIM_MAX) {
-            current_config.minDim = MIN_DIM_MAX;
-          }
-        }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.minDim, displayMode);
-        OutputManager::Instance().displayConfig();
-        break;
-      }
-    case MODE_MIN_DIM_DOWN: {
-        if (button1.isButtonPressedAndReleased()) {
-          current_config.minDim -= 10;
-          if (current_config.minDim < MIN_DIM_MIN) {
-            current_config.minDim = MIN_DIM_MIN;
-          }
-        }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.minDim, displayMode);
+        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensorLDRMaxValue, displayMode);
         OutputManager::Instance().displayConfig();
         break;
       }
@@ -1828,27 +1800,27 @@ void setRTCTime() {
 // ******************************************************************
 int getDimmingFromLDR() {
   if (current_config.useLDR) {
-    int rawLDR = analogRead(LDRPin);
+    rawLDRValue = 1023 - analogRead(LDRPin);
 
-    // If we are below the threshold value, set full brightness
-    int rawSensorVal = rawLDR - current_config.thresholdBright;
+    // Lower bound
+    if (rawLDRValue < current_config.sensorLDRMinValue) {
+      return current_config.sensorLDRMinValue;
+    }
 
-    if (rawSensorVal < 0) rawSensorVal = 0;
+    // Apply factor and check upper bound
+    // The Divisor "80" gives a sensitivity of 100% a useful range in practice
+    adjustedLDRValue = ((rawLDRValue - current_config.sensorLDRMinValue) * current_config.sensorLDRSensitivity / 80) + current_config.sensorLDRMinValue;
 
-    float sensorFactor = (float) current_config.sensitivityLDR / 100.0;
+    if (adjustedLDRValue > current_config.sensorLDRMaxValue) {
+      return current_config.sensorLDRMaxValue;
+    }
 
-    float sensorVal = (float) rawSensorVal * sensorFactor;
+    // somwhere in the range, apply smoothing
+    sensorLDRSmoothed += ((adjustedLDRValue - sensorLDRSmoothed) / (float) current_config.sensorSmoothCountLDR);
 
-    float sensorDiff = rawSensorVal - sensorLDRSmoothed;
-    sensorLDRSmoothed += (sensorDiff / (float) current_config.sensorSmoothCountLDR);
-
-    int returnValue = sensorLDRSmoothed;
-
-    if (returnValue > (1023 - current_config.minDim)) returnValue = (1023 - current_config.minDim);
-
-    return returnValue;
+    return (int) sensorLDRSmoothed;
   } else {
-    return 0;
+    return current_config.setDim;
   }
 }
 
@@ -1867,10 +1839,11 @@ void factoryReset() {
   cc->dateFormat = DATE_FORMAT_DEFAULT;
   cc->dayBlanking = DAY_BLANKING_DEFAULT;
 
-  cc->thresholdBright = SENSOR_THRSH_DEFAULT;
+  cc->sensorLDRMinValue = SENSOR_DARK_DEFAULT;
+  cc->sensorLDRMaxValue = SENSOR_BRIGHT_DEFAULT;
+  cc->sensorLDRSensitivity = SENSOR_FACTOR_DEFAULT;
   cc->sensorSmoothCountLDR = SENSOR_SMOOTH_READINGS_DEFAULT;
-  cc->sensitivityLDR = SENSOR_SENSIT_DEFAULT;
-  cc->minDim = MIN_DIM_DEFAULT;
+  cc->setDim = SET_DIM_DEFAULT;
 
   cc->dateFormat = DATE_FORMAT_DEFAULT;
   cc->dayBlanking = DAY_BLANKING_DEFAULT;
@@ -2026,7 +1999,7 @@ void rootPageHandler() {
   response_message += getTableFoot();
 
   // ******************** Clock Info table ***************************
-  float digitBrightness = (1023 - ldrValue) * 100.0 / 1023.0;
+  float digitBrightness = ldrValue * 100.0 / 1023.0;
   String motionSensorState = checkPIRInstalled() ? getPIRStateDisplay() : "Not installed";
   String rtcState = useRTC ? "Installed" : "Not installed";
   String timeSource;
@@ -2042,11 +2015,17 @@ void rootPageHandler() {
   response_message += getTableHead2Col("Clock information", "Name", "Value");
 
   if (current_config.useLDR) {
-    response_message += getTableRow2Col("LDR Value", sensorLDRSmoothed);
+    if ((ldrValue == current_config.sensorLDRMinValue) || (ldrValue == current_config.sensorLDRMaxValue)) {
+      response_message += getTableRow2Col("LDR Value", String(ldrValue) + " (range bound)");      
+    } else {
+      response_message += getTableRow2Col("LDR Value", ldrValue);
+    }
   } else {
     response_message += getTableRow2Col("LDR Value", "LDR disabled");
   }
 
+//  response_message += getTableRow2Col("Raw LDR", String(rawLDRValue));
+//  response_message += getTableRow2Col("Adjusted LDR", String(adjustedLDRValue));
   response_message += getTableRow2Col("Digit brightness %", String(digitBrightness, 2));
   response_message += getTableRow2Col("Motion Sensor", motionSensorState);
   response_message += getTableRow2Col("Time Source", timeSource);
@@ -2150,10 +2129,14 @@ void clockConfigPageHandler() {
 
   changed = changed | checkServerArgBoolean("12h24hMode", "12/24h mode", "12h", "24h", current_config.hourMode);
   changed = changed | checkServerArgBoolean("blankLeading", "Leading zero", "blank", "show", current_config.blankLeading);
-  changed = changed | checkServerArgBoolean("useLDR", "Use LDR", "on", "off", current_config.useLDR);
-  changed = changed | checkServerArgInt("minDim", "minDim", current_config.minDim);
-  changed = changed | checkServerArgInt("thresholdBright", "thresholdBright", current_config.thresholdBright);
-  changed = changed | checkServerArgInt("sensitivityLDR", "sensitivityLDR", current_config.sensitivityLDR);
+  bool useLDRChanged = checkServerArgBoolean("useLDR", "Use LDR", "on", "off", current_config.useLDR);
+  if (useLDRChanged) {
+    changed = true;
+    current_config.setDim = ldrValue;
+  }
+  changed = changed | checkServerArgInt("sensorLDRMinValue", "LDR Min Value", current_config.sensorLDRMinValue);
+  changed = changed | checkServerArgInt("sensorLDRMaxValue", "LDR Max Value", current_config.sensorLDRMaxValue);
+  changed = changed | checkServerArgInt("sensorLDRSensitivity", "LDR sensitivity", current_config.sensorLDRSensitivity);
   changed = changed | checkServerArgByte("dateFormat", "dateFormat", current_config.dateFormat);
   changed = changed | checkServerArgByte("dayBlanking", "dayBlanking", current_config.dayBlanking);
   changed = changed | checkServerArgByte("blankHourStart", "blankHourStart", current_config.blankHourStart);
@@ -2259,6 +2242,11 @@ void clockConfigPageHandler() {
   response_message += getFormHead("Light Dependent Resistor");
 
   // LDR
+  if (current_config.useLDR) {
+    response_message += getExplanationText("Current LDR Reading: " + String(ldrValue) + ". LDR raw reading: " + String(rawLDRValue));
+  } else {
+    response_message += getExplanationText("LDR disbled, set fixed value: " + String(current_config.setDim));
+  }
   response_message += getRadioGroupHeader("Use LDR:");
   if (current_config.useLDR) {
     response_message += getRadioButton("useLDR", "On", "on", true);
@@ -2269,14 +2257,9 @@ void clockConfigPageHandler() {
   }
   response_message += getRadioGroupFooter();
 
-  // Min dim
-  response_message += getNumberInput("Min Dim:", "minDim", MIN_DIM_MIN, MIN_DIM_MAX, current_config.minDim, false);
-
-  // LDR threshold
-  response_message += getNumberInput("LDR Threshold:", "thresholdBright", SENSOR_THRSH_MIN, SENSOR_THRSH_MAX, current_config.thresholdBright, false);
-
-  // LDR Sensitivity
-  response_message += getNumberInput("LDR Sensitivity:", "sensitivityLDR", SENSOR_SENSIT_MIN, SENSOR_SENSIT_MAX, current_config.sensitivityLDR, false);
+  response_message += getNumberInput("LDR Dark:", "sensorLDRMinValue", SENSOR_DARK_MIN, SENSOR_DARK_MAX, current_config.sensorLDRMinValue, false);
+  response_message += getNumberInput("LDR Bright:", "sensorLDRMaxValue", SENSOR_BRIGHT_MIN, SENSOR_BRIGHT_MAX, current_config.sensorLDRMaxValue, false);
+  response_message += getNumberInput("LDR Sensitivity %:", "sensorLDRSensitivity", SENSOR_FACTOR_MIN, SENSOR_FACTOR_MAX, current_config.sensorLDRSensitivity, false);
 
   response_message += getSubmitButton("Set");
 

@@ -65,6 +65,9 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
           spiffs_config->hourMode = json["hourMode"].as<bool>();
           debugMsg("Loaded 12/24H mode: " + String(spiffs_config->hourMode));
 
+          spiffs_config->setDim = json["setDim"];
+          debugMsg("Loaded setDim: " + String(spiffs_config->setDim));
+
           spiffs_config->blankLeading = json["blankLeading"].as<bool>();
           debugMsg("Loaded lead zero blanking: " + String(spiffs_config->blankLeading));
 
@@ -86,14 +89,14 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
           spiffs_config->scrollSteps = json["scrollSteps"];
           debugMsg("Loaded scrollSteps: " + String(spiffs_config->scrollSteps));
 
-          spiffs_config->thresholdBright = json["thresholdBright"];
-          debugMsg("Loaded thresholdBright: " + String(spiffs_config->thresholdBright));
+          spiffs_config->sensorLDRMinValue = json["sensorLDRMinValue"];
+          debugMsg("Loaded sensorLDRMinValue: " + String(spiffs_config->sensorLDRMinValue));
 
-          spiffs_config->sensitivityLDR = json["sensitivityLDR"];
-          debugMsg("Loaded sensitivityLDR: " + String(spiffs_config->sensitivityLDR));
+          spiffs_config->sensorLDRMaxValue = json["sensorLDRMaxValue"];
+          debugMsg("Loaded sensorLDRMaxValue: " + String(spiffs_config->sensorLDRMaxValue));
 
-          spiffs_config->minDim = json["minDim"];
-          debugMsg("Loaded minDim: " + String(spiffs_config->minDim));
+          spiffs_config->sensorLDRSensitivity = json["sensorLDRSensitivity"];
+          debugMsg("Loaded sensorLDRSensitivity: " + String(spiffs_config->sensorLDRSensitivity));
 
           spiffs_config->sensorSmoothCountLDR = json["sensorSmoothCountLDR"];
           debugMsg("Loaded sensorSmoothCountLDR: " + String(spiffs_config->sensorSmoothCountLDR));
@@ -212,6 +215,7 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
     json["ntp_update_interval"] = spiffs_config->ntpUpdateInterval;
     json["time_zone_string"] = spiffs_config->tzs;
     json["hourMode"] = spiffs_config->hourMode;
+    json["setDim"] = spiffs_config->setDim;
     json["blankLeading"] = spiffs_config->blankLeading;
     json["dateFormat"] = spiffs_config->dateFormat;
     json["dayBlanking"] = spiffs_config->dayBlanking;
@@ -219,9 +223,9 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
     json["scrollback"] = spiffs_config->scrollback;
     json["fadeSteps"] = spiffs_config->fadeSteps;
     json["scrollSteps"] = spiffs_config->scrollSteps;
-    json["thresholdBright"] = spiffs_config->thresholdBright;
-    json["sensitivityLDR"] = spiffs_config->sensitivityLDR;
-    json["minDim"] = spiffs_config->minDim;
+    json["sensorLDRMinValue"] = spiffs_config->sensorLDRMinValue;
+    json["sensorLDRMaxValue"] = spiffs_config->sensorLDRMaxValue;
+    json["sensorLDRSensitivity"] = spiffs_config->sensorLDRSensitivity;
     json["sensorSmoothCountLDR"] = spiffs_config->sensorSmoothCountLDR;
     json["backlightMode"] = spiffs_config->backlightMode;
     json["useBLPulse"] = spiffs_config->useBLPulse;

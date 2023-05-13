@@ -16,14 +16,15 @@ typedef struct {
   int ntpUpdateInterval;
   String tzs;
   boolean hourMode;
-  int minDim;
+  int setDim;
   byte dayBlanking;
   boolean scrollback;
   boolean fade;
   byte fadeSteps;
   byte scrollSteps;
-  int thresholdBright;
-  int sensitivityLDR;
+  int sensorLDRMinValue;
+  int sensorLDRMaxValue;
+  int sensorLDRSensitivity;
   int sensorSmoothCountLDR;
   byte blankHourStart;
   byte blankHourEnd;
