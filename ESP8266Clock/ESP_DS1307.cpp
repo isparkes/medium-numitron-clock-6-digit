@@ -24,7 +24,7 @@ void DS1307::startClock(void)        // set the ClockHalt bit low to start the r
   Wire.write((uint8_t)0x00);                      // Register 0x00 holds the oscillator start/stop bit
   Wire.endTransmission();
   Wire.requestFrom(DS1307_I2C_ADDRESS, 1);
-  second = Wire.read() & 0x7f;       // save actual seconds and AND sec with bit 7 (sart/stop bit) = clock started
+  second = Wire.read() & 0x7f;       // save actual seconds and AND sec with bit 7 (start/stop bit) = clock started
   Wire.beginTransmission(DS1307_I2C_ADDRESS);
   Wire.write((uint8_t)0x00);
   Wire.write((uint8_t)second);                    // write seconds back and start the clock
@@ -36,7 +36,7 @@ void DS1307::stopClock(void)         // set the ClockHalt bit high to stop the r
   Wire.write((uint8_t)0x00);                      // Register 0x00 holds the oscillator start/stop bit
   Wire.endTransmission();
   Wire.requestFrom(DS1307_I2C_ADDRESS, 1);
-  second = Wire.read() | 0x80;       // save actual seconds and OR sec with bit 7 (sart/stop bit) = clock stopped
+  second = Wire.read() | 0x80;       // save actual seconds and OR sec with bit 7 (start/stop bit) = clock stopped
   Wire.beginTransmission(DS1307_I2C_ADDRESS);
   Wire.write((uint8_t)0x00);
   Wire.write((uint8_t)second);                    // write seconds back and stop the clock

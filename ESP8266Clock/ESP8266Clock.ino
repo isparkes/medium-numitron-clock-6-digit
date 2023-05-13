@@ -287,6 +287,7 @@ void setup()
   testRTCTimeProvider();
   if (useRTC) {
     getRTCTime(true);
+    Clock.startClock();
     setDiagnosticLED(DIAGS_RTC, STATUS_GREEN);
   } else {
     setDiagnosticLED(DIAGS_RTC, STATUS_RED);
@@ -1741,7 +1742,7 @@ String getRTCTime(boolean setInternalTime) {
     byte mins = Clock.minute;
     byte secs = Clock.second;
 
-    char buf1[20];
+    char buf1[26];
     sprintf(buf1, "%04d:%02d:%02d %02d:%02d:%02d", years, months, days, hours, mins, secs);
     String returnValue = String(buf1);
   
