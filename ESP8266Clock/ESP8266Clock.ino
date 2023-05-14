@@ -59,6 +59,8 @@
 //**********************************************************************************
 void setup()
 {
+  bool debugVal = false;
+  
   // Set up the output manager
   OutputManager::CreateInstance();
   OutputManager::Instance().setUp();
@@ -75,7 +77,6 @@ void setup()
   NewTimeCallback ntcb = newTimeUpdateReceived;
   ntpAsync.setNewTimeCallback(ntcb);
 
-  bool debugVal = true;
   debugManager.setUp(debugVal);
   wifiManager.setDebugOutput(debugVal);
 
@@ -1799,12 +1800,12 @@ void setRTCTime() {
 // ******************************************************************
 // Check the ambient light through the LDR (Light Dependent Resistor)
 // Smooths the reading over a number of reads.
-//
-// The LDR in bright light gives reading of around 50, the reading in
-// total darkness is around 900.
 // ******************************************************************
 int getDimmingFromLDR() {
   if (current_config.useLDR) {
+    int rawLDRValue;
+    int adjustedLDRValue;
+    
     rawLDRValue = 1023 - analogRead(LDRPin);
 
     // Lower bound
@@ -2249,7 +2250,7 @@ void clockConfigPageHandler() {
 
   // LDR
   if (current_config.useLDR) {
-    response_message += getExplanationText("Current LDR Reading: " + String(ldrValue) + ". LDR raw reading: " + String(rawLDRValue));
+    response_message += getExplanationText("Current LDR Reading: " + String(ldrValue));
   } else {
     response_message += getExplanationText("LDR disbled, set fixed value: " + String(current_config.setDim));
   }

@@ -62,8 +62,6 @@ boolean blankLEDs = false;
 
 // --------------- Ambient light dimming ---------------
 int sensorLDRSmoothed = 1023;   // Stops "dim then light up" after start
-int rawLDRValue;
-int adjustedLDRValue;
 int ldrValue;
 
 // ------------------- LED management ------------------
