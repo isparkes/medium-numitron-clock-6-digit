@@ -24,7 +24,7 @@ OutputManager outputManager;
 unsigned long nowMillis = 0;
 unsigned long lastCheckMillis = 0;
 unsigned long lastSecMillis = nowMillis;
-unsigned long lastSecond = second();  
+int lastSecond = second();  
 boolean secondsChanged = false;
 
 byte currentMode = MODE_TIME;   // Initial cold start mode

@@ -33,7 +33,7 @@
 
 // Clock specific libraries, install these with "Sketch -> Include Library -> Add .ZIP library
 // using the ZIP files in the "libraries" directory
-#include <Time.h>               // http://playground.arduino.cc/code/time (Margolis 1.5.0) // https://github.com/michaelmargolis/arduino_time
+#include <TimeLib.h>               // http://playground.arduino.cc/code/time (Margolis 1.5.0) // https://github.com/michaelmargolis/arduino_time
 #include <WiFiManager.h>        // https://github.com/tzapu/WiFiManager  (tzapu 0.16.0)
 #include <ArduinoJson.h>        // https://github.com/bblanchon/ArduinoJson (bblanchon 5.13.2)
 
@@ -588,17 +588,6 @@ void setLeds()
         } else {
           led1State = false;
           led2State = true;
-        }
-        break;
-      }
-    case LED_RAILROAD_X:
-      {
-        if (upOrDown) {
-          led1State = true;
-          led2State = true;
-        } else {
-          led1State = false;
-          led2State = false;
         }
         break;
       }
@@ -1350,7 +1339,7 @@ void processCurrentMode(int displayMode) {
       }
     case MODE_SEP_DIM: {
         if (button1.isButtonPressedAndReleased()) {
-          current_config.separatorDimFactor = current_config.separatorDimFactor++;
+          current_config.separatorDimFactor = current_config.separatorDimFactor + 1;
           if (current_config.separatorDimFactor > SEP_DIM_MAX) {
             current_config.separatorDimFactor = SEP_DIM_MIN;
           }
@@ -1361,7 +1350,7 @@ void processCurrentMode(int displayMode) {
       }
     case MODE_L_IND_MODE: {
         if (button1.isButtonPressedAndReleased()) {
-          current_config.statusModeL = current_config.statusModeL++;
+          current_config.statusModeL = current_config.statusModeL + 1;
           if (current_config.statusModeL > STATUS_LED_MODE_MAX) {
             current_config.statusModeL = STATUS_LED_MODE_MIN;
           }
@@ -1372,7 +1361,7 @@ void processCurrentMode(int displayMode) {
       }
     case MODE_R_IND_MODE: {
         if (button1.isButtonPressedAndReleased()) {
-          current_config.statusModeR = current_config.statusModeR++;
+          current_config.statusModeR = current_config.statusModeR + 1;
           if (current_config.statusModeR > STATUS_LED_MODE_MAX) {
             current_config.statusModeR = STATUS_LED_MODE_MIN;
           }
@@ -1581,6 +1570,8 @@ bool processStatusMode(byte mode) {
         return true;
         break;
       }
+    default:
+      return false;
   }
 }
 
@@ -1614,7 +1605,11 @@ boolean checkBlanking() {
         return ((weekday() > 1) && (weekday() < 7)) && getHoursBlanked();
       case DAY_BLANKING_ALWAYS:
         return true;
+      default:
+        return false;
     }
+  } else {
+    return false;
   }
 }
 
@@ -2468,7 +2463,6 @@ void clockConfigPageHandler() {
 // ************************************************************
 void setDisplayValuePageHandler() {
   String resultMessage;
-  byte timeValue = 0xff;
 
   int valueToDisplay = 0;
   int valueTime = 0;
