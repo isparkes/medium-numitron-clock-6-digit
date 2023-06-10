@@ -538,6 +538,22 @@ void performOncePerMinuteProcessing() {
     myIP = WiFi.softAPIP();
     debugManager.debugMsg("Not connected IP: " + formatIPAsString(myIP));
   }
+
+  // Which slots transition are we using?
+  switch (current_config.slotsMode) {
+    case SLOTS_MODE_WIPE_WIPE: {
+        activeTransition = &transitionWipe;
+        break;
+      }
+    case SLOTS_MODE_BANG_BANG: {
+        activeTransition = &transitionBang;
+        break;
+      }
+    default: {
+        activeTransition = &transitionDummy; // Insurance against null pointers
+      }
+  }
+
 }
 
 // ************************************************************
@@ -979,76 +995,61 @@ void processCurrentMode(int displayMode) {
           }
 
           OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
-
         } else {
-          if (current_config.slotsMode > SLOTS_MODE_MIN) {
-
-            // Which slots transition are we using?
-            if (!msgDisplaying) {
-              switch (current_config.slotsMode) {
-                case SLOTS_MODE_WIPE_WIPE: {
-                    activeTransition = &transitionWipe;
-                    break;
-                  }
-                case SLOTS_MODE_BANG_BANG: {
-                    activeTransition = &transitionBang;
-                    break;
-                  }
-                default: {
-                    activeTransition = &transitionDummy; // Insurance against null pointers
-                  }
-              }
+          // Which slots transition are we using?
+          if (!msgDisplaying) {
+            switch (current_config.slotsMode) {
+              case SLOTS_MODE_WIPE_WIPE: {
+                  activeTransition = &transitionWipe;
+                  break;
+                }
+              case SLOTS_MODE_BANG_BANG: {
+                  activeTransition = &transitionBang;
+                  break;
+                }
+              default: {
+                  activeTransition = &transitionDummy; // Insurance against null pointers
+                }
             }
+          }
 
-            // Initialise the slots transition values and start it
-            if (second() == 50 && !msgDisplaying) {
-              switch (current_config.slotsFreq) {
-                case SLOTS_FREQ_1_MIN:
-                {
+          // Initialise the slots transition values and start it
+          if (second() == 50 && !msgDisplaying) {
+            switch (current_config.slotsFreq) {
+              case SLOTS_FREQ_1_MIN:
+              {
+                activeTransition->start(nowMillis);
+                break;
+              }
+              case SLOTS_FREQ_5_MIN:
+              {
+                if ((minute() % 5) == 0) {
                   activeTransition->start(nowMillis);
-                  break;
                 }
-                case SLOTS_FREQ_5_MIN:
-                {
-                  if ((minute() % 5) == 0) {
-                    activeTransition->start(nowMillis);
-                  }
-                  break;
-                }
-                case SLOTS_FREQ_10_MIN:
-                {
-                  if ((minute() % 10) == 0) {
-                    activeTransition->start(nowMillis);
-                  }
-                  break;
-                }
+                break;
               }
-            }
-
-            // Continue slots transition
-            msgDisplaying = activeTransition->runEffect(nowMillis, current_config.blankLeading);
-            if (msgDisplaying) {
-              activeTransition->updateRegularDisplaySeconds(second());
-            }
-            else {
-              // no slots mode, check if we are in valueDisplayMode
-            if (OutputManager::Instance().getValueDisplayTime() > 0) {
-                OutputManager::Instance().loadNumberArrayValueToShow();
-                OutputManager::Instance().loadDisplaySetValueType();
-              } else {
-                // Do normal time thing when we are not in slots
-                OutputManager::Instance().loadNumberArrayTime();
-                OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
+              case SLOTS_FREQ_10_MIN:
+              {
+                if ((minute() % 10) == 0) {
+                  activeTransition->start(nowMillis);
+                }
+                break;
               }
             }
           }
+
+          // Continue slots transition
+          msgDisplaying = activeTransition->runEffect(nowMillis, current_config.blankLeading);
+          if (msgDisplaying) {
+            activeTransition->updateRegularDisplaySeconds(second());
+          }
           else {
             // no slots mode, check if we are in valueDisplayMode
-            if (OutputManager::Instance().getValueDisplayTime() > 0) {
+          if (OutputManager::Instance().getValueDisplayTime() > 0) {
               OutputManager::Instance().loadNumberArrayValueToShow();
               OutputManager::Instance().loadDisplaySetValueType();
             } else {
-              // no slots mode, just do normal time thing
+              // Do normal time thing when we are not in slots
               OutputManager::Instance().loadNumberArrayTime();
               OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
             }
