@@ -1,5 +1,5 @@
 (sym_lib_table
-  (lib (name ti)(type Legacy)(uri ${KIPRJMOD}/ti.lib)(options "")(descr ""))
-  (lib (name IV9Numitron-rescue)(type Legacy)(uri ${KIPRJMOD}/IV9Numitron-rescue.lib)(options "")(descr ""))
-  (lib (name NixieClockMaster)(type Legacy)(uri /data/Copy/Nixie/KiCAD/libraries/NixieClockMaster.lib)(options "")(descr ""))
+  (lib (name "ti")(type "Legacy")(uri "${KIPRJMOD}/ti.lib")(options "")(descr ""))
+  (lib (name "IV9Numitron-rescue")(type "Legacy")(uri "${KIPRJMOD}/IV9Numitron-rescue.lib")(options "")(descr ""))
+  (lib (name "NixieClockMaster")(type "Legacy")(uri "${KI_GLOW_CUSTOM}/libraries/NixieClockMaster.lib")(options "")(descr ""))
 )
