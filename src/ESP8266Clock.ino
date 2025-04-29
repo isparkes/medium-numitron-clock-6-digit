@@ -291,6 +291,7 @@ void setup()
   OutputManager::Instance().outputDisplayDiags();
   testRTCTimeProvider();
   if (useRTC) {
+    startRTCTimeProvider();
     getRTCTime(true);
     Clock.startClock();
     setDiagnosticLED(DIAGS_RTC, STATUS_GREEN);
@@ -1784,6 +1785,15 @@ void setRTCTime() {
     Clock.setTime();
 
     debugManager.debugMsg("Set RTC time to internal time: " + String(year()) + ":" + String(month()) + ":" + String(day()) + " " + String(hour()) + ":" + String(minute()) + ":" + String(second()));
+  }
+}
+
+// ************************************************************
+// Check that we still have access to the time from the RTC
+// ************************************************************
+void startRTCTimeProvider() {
+  if (useRTC) {
+    Clock.startClock();
   }
 }
 
