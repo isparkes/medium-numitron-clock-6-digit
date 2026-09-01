@@ -107,7 +107,7 @@ String NtpAsync::getLastTimeFromServer() {
 // ************************************************************
 bool NtpAsync::ntpTimeValid(unsigned long nowMillis) {
   checkMillisOverflow(nowMillis);
-  return _lastUpdateFromServer != 0 && ((nowMillis - _lastUpdateFromServer) < (2000 * _ntpUpdateInterval));
+  return _lastUpdateFromServer != 0 && ((nowMillis - _lastUpdateFromServer) < (unsigned long)(2000 * _ntpUpdateInterval));
 }
 
 // ************************************************************
@@ -180,10 +180,6 @@ void NtpAsync::getTimeFromNTP() {
       lowWord = ( buffer[42] << 8 | buffer[43] ) & 0x0000FFFF;
       uint32_t secsSince1900 = highWord << 16 | lowWord;      // transmit timestamp seconds
 
-      highWord = ( buffer[44] << 8 | buffer[45] ) & 0x0000FFFF;
-      lowWord = ( buffer[46] << 8 | buffer[47] ) & 0x0000FFFF;
-      uint32_t fraction = highWord << 16 | lowWord;       // transmit timestamp fractions
-
       //check if received data makes sense
       //buffer[1] = stratum - should be 1..15 for valid reply
       //also checking that all timestamps are non-zero and receive timestamp seconds are <= transmit timestamp seconds
@@ -193,12 +189,9 @@ void NtpAsync::getTimeFromNTP() {
         return;
       }
 
-      // Set the t and measured_at variables that were passed by reference
       unsigned long done = millis();
       debugMsg("success round trip " + String(done - _ntpStarted) + " ms");
       unsigned long t = secsSince1900 - 2208988800UL;                     // Subtract 70 years to get seconds since 1970
-      uint16_t ms = fraction / 4294967UL;                                 // Turn 32 bit fraction into ms by dividing by 2^32 / 1000
-      unsigned long measured_at = done - ((done - _ntpStarted) / 2) - ms;  // Assume symmetric network latency and return when we think the whole second was.
 
       _lastUpdateFromServer = done;
 

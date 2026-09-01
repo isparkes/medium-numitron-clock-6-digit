@@ -192,7 +192,7 @@ void OutputManager::smoothDigits(byte *digits, byte *prevNums, bool *smoothRun) 
         smoothStartMillis[i] = millis();
       }
       else {
-        if (millis() - smoothStartMillis[i] >= _tubeLag) {
+        if (millis() - smoothStartMillis[i] >= (unsigned long)_tubeLag) {
           prevNums[i] = _digit_buffer.numberArray[i];
           smoothRun[i] = false;
         }
