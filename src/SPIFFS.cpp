@@ -77,17 +77,17 @@ boolean SPIFFS_CLOCK::getConfigFromSpiffs(spiffs_config_t* spiffs_config) {
           spiffs_config->dayBlanking = json["dayBlanking"];
           debugMsg("Loaded dayBlanking: " + String(spiffs_config->dayBlanking));
 
-          spiffs_config->blankLeading = json["fade"].as<bool>();
-          debugMsg("Loaded fade: " + String(spiffs_config->fade));
+//          spiffs_config->blankLeading = json["fade"].as<bool>();
+//          debugMsg("Loaded fade: " + String(spiffs_config->fade));
 
-          spiffs_config->fadeSteps = json["fadeSteps"];
-          debugMsg("Loaded fadeSteps: " + String(spiffs_config->fadeSteps));
+//          spiffs_config->fadeSteps = json["fadeSteps"];
+//          debugMsg("Loaded fadeSteps: " + String(spiffs_config->fadeSteps));
 
           spiffs_config->scrollback = json["scrollback"].as<bool>();
           debugMsg("Loaded scrollback: " + String(spiffs_config->scrollback));
 
-          spiffs_config->scrollSteps = json["scrollSteps"];
-          debugMsg("Loaded scrollSteps: " + String(spiffs_config->scrollSteps));
+//          spiffs_config->scrollSteps = json["scrollSteps"];
+//          debugMsg("Loaded scrollSteps: " + String(spiffs_config->scrollSteps));
 
           spiffs_config->sensorLDRMinValue = json["sensorLDRMinValue"];
           debugMsg("Loaded sensorLDRMinValue: " + String(spiffs_config->sensorLDRMinValue));
@@ -219,10 +219,10 @@ void SPIFFS_CLOCK::saveConfigToSpiffs(spiffs_config_t* spiffs_config) {
     json["blankLeading"] = spiffs_config->blankLeading;
     json["dateFormat"] = spiffs_config->dateFormat;
     json["dayBlanking"] = spiffs_config->dayBlanking;
-    json["fade"] = spiffs_config->fade;
+//    json["fade"] = spiffs_config->fade;
     json["scrollback"] = spiffs_config->scrollback;
-    json["fadeSteps"] = spiffs_config->fadeSteps;
-    json["scrollSteps"] = spiffs_config->scrollSteps;
+//    json["fadeSteps"] = spiffs_config->fadeSteps;
+//    json["scrollSteps"] = spiffs_config->scrollSteps;
     json["sensorLDRMinValue"] = spiffs_config->sensorLDRMinValue;
     json["sensorLDRMaxValue"] = spiffs_config->sensorLDRMaxValue;
     json["sensorLDRSensitivity"] = spiffs_config->sensorLDRSensitivity;

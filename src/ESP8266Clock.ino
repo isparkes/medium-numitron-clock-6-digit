@@ -62,13 +62,12 @@ void setup()
   bool debugVal = false;
   
   // Set up the output manager
-  OutputManager::CreateInstance();
-  OutputManager::Instance().setUp();
-  OutputManager::Instance().setConfigObject(&current_config);
+  outputManager.setUp();
+  outputManager.setConfigObject(&current_config);
   
   // Show Start message on tubes
-  OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_START);
-  OutputManager::Instance().outputDisplayDiags();
+  outputManager.loadNumberArrayPOSTMessage(DIAGS_START);
+  outputManager.outputDisplayDiags();
 
   WiFiManager wifiManager;
 
@@ -90,8 +89,8 @@ void setup()
   ledManager.setUp();
 
   setDiagnosticLED(DIAGS_START, STATUS_GREEN);
-  OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_START);
-  OutputManager::Instance().outputDisplayDiags();
+  outputManager.loadNumberArrayPOSTMessage(DIAGS_START);
+  outputManager.outputDisplayDiags();
 
   // Start I2C now so that the update from NTP can be sent to the RTC immediately
   Wire.begin(4, 5); // SDA = D2 = pin 4, SCL = D1 = pin 5
@@ -100,8 +99,8 @@ void setup()
   button1.reset();
 
   setDiagnosticLED(DIAGS_SPIFFS, STATUS_YELLOW);
-  OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_SPIFFS);
-  OutputManager::Instance().outputDisplayDiags();
+  outputManager.loadNumberArrayPOSTMessage(DIAGS_SPIFFS);
+  outputManager.outputDisplayDiags();
 
   for (int i = 0; i < 25 ; i++) button1.checkButton(millis());
 
@@ -153,7 +152,7 @@ void setup()
     current_config.backlightMode = BACKLIGHT_COLOUR_TIME;
 
     // All the digits on
-    OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+    outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
 
     lastCheckMillis = millis();
 
@@ -171,7 +170,7 @@ void setup()
         secCount = secCount % 10;
       }
 
-      OutputManager::Instance().loadNumberArraySameValue(secCount);
+      outputManager.loadNumberArraySameValue(secCount);
 
       if (secCount % 2 == 0) {
         if (secCount == 8) {
@@ -193,7 +192,7 @@ void setup()
         led2State = true;
       }
 
-      OutputManager::Instance().outputDisplay();
+      outputManager.outputDisplay();
 
       setLeds();
 
@@ -221,8 +220,8 @@ void setup()
   wifiManager.setAPCallback(configModeCallback);
 
   setDiagnosticLED(DIAGS_WIFI, STATUS_YELLOW);
-  OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_WIFI);
-  OutputManager::Instance().outputDisplayDiags();
+  outputManager.loadNumberArrayPOSTMessage(DIAGS_WIFI);
+  outputManager.outputDisplayDiags();
 
   boolean connected = false;
   myHostname = WiFi.hostname();
@@ -247,8 +246,8 @@ void setup()
     // See if we can already get the time
     ntpAsync.getTimeFromNTP();
     setDiagnosticLED(DIAGS_NTP, STATUS_YELLOW);
-    OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_NTP);
-    OutputManager::Instance().outputDisplayDiags();
+    outputManager.loadNumberArrayPOSTMessage(DIAGS_NTP);
+    outputManager.outputDisplayDiags();
   
     long startSeachMs = millis();
     bool needUpdate = true;
@@ -287,8 +286,8 @@ void setup()
   // initialise the internal time (in case we don't find the time provider)
   nowMillis = millis();
 
-  OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_RTC);
-  OutputManager::Instance().outputDisplayDiags();
+  outputManager.loadNumberArrayPOSTMessage(DIAGS_RTC);
+  outputManager.outputDisplayDiags();
   testRTCTimeProvider();
   if (useRTC) {
     startRTCTimeProvider();
@@ -303,7 +302,7 @@ void setup()
   onceHadAnRTC = useRTC;
   
   // Set the time and set to  show the version
-  OutputManager::Instance().loadNumberArrayTime();
+  outputManager.loadNumberArrayTime();
   tempDisplayMode = TEMP_MODE_VERSION;
   tempDisplayModeDuration = TEMP_DISPLAY_MODE_DUR_MS;
 
@@ -311,8 +310,8 @@ void setup()
   blanked = false;
   setTubesAndLEDSblankMode();
 
-  OutputManager::Instance().loadNumberArrayPOSTMessage(DIAGS_DEBUG);
-  OutputManager::Instance().outputDisplayDiags();
+  outputManager.loadNumberArrayPOSTMessage(DIAGS_DEBUG);
+  outputManager.outputDisplayDiags();
   
   if (debugManager.getDebug()) {
     setDiagnosticLED(DIAGS_DEBUG, STATUS_BLUE);
@@ -414,9 +413,9 @@ void loop()
 
   ldrValue = getDimmingFromLDR();
   ledManager.setLDRValue(ldrValue);
-  OutputManager::Instance().setLDRValue(ldrValue);
+  outputManager.setLDRValue(ldrValue);
   
-  OutputManager::Instance().outputDisplay();
+  outputManager.outputDisplay();
 
   setLeds();
 
@@ -446,7 +445,7 @@ void performOncePerSecondProcessing() {
         spiffs.saveConfigToSpiffs(&current_config);
   
         // Preset the display
-        OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+        outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
   
         nextMode = currentMode;
       }
@@ -492,8 +491,8 @@ void performOncePerSecondProcessing() {
 
   // Decrement the value display counter
   // 0xff means "forever", so don't decrement it
-  if ((OutputManager::Instance().getValueDisplayTime() > 0) && (OutputManager::Instance().getValueDisplayTime() < 0xff)) {
-    OutputManager::Instance().decValueDisplayTime();
+  if ((outputManager.getValueDisplayTime() > 0) && (outputManager.getValueDisplayTime() < 0xff)) {
+    outputManager.decValueDisplayTime();
   }
 
   // Reset PIR debounce
@@ -706,8 +705,8 @@ void setNextMode(int displayMode) {
 
   switch (displayMode) {
     case MODE_TIME: {
-        OutputManager::Instance().loadNumberArrayTime();
-        OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
+        outputManager.loadNumberArrayTime();
+        outputManager.allNormal(APPLY_LEAD_0_BLANK);
         break;
       }
     case MODE_HOURS_SET: {
@@ -715,53 +714,53 @@ void setNextMode(int displayMode) {
           // skip past the time and date settings
           setNewNextMode(MODE_12_24);
         }
-        OutputManager::Instance().loadNumberArrayTime();
-        OutputManager::Instance().highlight0and1();
+        outputManager.loadNumberArrayTime();
+        outputManager.highlight0and1();
         break;
       }
     case MODE_MINS_SET: {
-        OutputManager::Instance().loadNumberArrayTime();
-        OutputManager::Instance().highlight2and3();
+        outputManager.loadNumberArrayTime();
+        outputManager.highlight2and3();
         break;
       }
     case MODE_SECS_SET: {
-        OutputManager::Instance().loadNumberArrayTime();
-        OutputManager::Instance().highlight4and5();
+        outputManager.loadNumberArrayTime();
+        outputManager.highlight4and5();
         break;
       }
     case MODE_DAYS_SET: {
-        OutputManager::Instance().loadNumberArrayDate();
-        OutputManager::Instance().highlightDaysDateFormat();
+        outputManager.loadNumberArrayDate();
+        outputManager.highlightDaysDateFormat();
         break;
       }
     case MODE_MONTHS_SET: {
-        OutputManager::Instance().loadNumberArrayDate();
-        OutputManager::Instance().highlightMonthsDateFormat();
+        outputManager.loadNumberArrayDate();
+        outputManager.highlightMonthsDateFormat();
         break;
       }
     case MODE_YEARS_SET: {
-        OutputManager::Instance().loadNumberArrayDate();
-        OutputManager::Instance().highlightYearsDateFormat();
+        outputManager.loadNumberArrayDate();
+        outputManager.highlightYearsDateFormat();
         break;
       }
     case MODE_12_24: {
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.hourMode, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfBool(current_config.hourMode, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_LEAD_BLANK: {
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.blankLeading, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfBool(current_config.blankLeading, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_DATE_FORMAT: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.dateFormat, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.dateFormat, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_DAY_BLANKING: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.dayBlanking, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.dayBlanking, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_HR_BLNK_START: {
@@ -772,59 +771,59 @@ void setNextMode(int displayMode) {
           // Skip past the start and end hour if the blanking mode says it is not relevant
           setNewNextMode(MODE_USE_LDR);
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.blankHourStart, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.blankHourStart, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_HR_BLNK_END: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.blankHourEnd, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.blankHourEnd, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_BLANK_MODE: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.blankMode, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.blankMode, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_USE_LDR: {
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.useLDR, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfBool(current_config.useLDR, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_LDR_THRSH: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensorLDRMinValue, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.sensorLDRMinValue, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_LDR_SENS: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensorLDRMaxValue, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.sensorLDRMaxValue, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_SLOTS_MODE: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.slotsMode, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.slotsMode, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_SLOTS_FREQ: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.slotsFreq, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.slotsFreq, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_LED_BLINK: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.ledMode, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.ledMode, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_PIR_TIMEOUT_UP:
     case MODE_PIR_TIMEOUT_DOWN: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.pirTimeout, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.pirTimeout, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_BACKLIGHT_MODE: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.backlightMode, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.backlightMode, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_RED_CNL: {
@@ -833,18 +832,18 @@ void setNextMode(int displayMode) {
             (current_config.backlightMode == BACKLIGHT_DAY_OF_WEEK)) {
           setNewNextMode(MODE_CYCLE_SPEED);
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.redCnl, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.redCnl, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_GRN_CNL: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.grnCnl, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.grnCnl, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_BLU_CNL: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.bluCnl, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.bluCnl, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_CYCLE_SPEED: {
@@ -852,58 +851,58 @@ void setNextMode(int displayMode) {
           // Show only if we are in cycle mode
           setNewNextMode(MODE_BL_DIM);
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.cycleSpeed, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.cycleSpeed, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_BL_DIM: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.backlightDimFactor, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.backlightDimFactor, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_UL_DIM: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.extDimFactor, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.extDimFactor, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_SEP_DIM: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.separatorDimFactor, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.separatorDimFactor, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_L_IND_MODE: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.statusModeL, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.statusModeL, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_R_IND_MODE: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.statusModeR, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.statusModeR, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_DO_NOT_DIM_INDS: {
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.doNotDimIndLEDs, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfBool(current_config.doNotDimIndLEDs, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_USE_PIR_PULLUP: {
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.usePIRPullup, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfBool(current_config.usePIRPullup, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_PREHEAT: {
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.preheatStrength, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.preheatStrength, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_VERSION: {
-        OutputManager::Instance().loadNumberArrayConfInt(SOFTWARE_VERSION, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(SOFTWARE_VERSION, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_TUBE_TEST: {
-        OutputManager::Instance().loadNumberArrayTestDigits();
-        OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+        outputManager.loadNumberArrayTestDigits();
+        outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
         break;
       }
   }
@@ -960,23 +959,23 @@ void processCurrentMode(int displayMode) {
           blanked = false;
           setTubesAndLEDSblankMode();
           if (tempDisplayMode == TEMP_MODE_DATE) {
-            OutputManager::Instance().loadNumberArrayDate();
+            outputManager.loadNumberArrayDate();
           }
 
           if (tempDisplayMode == TEMP_MODE_LDR) {
-            OutputManager::Instance().loadNumberArrayLDR();
+            outputManager.loadNumberArrayLDR();
           }
 
           if (tempDisplayMode == TEMP_MODE_VERSION) {
-            OutputManager::Instance().loadNumberArrayConfInt(SOFTWARE_VERSION, 0);
+            outputManager.loadNumberArrayConfInt(SOFTWARE_VERSION, 0);
           }
 
           if (tempDisplayMode == TEMP_IP_ADDR12) {
-            OutputManager::Instance().loadNumberArrayIP(myIP[0], myIP[1]);
+            outputManager.loadNumberArrayIP(myIP[0], myIP[1]);
           }
 
           if (tempDisplayMode == TEMP_IP_ADDR34) {
-            OutputManager::Instance().loadNumberArrayIP(myIP[2], myIP[3]);
+            outputManager.loadNumberArrayIP(myIP[2], myIP[3]);
           }
 
           if (tempDisplayMode == TEMP_ESP_ID) {
@@ -984,7 +983,7 @@ void processCurrentMode(int displayMode) {
               String shortHostName = WiFi.hostname().substring(4, 10);
               shortHostName.toLowerCase();
               //debugManager.debugMsg("ESPID: " + shortHostName);
-              OutputManager::Instance().loadNumberArrayESPID(shortHostName);
+              outputManager.loadNumberArrayESPID(shortHostName);
             } else {
               // we can't show the IP address if we have the RTC, just skip
               tempDisplayMode++;
@@ -992,10 +991,10 @@ void processCurrentMode(int displayMode) {
           }
 
           if (tempDisplayMode == TEMP_IMPR) {
-            OutputManager::Instance().loadNumberArrayConfInt(lastImpressionsPerSec, 0);
+            outputManager.loadNumberArrayConfInt(lastImpressionsPerSec, 0);
           }
 
-          OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+          outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
         } else {
           // Which slots transition are we using?
           if (!msgDisplaying) {
@@ -1046,13 +1045,13 @@ void processCurrentMode(int displayMode) {
           }
           else {
             // no slots mode, check if we are in valueDisplayMode
-          if (OutputManager::Instance().getValueDisplayTime() > 0) {
-              OutputManager::Instance().loadNumberArrayValueToShow();
-              OutputManager::Instance().loadDisplaySetValueType();
+          if (outputManager.getValueDisplayTime() > 0) {
+              outputManager.loadNumberArrayValueToShow();
+              outputManager.loadDisplaySetValueType();
             } else {
               // Do normal time thing when we are not in slots
-              OutputManager::Instance().loadNumberArrayTime();
-              OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
+              outputManager.loadNumberArrayTime();
+              outputManager.allNormal(APPLY_LEAD_0_BLANK);
             }
           }
         }
@@ -1062,64 +1061,64 @@ void processCurrentMode(int displayMode) {
         if (button1.isButtonPressedAndReleased()) {
           incMins();
         }
-        OutputManager::Instance().loadNumberArrayTime();
-        OutputManager::Instance().highlight2and3();
+        outputManager.loadNumberArrayTime();
+        outputManager.highlight2and3();
         break;
       }
     case MODE_HOURS_SET: {
         if (button1.isButtonPressedAndReleased()) {
           incHours();
         }
-        OutputManager::Instance().loadNumberArrayTime();
-        OutputManager::Instance().highlight0and1();
+        outputManager.loadNumberArrayTime();
+        outputManager.highlight0and1();
         break;
       }
     case MODE_SECS_SET: {
         if (button1.isButtonPressedAndReleased()) {
           resetSecond();
         }
-        OutputManager::Instance().loadNumberArrayTime();
-        OutputManager::Instance().highlight4and5();
+        outputManager.loadNumberArrayTime();
+        outputManager.highlight4and5();
         break;
       }
     case MODE_DAYS_SET: {
         if (button1.isButtonPressedAndReleased()) {
           incDays();
         }
-        OutputManager::Instance().loadNumberArrayDate();
-        OutputManager::Instance().highlightDaysDateFormat();
+        outputManager.loadNumberArrayDate();
+        outputManager.highlightDaysDateFormat();
         break;
       }
     case MODE_MONTHS_SET: {
         if (button1.isButtonPressedAndReleased()) {
           incMonths();
         }
-        OutputManager::Instance().loadNumberArrayDate();
-        OutputManager::Instance().highlightMonthsDateFormat();
+        outputManager.loadNumberArrayDate();
+        outputManager.highlightMonthsDateFormat();
         break;
       }
     case MODE_YEARS_SET: {
         if (button1.isButtonPressedAndReleased()) {
           incYears();
         }
-        OutputManager::Instance().loadNumberArrayDate();
-        OutputManager::Instance().highlightYearsDateFormat();
+        outputManager.loadNumberArrayDate();
+        outputManager.highlightYearsDateFormat();
         break;
       }
     case MODE_12_24: {
         if (button1.isButtonPressedAndReleased()) {
           current_config.hourMode = ! current_config.hourMode;
         }
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.hourMode, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfBool(current_config.hourMode, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_LEAD_BLANK: {
         if (button1.isButtonPressedAndReleased()) {
           current_config.blankLeading = !current_config.blankLeading;
         }
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.blankLeading, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfBool(current_config.blankLeading, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_DATE_FORMAT: {
@@ -1129,8 +1128,8 @@ void processCurrentMode(int displayMode) {
             current_config.dateFormat = DATE_FORMAT_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.dateFormat, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.dateFormat, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_DAY_BLANKING: {
@@ -1140,8 +1139,8 @@ void processCurrentMode(int displayMode) {
             current_config.dayBlanking = DAY_BLANKING_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.dayBlanking, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.dayBlanking, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_HR_BLNK_START: {
@@ -1151,8 +1150,8 @@ void processCurrentMode(int displayMode) {
             current_config.blankHourStart = 0;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.blankHourStart, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.blankHourStart, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_HR_BLNK_END: {
@@ -1162,8 +1161,8 @@ void processCurrentMode(int displayMode) {
             current_config.blankHourEnd = 0;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.blankHourEnd, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.blankHourEnd, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_BLANK_MODE: {
@@ -1173,16 +1172,16 @@ void processCurrentMode(int displayMode) {
             current_config.blankMode = BLANK_MODE_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.blankMode, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.blankMode, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_USE_LDR: {
         if (button1.isButtonPressedAndReleased()) {
           current_config.useLDR = !current_config.useLDR;
         }
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.useLDR, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfBool(current_config.useLDR, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_LDR_THRSH: {
@@ -1192,8 +1191,8 @@ void processCurrentMode(int displayMode) {
             current_config.sensorLDRMinValue = SENSOR_DARK_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensorLDRMinValue, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.sensorLDRMinValue, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_LDR_SENS: {
@@ -1203,8 +1202,8 @@ void processCurrentMode(int displayMode) {
             current_config.sensorLDRMaxValue = SENSOR_BRIGHT_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.sensorLDRMaxValue, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.sensorLDRMaxValue, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_SLOTS_MODE: {
@@ -1214,8 +1213,8 @@ void processCurrentMode(int displayMode) {
             current_config.slotsMode = SLOTS_MODE_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.slotsMode, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.slotsMode, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_SLOTS_FREQ: {
@@ -1225,8 +1224,8 @@ void processCurrentMode(int displayMode) {
             current_config.slotsFreq = SLOTS_FREQ_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.slotsFreq, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.slotsFreq, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_LED_BLINK: {
@@ -1236,8 +1235,8 @@ void processCurrentMode(int displayMode) {
             current_config.ledMode = LED_MODE_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.ledMode, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.ledMode, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_PIR_TIMEOUT_UP: {
@@ -1247,8 +1246,8 @@ void processCurrentMode(int displayMode) {
             current_config.pirTimeout = PIR_TIMEOUT_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.pirTimeout, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.pirTimeout, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_PIR_TIMEOUT_DOWN: {
@@ -1258,8 +1257,8 @@ void processCurrentMode(int displayMode) {
             current_config.pirTimeout = PIR_TIMEOUT_MAX;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.pirTimeout, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.pirTimeout, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_BACKLIGHT_MODE: {
@@ -1269,8 +1268,8 @@ void processCurrentMode(int displayMode) {
             current_config.backlightMode = BACKLIGHT_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.backlightMode, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.backlightMode, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_RED_CNL: {
@@ -1280,8 +1279,8 @@ void processCurrentMode(int displayMode) {
             current_config.redCnl = COLOUR_CNL_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.redCnl, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.redCnl, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_GRN_CNL: {
@@ -1291,8 +1290,8 @@ void processCurrentMode(int displayMode) {
             current_config.grnCnl = COLOUR_CNL_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.grnCnl, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.grnCnl, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_BLU_CNL: {
@@ -1302,8 +1301,8 @@ void processCurrentMode(int displayMode) {
             current_config.bluCnl = COLOUR_CNL_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.bluCnl, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.bluCnl, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_CYCLE_SPEED: {
@@ -1313,8 +1312,8 @@ void processCurrentMode(int displayMode) {
             current_config.cycleSpeed = CYCLE_SPEED_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.cycleSpeed, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.cycleSpeed, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_BL_DIM: {
@@ -1324,8 +1323,8 @@ void processCurrentMode(int displayMode) {
             current_config.backlightDimFactor = BACKLIGHT_DIM_FACTOR_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.backlightDimFactor, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.backlightDimFactor, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_UL_DIM: {
@@ -1335,8 +1334,8 @@ void processCurrentMode(int displayMode) {
             current_config.extDimFactor = EXT_DIM_FACTOR_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.extDimFactor, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.extDimFactor, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_SEP_DIM: {
@@ -1346,8 +1345,8 @@ void processCurrentMode(int displayMode) {
             current_config.separatorDimFactor = SEP_DIM_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.separatorDimFactor, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.separatorDimFactor, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_L_IND_MODE: {
@@ -1357,8 +1356,8 @@ void processCurrentMode(int displayMode) {
             current_config.statusModeL = STATUS_LED_MODE_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.statusModeL, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.statusModeL, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_R_IND_MODE: {
@@ -1368,25 +1367,25 @@ void processCurrentMode(int displayMode) {
             current_config.statusModeR = STATUS_LED_MODE_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.statusModeR, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.statusModeR, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_DO_NOT_DIM_INDS: {
         if (button1.isButtonPressedAndReleased()) {
           current_config.doNotDimIndLEDs = !current_config.doNotDimIndLEDs;
         }
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.doNotDimIndLEDs, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfBool(current_config.doNotDimIndLEDs, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_USE_PIR_PULLUP: {
         if (button1.isButtonPressedAndReleased()) {
           current_config.usePIRPullup = !current_config.usePIRPullup;
         }
-        OutputManager::Instance().loadNumberArrayConfBool(current_config.usePIRPullup, displayMode);
+        outputManager.loadNumberArrayConfBool(current_config.usePIRPullup, displayMode);
         digitalWrite(pirPin, current_config.usePIRPullup);
-        OutputManager::Instance().displayConfig();
+        outputManager.displayConfig();
         break;
       }
     case MODE_PREHEAT: {
@@ -1396,18 +1395,18 @@ void processCurrentMode(int displayMode) {
             current_config.preheatStrength = PREHEAT_MIN;
           }
         }
-        OutputManager::Instance().loadNumberArrayConfInt(current_config.preheatStrength, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(current_config.preheatStrength, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_VERSION: {
-        OutputManager::Instance().loadNumberArrayConfInt(SOFTWARE_VERSION, displayMode);
-        OutputManager::Instance().displayConfig();
+        outputManager.loadNumberArrayConfInt(SOFTWARE_VERSION, displayMode);
+        outputManager.displayConfig();
         break;
       }
     case MODE_TUBE_TEST: {
-        OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
-        OutputManager::Instance().loadNumberArrayTestDigits();
+        outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+        outputManager.loadNumberArrayTestDigits();
         break;
       }
   }
@@ -2489,8 +2488,8 @@ void setDisplayValuePageHandler() {
     response_message += "display value was set!";
     response_message += "</strong></div></div>";
     
-    OutputManager::Instance().setValueToShow(valueToDisplay % 1000000);
-    OutputManager::Instance().setValueDisplayTime(10);
+    outputManager.setValueToShow(valueToDisplay % 1000000);
+    outputManager.setValueDisplayTime(10);
   } else {
     response_message += "<div class=\"alert alert-error fade in\"><strong>";
     response_message += "You need to set at least the \"value\" parameter! A valid command line is http://<clock.ip.addres>/setvalue?value=123456&time=60&format=333333";
@@ -2500,14 +2499,14 @@ void setDisplayValuePageHandler() {
 
   if (checkServerArgInt("time", "time", valueTime)) {
     if (valueTime >= 255) {
-      OutputManager::Instance().setValueDisplayTime(255);
+      outputManager.setValueDisplayTime(255);
     } else {
-      OutputManager::Instance().setValueDisplayTime(valueTime);
+      outputManager.setValueDisplayTime(valueTime);
     }
   }
 
   if (checkServerArgInt("format", "format", valueFormat)) {
-    OutputManager::Instance().setValueFormat(valueFormat);
+    outputManager.setValueFormat(valueFormat);
   }
 
   response_message += getHTMLFoot();
@@ -2657,8 +2656,8 @@ boolean getIsConnected() {
 void configModeCallback(WiFiManager *myWiFiManager) {
   debugManager.debugMsg("*** Entered config mode");
   setDiagnosticLED(DIAGS_WIFI, STATUS_BLUE);
-  OutputManager::Instance().loadNumberArrayPOSTMessage(AP_MODE);
-  OutputManager::Instance().outputDisplayDiags();
+  outputManager.loadNumberArrayPOSTMessage(AP_MODE);
+  outputManager.outputDisplayDiags();
 }
 
 // ************************************************************

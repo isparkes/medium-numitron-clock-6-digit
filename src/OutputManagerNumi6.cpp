@@ -3,25 +3,14 @@
 #include "ClockUtils.h"
 
 // ************************************************************
-// Instance value
-// ************************************************************
-OutputManager* OutputManager::pInstance;
-
-// ************************************************************
 // Singleton accessor
 // ************************************************************
-OutputManager& OutputManager::Instance(){
-  return *OutputManager::pInstance;
+OutputManager &OutputManager::getInstance() {
+  static OutputManager instance;
+  return instance;
 }
 
-// ************************************************************
-// Singleton creator
-// ************************************************************
-void OutputManager::CreateInstance(){
-  if (OutputManager::pInstance == nullptr) {
-    OutputManager::pInstance = new OutputManager();
-  }
-}
+OutputManager &outputManager = outputManager.getInstance();
 
 // ************************************************************
 // Set up the manager
@@ -106,8 +95,8 @@ void OutputManager::shiftDigitsOut(byte *displayDigits) {
   }
 
   // Mix in the digits
-  unsigned long out1 = displayDigits[5] | (displayDigits[4] << 8) | (displayDigits[3] << 16);
-  unsigned long out2 = displayDigits[2] | (displayDigits[1] << 8) | (displayDigits[0] << 16);
+  uint32_t out1 = displayDigits[5] | (displayDigits[4] << 8) | (displayDigits[3] << 16);
+  uint32_t out2 = displayDigits[2] | (displayDigits[1] << 8) | (displayDigits[0] << 16);
   
   // Digit pre-heat
   if (cc->preheatStrength < PREHEAT_OFF) {
@@ -119,7 +108,7 @@ void OutputManager::shiftDigitsOut(byte *displayDigits) {
     }
   }
   
-  digitsOut(out1, out2);
+  shiftOut48(out1, out2);
 }
 
 // ************************************************************
@@ -131,33 +120,31 @@ void OutputManager::outputDisplayDiags() {
   // Mix in the digits
   unsigned long out1 = _digit_buffer.numberArray[5] | (_digit_buffer.numberArray[4] << 8) | (_digit_buffer.numberArray[3] << 16);
   unsigned long out2 = _digit_buffer.numberArray[2] | (_digit_buffer.numberArray[1] << 8) | (_digit_buffer.numberArray[0] << 16);
-  digitsOut(out1, out2);
+  shiftOut48(out1, out2);
 }
 
 // ************************************************************
 // Send the 48 output bits to the TLC5916 latches for display
 // ************************************************************
-void OutputManager::digitsOut(unsigned long highBits, unsigned long lowBits) {
+void OutputManager::shiftOut48(uint32_t highBits, uint32_t lowBits) {
   digitalWrite(LATCHPin, LOW);
-  shiftOut24(DATAPin, CLOCKPin, lowBits);
-  shiftOut24(DATAPin, CLOCKPin, highBits);
-  digitalWrite(LATCHPin, HIGH);
-}
 
-// ************************************************************
-// Perform the parallel shift out to the registers
-// ************************************************************
-void OutputManager::shiftOut24(uint8_t _dataPin1,
-                uint8_t _clockPin,
-                uint32_t _val1) {
   uint8_t i;
 
   for (i = 0; i < 24; i++) {
-    digitalWrite(_dataPin1, !!(_val1 & (1 << (23 - i))));
-    digitalWrite(_clockPin, HIGH);
-    digitalWrite(_clockPin, LOW);
+    digitalWrite(DATAPin, !!(lowBits & (1 << (23 - i))));
+    digitalWrite(CLOCKPin, HIGH);
+    digitalWrite(CLOCKPin, LOW);
   }
+
+  for (i = 0; i < 24; i++) {
+    digitalWrite(DATAPin, !!(highBits & (1 << (23 - i))));
+    digitalWrite(CLOCKPin, HIGH);
+    digitalWrite(CLOCKPin, LOW);
+  }
+  digitalWrite(LATCHPin, HIGH);
 }
+
   
 // ************************************************************
 // Blanking and Blinking of individual digits

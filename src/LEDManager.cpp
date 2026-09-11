@@ -128,7 +128,7 @@ void LEDManager::processLedStatus() {
       case BACKLIGHT_COLOUR_TIME: {
           if (!_syncColourTime) {
             for (byte i = 0 ; i < DIGIT_COUNT ; i++) {
-              byte numVal = OutputManager::Instance().getNumberArrayIndexedValue(i);
+              byte numVal = outputManager.getNumberArrayIndexedValue(i);
               ledRb[i] = getLEDAdjustedBL(colourTimeR[numVal]);
               ledGb[i] = getLEDAdjustedBL(colourTimeG[numVal]);
               ledBb[i] = getLEDAdjustedBL(colourTimeB[numVal]);

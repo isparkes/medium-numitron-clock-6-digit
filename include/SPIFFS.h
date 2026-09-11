@@ -19,9 +19,9 @@ typedef struct {
   int setDim;
   byte dayBlanking;
   boolean scrollback;
-  boolean fade;
-  byte fadeSteps;
-  byte scrollSteps;
+//  boolean fade;
+//  byte fadeSteps;
+//  byte scrollSteps;
   int sensorLDRMinValue;
   int sensorLDRMaxValue;
   int sensorLDRSensitivity;

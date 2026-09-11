@@ -112,10 +112,16 @@ typedef struct {
 
 // ************************ Display management ************************
 class OutputManager {
-  public:
-    static void CreateInstance();
-    static OutputManager& Instance();
+  private:
+    OutputManager() = default; // Make constructor private
 
+  public:
+    static OutputManager &getInstance(); // Accessor for singleton instance
+
+    OutputManager(const OutputManager &) = delete; // no copying
+    OutputManager &operator=(const OutputManager &) = delete;
+
+  public:
     void setUp();
     void setConfigObject(spiffs_config_t* ccPtr);
     void outputDisplay();
@@ -159,8 +165,6 @@ class OutputManager {
     byte getDisplayTypeIndexedValue(byte idx);
     void setDisplayTypeIndexedValue(byte idx, byte value);
   private:
-    static OutputManager* pInstance;
-
     int   _blinkCounter;
     boolean _blinkState;
     byte _preheatCounter = 0;
@@ -177,14 +181,13 @@ class OutputManager {
     value_buffer_t _value_buffer = {0,10,{NORMAL,NORMAL,NORMAL,NORMAL,NORMAL,NORMAL}};
 
     void shiftDigitsOut(byte *displayDigits);
-    void digitsOut(unsigned long highBits, unsigned long lowBits);
-    void shiftOut24(uint8_t _dataPin1,
-                uint8_t _clockPin,
-                uint32_t _val1);
+    void shiftOut48(uint32_t highBits, uint32_t lowBits);
     void blankDigits(byte *digits, byte *prevNums, bool *smoothRun);
     void smoothDigits(byte *digits, byte *prevNums, bool *smoothRun);
     void setBlankingPin();
     void applyBlanking();
 };
+
+extern OutputManager &outputManager;
 
 #endif

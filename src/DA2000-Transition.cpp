@@ -19,16 +19,16 @@ Transition::Transition(int effectInDuration, int effectOutDuration, int holdDura
 void Transition::start(unsigned long now) {
   if (_end < now) {
     // save the target display
-    OutputManager::Instance().loadNumberArrayDate();
+    outputManager.loadNumberArrayDate();
     for (int idx = 0; idx < DIGIT_COUNT ; idx++) {
-      _alternateDisplay[idx] = OutputManager::Instance().getNumberArrayIndexedValue(idx);
+      _alternateDisplay[idx] = outputManager.getNumberArrayIndexedValue(idx);
     }
 
     // save the current version of the normal display
-    OutputManager::Instance().loadNumberArrayTime();
+    outputManager.loadNumberArrayTime();
     for (int idx = 0; idx < DIGIT_COUNT ; idx++) {
-      _regularDisplay[idx] = OutputManager::Instance().getNumberArrayIndexedValue(idx);
-      _savedDisplayType[idx] = OutputManager::Instance().getDisplayTypeIndexedValue(idx);
+      _regularDisplay[idx] = outputManager.getNumberArrayIndexedValue(idx);
+      _savedDisplayType[idx] = outputManager.getDisplayTypeIndexedValue(idx);
     }
     _started = now;
     _end = getEnd();
@@ -63,34 +63,34 @@ boolean Transition::wipeInWipeOut(unsigned long now, boolean blankLeading)
     if (msCount < _effectInDuration) {
       _digit = msCount * (DIGIT_COUNT + 1) / _effectInDuration;
       if (_digit > 0)
-        OutputManager::Instance().setDisplayTypeIndexedValue(_digit-1, BLANKED);
+        outputManager.setDisplayTypeIndexedValue(_digit-1, BLANKED);
     }
     // Wipe In date values
     else if (msCount < _effectInDuration * 2) {
       _digit = (msCount - _effectInDuration) * DIGIT_COUNT / _effectInDuration;
-      OutputManager::Instance().setNumberArrayIndexedValue(_digit, _alternateDisplay[_digit]);
-      OutputManager::Instance().setDisplayTypeIndexedValue(_digit, NORMAL);
+      outputManager.setNumberArrayIndexedValue(_digit, _alternateDisplay[_digit]);
+      outputManager.setDisplayTypeIndexedValue(_digit, NORMAL);
     }
     // Hold date display
     else if (msCount < _effectInDuration * 2 + _holdDuration) {
-      OutputManager::Instance().loadNumberArrayDate();
+      outputManager.loadNumberArrayDate();
     }
     // Wipe Out blanking
     else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration) {
       _digit = (msCount - _holdDuration - _effectInDuration * 2) * DIGIT_COUNT / _effectOutDuration;
-      OutputManager::Instance().setDisplayTypeIndexedValue(_digit, BLANKED);
+      outputManager.setDisplayTypeIndexedValue(_digit, BLANKED);
     }
     // Wipe Out to time values
     else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration * 2) {
       _digit = (msCount - _holdDuration - _effectInDuration * 2 - _effectOutDuration) * DIGIT_COUNT / _effectOutDuration;
-      OutputManager::Instance().setNumberArrayIndexedValue(_digit, _regularDisplay[_digit]);
+      outputManager.setNumberArrayIndexedValue(_digit, _regularDisplay[_digit]);
       if (!blankLeading || _digit != 0 || _regularDisplay[_digit] != 0)
-        OutputManager::Instance().setDisplayTypeIndexedValue(_digit, NORMAL);
+        outputManager.setDisplayTypeIndexedValue(_digit, NORMAL);
     }
     // We now return you to your regularly scheduled program
     else {
-      OutputManager::Instance().loadNumberArrayTime();
-      OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
+      outputManager.loadNumberArrayTime();
+      outputManager.allNormal(APPLY_LEAD_0_BLANK);
       _end = 0;
    }
     return true;  // we are still running
@@ -104,31 +104,31 @@ boolean Transition::bangInBangOut(unsigned long now)
     int msCount = now - _started;
     // Bang In blanking
     if (msCount < _effectInDuration) {
-      OutputManager::Instance().allBlanked();
+      outputManager.allBlanked();
     }
     // Bang In date values
     else if (msCount < _effectInDuration * 2) {
-      OutputManager::Instance().loadNumberArrayDate();
-      OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+      outputManager.loadNumberArrayDate();
+      outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
     }
     // Hold date display
     else if (msCount < _effectInDuration * 2 + _holdDuration) {
-      OutputManager::Instance().loadNumberArrayDate();
-      OutputManager::Instance().allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
+      outputManager.loadNumberArrayDate();
+      outputManager.allNormal(DO_NOT_APPLY_LEAD_0_BLANK);
     }
     // Bang Out blanking
     else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration) {
-      OutputManager::Instance().allBlanked();
+      outputManager.allBlanked();
     }
     // Bang Out to time values
     else if (msCount < _effectInDuration * 2 + _holdDuration + _effectOutDuration * 2) {
-      OutputManager::Instance().loadNumberArrayTime();
-      OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
+      outputManager.loadNumberArrayTime();
+      outputManager.allNormal(APPLY_LEAD_0_BLANK);
     }
     // We now return you to your regularly scheduled program
     else {
-      OutputManager::Instance().loadNumberArrayTime();
-      OutputManager::Instance().allNormal(APPLY_LEAD_0_BLANK);
+      outputManager.loadNumberArrayTime();
+      outputManager.allNormal(APPLY_LEAD_0_BLANK);
       _end = 0;
    }
     return true;  // we are still running
