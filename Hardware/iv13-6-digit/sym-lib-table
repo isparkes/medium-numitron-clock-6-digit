@@ -1,5 +1,8 @@
 (sym_lib_table
-  (lib (name DA2000)(type Legacy)(uri ${KIPRJMOD}/Numitron.lib)(options "")(descr ""))
-  (lib (name ti)(type Legacy)(uri ${KIPRJMOD}/ti.lib)(options "")(descr ""))
-  (lib (name DA2000Numitron-rescue)(type Legacy)(uri ${KIPRJMOD}/Numitron-rescue.lib)(options "")(descr ""))
+	(version 7)
+	(lib (name "DA2000") (type "Legacy") (uri "${KIPRJMOD}/Numitron.lib") (options "") (descr ""))
+	(lib (name "ti") (type "Legacy") (uri "${KIPRJMOD}/ti.lib") (options "") (descr ""))
+	(lib (name "DA2000Numitron-rescue") (type "Legacy") (uri "${KIPRJMOD}/Numitron-rescue.lib") (options "") (descr ""))
+	(lib (name "iv13-6-digit-cache") (type "Legacy") (uri "/Users/iansparkes/Data/Projects/Clocks/medium-numitron-clock-6-digit/Hardware/iv13-6-digit/iv13-6-digit-cache.lib") (options "") (descr "Legacy project cache library"))
+	(lib (name "NixieClockMaster") (type "KiCad") (uri "${KI_GLOW_CUSTOM}/libraries/NixieClockMaster.kicad_sym") (options "") (descr ""))
 )
