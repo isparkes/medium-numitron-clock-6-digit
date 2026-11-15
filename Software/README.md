@@ -345,3 +345,11 @@ main sketch; the two Adafruit libraries are listed so that the file still compil
 ## Firmware Version
 
 Current: **7** (`SOFTWARE_VERSION` in `include/ClockDefs.h`).
+
+---
+
+## Licence
+
+Non-commercial; see [LICENSE](../LICENSE) in the repository root.
+
+Copyright © 2018-2026 Ian Sparkes.

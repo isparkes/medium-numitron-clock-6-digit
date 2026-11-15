@@ -16,6 +16,7 @@ work and is the focus of this document. The same firmware drives all three board
 
 ```
 .
+├── LICENSE            Non-commercial licence covering the whole repository
 ├── Software/          ESP8266 firmware (PlatformIO + Arduino)   ← the focus of this README
 │   ├── src/           Implementation — ESP8266Clock.ino plus the component .cpp files
 │   ├── include/       Headers, mode constants, segment tables, pin allocations
@@ -241,6 +242,19 @@ the same firmware unmodified. The DA-2000 and IV-9 designs include schematic and
 | [`Software/SPECIFICATION.md`](Software/SPECIFICATION.md) | Technical specification — GPIO, display pipeline and timings, mode state machine, config JSON schema, HTTP endpoints, source file reference |
 | [`Hardware/da2000-6-digit/DA2000-Clock-Schematic.pdf`](Hardware/da2000-6-digit/DA2000-Clock-Schematic.pdf) | DA-2000 schematic (plus `-Dimensions.pdf`) |
 | [`Hardware/iv9-6-digit/IV-9-6-Digit-Schematic.pdf`](Hardware/iv9-6-digit/IV-9-6-Digit-Schematic.pdf) | IV-9 schematic (plus `-Dimensions.pdf`) |
+
+---
+
+## Licence
+
+Non-commercial. Personal, hobby, educational and not-for-profit use is granted
+free of charge; selling hardware or software built from this, or using it in the
+course of a business, needs a separate commercial licence. Derivative works must
+stay under the same terms. See [LICENSE](LICENSE) for the full text and contact
+details. Third-party libraries used by the firmware, and the Bootstrap and
+jQuery assets the web pages load, remain under their own licences.
+
+Copyright © 2018-2026 Ian Sparkes.
 
 ---
 
