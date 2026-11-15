@@ -1,0 +1,1648 @@
+EESchema Schematic File Version 4
+EELAYER 30 0
+EELAYER END
+$Descr A3 16535 11693
+encoding utf-8
+Sheet 1 1
+Title "DA-2000 Numitron Clock"
+Date "2019-07-05"
+Rev "Revision 1"
+Comp "Ian Sparkes Nixie Clocks"
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L NixieClockMaster:IV-9 N1
+U 1 1 5D147207
+P 8780 1950
+F 0 "N1" H 9280 1800 60  0000 L CNN
+F 1 "IV-9" V 9330 1250 60  0000 L CNN
+F 2 "NixieClockMaster:IV-9" H 8780 1950 60  0001 C CNN
+F 3 "" H 8780 1950 60  0001 C CNN
+	1    8780 1950
+	0    -1   -1   0   
+$EndComp
+$Comp
+L NixieClockMaster:IV-9 N2
+U 1 1 5D14C141
+P 10830 1950
+F 0 "N2" H 11330 1650 60  0000 L CNN
+F 1 "IV-9" V 11380 1150 60  0000 L CNN
+F 2 "NixieClockMaster:IV-9" H 10830 1950 60  0001 C CNN
+F 3 "" H 10830 1950 60  0001 C CNN
+	1    10830 1950
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	10180 1400 10230 1400
+Wire Wire Line
+	10230 1400 10230 1050
+Wire Wire Line
+	10230 1050 12230 1050
+Wire Wire Line
+	12230 1050 12230 1400
+$Comp
+L Device:C C1
+U 1 1 5D19C661
+P 10200 1730
+F 0 "C1" V 10000 1680 50  0000 L CNN
+F 1 "100nF" V 10060 1630 50  0000 L CNN
+F 2 "NixieClockMaster:C025-024X044" H 10238 1580 50  0001 C CNN
+F 3 "~" H 10200 1730 50  0001 C CNN
+	1    10200 1730
+	0    1    1    0   
+$EndComp
+$Comp
+L NixieClockMaster:WeMos_mini U8
+U 1 1 5D252DF7
+P 2750 2550
+F 0 "U8" H 2750 3187 60  0000 C CNN
+F 1 "WeMos_mini" H 2750 3081 60  0000 C CNN
+F 2 "NixieClockMaster:WeMos_D1_mini_board_simple" H 3300 1850 60  0001 C CNN
+F 3 "" H 3300 1850 60  0000 C CNN
+	1    2750 2550
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C13
+U 1 1 5D2530C3
+P 1700 2000
+F 0 "C13" H 1815 2046 50  0000 L CNN
+F 1 "100nF" H 1815 1955 50  0000 L CNN
+F 2 "NixieClockMaster:C025-024X044" H 1738 1850 50  0001 C CNN
+F 3 "~" H 1700 2000 50  0001 C CNN
+	1    1700 2000
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:CP C14
+U 1 1 5D253309
+P 1300 2000
+F 0 "C14" H 1418 2046 50  0000 L CNN
+F 1 "220uF" H 1418 1955 50  0000 L CNN
+F 2 "NixieClockMaster:C_Radial_D6.3_L11.2_P2.5" H 1338 1850 50  0001 C CNN
+F 3 "~" H 1300 2000 50  0001 C CNN
+	1    1300 2000
+	1    0    0    -1  
+$EndComp
+Text Label 1850 2400 0    50   ~ 0
+PIR
+Wire Wire Line
+	2250 2400 1850 2400
+Wire Wire Line
+	2250 2500 1850 2500
+Wire Wire Line
+	2250 2600 1850 2600
+Wire Wire Line
+	2250 2700 1850 2700
+Wire Wire Line
+	2250 2800 1850 2800
+NoConn ~ 2250 2900
+NoConn ~ 3250 2900
+Text Label 1850 2500 0    50   ~ 0
+BTN
+Text Label 1850 2600 0    50   ~ 0
+SDA
+Text Label 1850 2700 0    50   ~ 0
+SCL
+Text Label 1850 2800 0    50   ~ 0
+LED_DATA
+Wire Wire Line
+	2250 2300 1700 2300
+Wire Wire Line
+	1300 2300 1300 2150
+Wire Wire Line
+	1700 2150 1700 2300
+Connection ~ 1700 2300
+Wire Wire Line
+	1700 2300 1300 2300
+Wire Wire Line
+	2250 2200 2100 2200
+Wire Wire Line
+	2100 2200 2100 1700
+Wire Wire Line
+	2100 1700 1700 1700
+Wire Wire Line
+	1300 1700 1300 1850
+Wire Wire Line
+	1700 1850 1700 1700
+Connection ~ 1700 1700
+Wire Wire Line
+	1700 1700 1300 1700
+$Comp
+L IV9Numitron-rescue:GND-power #PWR010
+U 1 1 5D3CAA93
+P 1300 2400
+F 0 "#PWR010" H 1300 2150 50  0001 C CNN
+F 1 "GND" H 1305 2227 50  0000 C CNN
+F 2 "" H 1300 2400 50  0001 C CNN
+F 3 "" H 1300 2400 50  0001 C CNN
+	1    1300 2400
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1300 2300 1300 2400
+Connection ~ 1300 2300
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR011
+U 1 1 5D3E4649
+P 1700 1550
+F 0 "#PWR011" H 1700 1400 50  0001 C CNN
+F 1 "+5V" H 1715 1723 50  0000 C CNN
+F 2 "" H 1700 1550 50  0001 C CNN
+F 3 "" H 1700 1550 50  0001 C CNN
+	1    1700 1550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1700 1550 1700 1700
+NoConn ~ 10680 1850
+NoConn ~ 8630 1850
+$Comp
+L IV9Numitron-rescue:LDR03-Sensor_Optical LDR1
+U 1 1 5D5EFD1D
+P 5700 5100
+F 0 "LDR1" H 5770 5146 50  0000 L CNN
+F 1 "LDR03" H 5770 5055 50  0000 L CNN
+F 2 "OptoDevice:R_LDR_10x8.5mm_P7.6mm_Vertical" V 5875 5100 50  0001 C CNN
+F 3 "http://www.elektronica-componenten.nl/WebRoot/StoreNL/Shops/61422969/54F1/BA0C/C664/31B9/2173/C0A8/2AB9/2AEF/LDR03IMP.pdf" H 5700 5050 50  0001 C CNN
+	1    5700 5100
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R R7
+U 1 1 5D5EFDD0
+P 5700 4550
+F 0 "R7" H 5770 4596 50  0000 L CNN
+F 1 "10k" H 5770 4505 50  0000 L CNN
+F 2 "NixieClockMaster:R-0207_2V" V 5630 4550 50  0001 C CNN
+F 3 "~" H 5700 4550 50  0001 C CNN
+	1    5700 4550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5700 4700 5700 4800
+Wire Wire Line
+	5700 4200 5700 4400
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR0101
+U 1 1 5D610DDD
+P 5700 4200
+F 0 "#PWR0101" H 5700 4050 50  0001 C CNN
+F 1 "+5V" H 5715 4373 50  0000 C CNN
+F 2 "" H 5700 4200 50  0001 C CNN
+F 3 "" H 5700 4200 50  0001 C CNN
+	1    5700 4200
+	1    0    0    -1  
+$EndComp
+$Comp
+L IV9Numitron-rescue:GND-power #PWR0102
+U 1 1 5D610F04
+P 5700 5350
+F 0 "#PWR0102" H 5700 5100 50  0001 C CNN
+F 1 "GND" H 5705 5177 50  0000 C CNN
+F 2 "" H 5700 5350 50  0001 C CNN
+F 3 "" H 5700 5350 50  0001 C CNN
+	1    5700 5350
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5700 5250 5700 5350
+Wire Wire Line
+	5700 4800 5300 4800
+Connection ~ 5700 4800
+Wire Wire Line
+	5700 4800 5700 4950
+Text Label 5300 4800 0    50   ~ 0
+DLS
+$Comp
+L Connector_Generic:Conn_01x05 J1
+U 1 1 5D632B88
+P 1450 6800
+F 0 "J1" H 1370 6375 50  0000 C CNN
+F 1 "Front Panel" H 1370 6466 50  0000 C CNN
+F 2 "NixieClockMaster:Header_MA05-1" H 1450 6800 50  0001 C CNN
+F 3 "~" H 1450 6800 50  0001 C CNN
+	1    1450 6800
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	1650 7000 2000 7000
+Wire Wire Line
+	1650 6900 2000 6900
+Wire Wire Line
+	1650 6800 2000 6800
+Text Label 3200 6500 0    50   ~ 0
+5V
+Text Label 2000 6800 0    50   ~ 0
+PIR
+Text Label 2000 6900 0    50   ~ 0
+BTN
+Text Label 2000 7000 0    50   ~ 0
+GND
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR0103
+U 1 1 5D678C71
+P 3150 6350
+F 0 "#PWR0103" H 3150 6200 50  0001 C CNN
+F 1 "+5V" H 3165 6523 50  0000 C CNN
+F 2 "" H 3150 6350 50  0001 C CNN
+F 3 "" H 3150 6350 50  0001 C CNN
+	1    3150 6350
+	1    0    0    -1  
+$EndComp
+$Comp
+L NixieClockMaster:DS1307+ U7
+U 1 1 5D68AD37
+P 5500 2350
+F 0 "U7" H 5500 2350 50  0000 C CNN
+F 1 "DS1307+" H 5500 2250 50  0000 C CNN
+F 2 "NixieClockMaster:DS1307_DIL8" H 5500 2350 50  0001 C CNN
+F 3 "" H 5500 2350 50  0001 C CNN
+	1    5500 2350
+	1    0    0    -1  
+$EndComp
+Text Label 1950 1700 0    50   ~ 0
+5V
+Wire Wire Line
+	5500 1550 5500 1650
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR016
+U 1 1 5D68B5B9
+P 5500 1550
+F 0 "#PWR016" H 5500 1400 50  0001 C CNN
+F 1 "+5V" H 5515 1723 50  0000 C CNN
+F 2 "" H 5500 1550 50  0001 C CNN
+F 3 "" H 5500 1550 50  0001 C CNN
+	1    5500 1550
+	1    0    0    -1  
+$EndComp
+$Comp
+L IV9Numitron-rescue:GND-power #PWR017
+U 1 1 5D68B5BF
+P 5500 3050
+F 0 "#PWR017" H 5500 2800 50  0001 C CNN
+F 1 "GND" H 5505 2877 50  0000 C CNN
+F 2 "" H 5500 3050 50  0001 C CNN
+F 3 "" H 5500 3050 50  0001 C CNN
+	1    5500 3050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5500 2950 5500 3000
+$Comp
+L Device:Crystal Y1
+U 1 1 5D6D66AB
+P 4500 2650
+F 0 "Y1" V 4454 2781 50  0000 L CNN
+F 1 "Crystal" V 4545 2781 50  0000 L CNN
+F 2 "NixieClockMaster:Crystal_DS10_d1.0mm_l4.3mm_Vertical" H 4500 2650 50  0001 C CNN
+F 3 "~" H 4500 2650 50  0001 C CNN
+	1    4500 2650
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	4500 2500 4500 2450
+Wire Wire Line
+	4500 2450 4750 2450
+Wire Wire Line
+	4750 2450 4750 2550
+Wire Wire Line
+	4750 2550 4900 2550
+Wire Wire Line
+	4500 2800 4500 2850
+Wire Wire Line
+	4500 2850 4750 2850
+Wire Wire Line
+	4750 2850 4750 2750
+Wire Wire Line
+	4750 2750 4900 2750
+Wire Wire Line
+	4900 2250 4700 2250
+Wire Wire Line
+	4350 2050 4550 2050
+Text Label 4350 2050 0    50   ~ 0
+SCL
+Text Label 4350 2250 0    50   ~ 0
+SDA
+NoConn ~ 6100 2050
+$Comp
+L Device:Battery BT1
+U 1 1 5D74E185
+P 6500 2750
+F 0 "BT1" H 6608 2796 50  0000 L CNN
+F 1 "Battery" H 6608 2705 50  0000 L CNN
+F 2 "NixieClockMaster:CR1220-CoinCell" V 6500 2810 50  0001 C CNN
+F 3 "~" V 6500 2810 50  0001 C CNN
+	1    6500 2750
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5500 3000 6250 3000
+Connection ~ 5500 3000
+Wire Wire Line
+	5500 3000 5500 3050
+Wire Wire Line
+	6500 2550 6200 2550
+Wire Wire Line
+	6200 2550 6200 2650
+Wire Wire Line
+	6200 2650 6100 2650
+$Comp
+L Device:R R8
+U 1 1 5D777E01
+P 4550 1800
+F 0 "R8" H 4350 1850 50  0000 L CNN
+F 1 "10k" H 4350 1750 50  0000 L CNN
+F 2 "NixieClockMaster:R-0207_2V" V 4480 1800 50  0001 C CNN
+F 3 "~" H 4550 1800 50  0001 C CNN
+	1    4550 1800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5500 1650 4950 1650
+Wire Wire Line
+	4950 1650 4950 1550
+Wire Wire Line
+	4950 1550 4700 1550
+Wire Wire Line
+	4550 1550 4550 1650
+Connection ~ 5500 1650
+Wire Wire Line
+	5500 1650 5500 1750
+Wire Wire Line
+	4550 1950 4550 2050
+Connection ~ 4550 2050
+Wire Wire Line
+	4550 2050 4900 2050
+Wire Wire Line
+	4700 2250 4700 1950
+Connection ~ 4700 2250
+Wire Wire Line
+	4700 2250 4350 2250
+$Comp
+L Device:R R9
+U 1 1 5D7BAB6D
+P 4700 1800
+F 0 "R9" H 4770 1846 50  0000 L CNN
+F 1 "10k" H 4770 1755 50  0000 L CNN
+F 2 "NixieClockMaster:R-0207_2V" V 4630 1800 50  0001 C CNN
+F 3 "~" H 4700 1800 50  0001 C CNN
+	1    4700 1800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4700 1650 4700 1550
+Connection ~ 4700 1550
+Wire Wire Line
+	4700 1550 4550 1550
+$Comp
+L IV9Numitron-rescue:WS2812B-LED NP6
+U 1 1 5D800378
+P 2200 9150
+F 0 "NP6" H 2250 9400 50  0000 L CNN
+F 1 "WS2812B" H 2250 8900 50  0000 L CNN
+F 2 "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" H 2250 8850 50  0001 L TNN
+F 3 "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf" H 2300 8775 50  0001 L TNN
+	1    2200 9150
+	1    0    0    -1  
+$EndComp
+$Comp
+L IV9Numitron-rescue:WS2812B-LED NP5
+U 1 1 5D8005C8
+P 2900 9150
+F 0 "NP5" H 2950 9400 50  0000 L CNN
+F 1 "WS2812B" H 2950 8900 50  0000 L CNN
+F 2 "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" H 2950 8850 50  0001 L TNN
+F 3 "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf" H 3000 8775 50  0001 L TNN
+	1    2900 9150
+	1    0    0    -1  
+$EndComp
+$Comp
+L IV9Numitron-rescue:WS2812B-LED NP4
+U 1 1 5D800685
+P 3600 9150
+F 0 "NP4" H 3650 9400 50  0000 L CNN
+F 1 "WS2812B" H 3650 8900 50  0000 L CNN
+F 2 "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" H 3650 8850 50  0001 L TNN
+F 3 "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf" H 3700 8775 50  0001 L TNN
+	1    3600 9150
+	1    0    0    -1  
+$EndComp
+$Comp
+L IV9Numitron-rescue:WS2812B-LED NP3
+U 1 1 5D8007DB
+P 4300 9150
+F 0 "NP3" H 4350 9400 50  0000 L CNN
+F 1 "WS2812B" H 4350 8900 50  0000 L CNN
+F 2 "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" H 4350 8850 50  0001 L TNN
+F 3 "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf" H 4400 8775 50  0001 L TNN
+	1    4300 9150
+	1    0    0    -1  
+$EndComp
+$Comp
+L IV9Numitron-rescue:WS2812B-LED NP2
+U 1 1 5D8007E1
+P 5000 9150
+F 0 "NP2" H 5050 9400 50  0000 L CNN
+F 1 "WS2812B" H 5050 8900 50  0000 L CNN
+F 2 "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" H 5050 8850 50  0001 L TNN
+F 3 "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf" H 5100 8775 50  0001 L TNN
+	1    5000 9150
+	1    0    0    -1  
+$EndComp
+$Comp
+L IV9Numitron-rescue:WS2812B-LED NP1
+U 1 1 5D8007E7
+P 5700 9150
+F 0 "NP1" H 5750 9400 50  0000 L CNN
+F 1 "WS2812B" H 5800 8900 50  0000 L CNN
+F 2 "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" H 5750 8850 50  0001 L TNN
+F 3 "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf" H 5800 8775 50  0001 L TNN
+	1    5700 9150
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5700 8850 5700 8750
+Wire Wire Line
+	5700 8750 5000 8750
+Wire Wire Line
+	2200 8750 2200 8850
+Wire Wire Line
+	2900 8850 2900 8750
+Connection ~ 2900 8750
+Wire Wire Line
+	2900 8750 2200 8750
+Wire Wire Line
+	3600 8850 3600 8750
+Wire Wire Line
+	3600 8750 2900 8750
+Wire Wire Line
+	4300 8850 4300 8750
+Connection ~ 4300 8750
+Wire Wire Line
+	5000 8850 5000 8750
+Connection ~ 5000 8750
+Wire Wire Line
+	5700 9450 5700 9550
+Wire Wire Line
+	2200 9550 2200 9450
+Wire Wire Line
+	2900 9450 2900 9550
+Connection ~ 2900 9550
+Wire Wire Line
+	3600 9450 3600 9550
+Wire Wire Line
+	2900 9550 3600 9550
+Wire Wire Line
+	4300 9450 4300 9550
+Connection ~ 4300 9550
+Wire Wire Line
+	4300 9550 5000 9550
+Wire Wire Line
+	5000 9450 5000 9550
+Connection ~ 5000 9550
+Wire Wire Line
+	5000 9550 5400 9550
+Wire Wire Line
+	2500 9150 2600 9150
+Wire Wire Line
+	3200 9150 3300 9150
+Wire Wire Line
+	4600 9150 4700 9150
+Wire Wire Line
+	5300 9150 5400 9150
+Wire Wire Line
+	3900 9150 4000 9150
+Wire Wire Line
+	3600 8750 4300 8750
+Connection ~ 3600 8750
+Wire Wire Line
+	3600 9550 4300 9550
+Connection ~ 3600 9550
+NoConn ~ 6000 9150
+Wire Wire Line
+	1900 9150 1500 9150
+Text Label 1500 9150 0    50   ~ 0
+LED_DATA
+$Comp
+L IV9Numitron-rescue:GND-power #PWR015
+U 1 1 5DC024D0
+P 5400 9650
+F 0 "#PWR015" H 5400 9400 50  0001 C CNN
+F 1 "GND" H 5405 9477 50  0000 C CNN
+F 2 "" H 5400 9650 50  0001 C CNN
+F 3 "" H 5400 9650 50  0001 C CNN
+	1    5400 9650
+	1    0    0    -1  
+$EndComp
+Text Label 5400 8750 0    50   ~ 0
+5V
+Wire Wire Line
+	5400 9650 5400 9550
+Connection ~ 5400 9550
+Wire Wire Line
+	5400 9550 5700 9550
+$Comp
+L IV9Numitron-rescue:USB_B_Mini-Connector J2
+U 1 1 5DC8E872
+P 1350 4950
+F 0 "J2" H 1405 5417 50  0000 C CNN
+F 1 "USB_B_Micro" H 1405 5326 50  0000 C CNN
+F 2 "Connector_USB:USB_Mini-B_AdamTech_MUSB-B5-S-VT-TSMT-1_SMD_Vertical" H 1500 4900 50  0001 C CNN
+F 3 "~" H 1500 4900 50  0001 C CNN
+	1    1350 4950
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1250 5350 1250 5400
+Wire Wire Line
+	1250 5400 1350 5400
+Wire Wire Line
+	1350 5400 1350 5350
+Wire Wire Line
+	1350 5400 1350 5500
+Connection ~ 1350 5400
+$Comp
+L IV9Numitron-rescue:GND-power #PWR018
+U 1 1 5DCD5B75
+P 1350 5500
+F 0 "#PWR018" H 1350 5250 50  0001 C CNN
+F 1 "GND" H 1355 5327 50  0000 C CNN
+F 2 "" H 1350 5500 50  0001 C CNN
+F 3 "" H 1350 5500 50  0001 C CNN
+	1    1350 5500
+	1    0    0    -1  
+$EndComp
+NoConn ~ 1650 4950
+NoConn ~ 1650 5050
+NoConn ~ 1650 5150
+Wire Wire Line
+	1650 4750 1800 4750
+Wire Wire Line
+	1800 4750 1800 4500
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR019
+U 1 1 5DD65049
+P 1800 4500
+F 0 "#PWR019" H 1800 4350 50  0001 C CNN
+F 1 "+5V" H 1815 4673 50  0000 C CNN
+F 2 "" H 1800 4500 50  0001 C CNN
+F 3 "" H 1800 4500 50  0001 C CNN
+	1    1800 4500
+	1    0    0    -1  
+$EndComp
+Wire Notes Line
+	5950 11150 6000 11150
+Text Notes 1150 4150 0    100  ~ 0
+Connectors
+Text Notes 1150 8550 0    100  ~ 0
+RGB Back Lights
+Text Notes 900  1000 0    100  ~ 0
+Controller
+Text Notes 4850 3750 0    100  ~ 0
+Light Dependent Resistor
+Text Notes 9740 820  0    100  ~ 0
+Display driver
+Wire Wire Line
+	6500 2950 6500 3000
+Text Label 7600 2300 0    50   ~ 0
+CLOCK
+Text Label 7600 2400 0    50   ~ 0
+LATCH
+Text Label 7600 2200 0    50   ~ 0
+DATA
+Text Label 7600 2100 0    50   ~ 0
+GND
+$Comp
+L Device:R R1
+U 1 1 5D637C1D
+P 12010 2200
+F 0 "R1" H 12160 2250 50  0000 C CNN
+F 1 "3k" H 12160 2150 50  0000 C CNN
+F 2 "NixieClockMaster:R-0207_2V" V 11940 2200 50  0001 C CNN
+F 3 "~" H 12010 2200 50  0001 C CNN
+	1    12010 2200
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	3250 2400 3700 2400
+Text Label 3700 2500 2    50   ~ 0
+DATA
+Text Label 3700 2400 2    50   ~ 0
+CLOCK
+Text Label 3700 2600 2    50   ~ 0
+LATCH
+Wire Wire Line
+	3250 2600 3700 2600
+Wire Wire Line
+	3250 2500 3700 2500
+Wire Wire Line
+	3250 2700 3700 2700
+Text Label 3700 2700 2    50   ~ 0
+BLANK
+Text Label 3700 2800 2    50   ~ 0
+DLS
+Wire Wire Line
+	3250 2800 3700 2800
+$Comp
+L IV9Numitron-rescue:GND-power #PWR03
+U 1 1 5D85BBB5
+P 12240 2240
+F 0 "#PWR03" H 12240 1990 50  0001 C CNN
+F 1 "GND" H 12245 2067 50  0000 C CNN
+F 2 "" H 12240 2240 50  0001 C CNN
+F 3 "" H 12240 2240 50  0001 C CNN
+	1    12240 2240
+	1    0    0    -1  
+$EndComp
+Connection ~ 12230 1050
+$Comp
+L IV9Numitron-rescue:GND-power #PWR07
+U 1 1 5D93038B
+P 9940 1790
+F 0 "#PWR07" H 9940 1540 50  0001 C CNN
+F 1 "GND" H 9945 1617 50  0000 C CNN
+F 2 "" H 9940 1790 50  0001 C CNN
+F 3 "" H 9940 1790 50  0001 C CNN
+	1    9940 1790
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C15
+U 1 1 5DA34756
+P 5900 1650
+F 0 "C15" V 5648 1650 50  0000 C CNN
+F 1 "100nF" V 5739 1650 50  0000 C CNN
+F 2 "NixieClockMaster:C025-024X044" H 5938 1500 50  0001 C CNN
+F 3 "~" H 5900 1650 50  0001 C CNN
+	1    5900 1650
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	5500 1650 5750 1650
+Wire Wire Line
+	6050 1650 6250 1650
+Wire Wire Line
+	6250 1650 6250 3000
+Connection ~ 6250 3000
+Wire Wire Line
+	6250 3000 6500 3000
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR012
+U 1 1 5DC16C7B
+P 12230 900
+F 0 "#PWR012" H 12230 750 50  0001 C CNN
+F 1 "+5V" H 12245 1073 50  0000 C CNN
+F 2 "" H 12230 900 50  0001 C CNN
+F 3 "" H 12230 900 50  0001 C CNN
+	1    12230 900 
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	12230 900  12230 1050
+$Comp
+L Device:LED D1
+U 1 1 5D21DAFB
+P 9130 3200
+F 0 "D1" V 9168 3083 50  0000 R CNN
+F 1 "LED" V 9077 3083 50  0000 R CNN
+F 2 "NixieClockMaster:LED_3MM" H 9130 3200 50  0001 C CNN
+F 3 "~" H 9130 3200 50  0001 C CNN
+	1    9130 3200
+	-1   0    0    1   
+$EndComp
+$Comp
+L Device:R R10
+U 1 1 5D21DCB6
+P 9630 3200
+F 0 "R10" H 9780 3250 50  0000 C CNN
+F 1 "10k" H 9780 3150 50  0000 C CNN
+F 2 "NixieClockMaster:R-0207_2V" V 9560 3200 50  0001 C CNN
+F 3 "~" H 9630 3200 50  0001 C CNN
+	1    9630 3200
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:LED D3
+U 1 1 5D28D1B4
+P 11790 3200
+F 0 "D3" V 11828 3083 50  0000 R CNN
+F 1 "LED" V 11737 3083 50  0000 R CNN
+F 2 "NixieClockMaster:LED_3MM" H 11790 3200 50  0001 C CNN
+F 3 "~" H 11790 3200 50  0001 C CNN
+	1    11790 3200
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R R12
+U 1 1 5D28D1BA
+P 11440 3200
+F 0 "R12" H 11590 3250 50  0000 C CNN
+F 1 "10k" H 11590 3150 50  0000 C CNN
+F 2 "NixieClockMaster:R-0207_2V" V 11370 3200 50  0001 C CNN
+F 3 "~" H 11440 3200 50  0001 C CNN
+	1    11440 3200
+	0    -1   -1   0   
+$EndComp
+$Comp
+L Connector_Generic:Conn_01x02 J3
+U 1 1 5D24A6F0
+P 1450 7700
+F 0 "J3" H 1370 7375 50  0000 C CNN
+F 1 "Power" H 1370 7466 50  0000 C CNN
+F 2 "NixieClockMaster:Header_MA02-1" H 1450 7700 50  0001 C CNN
+F 3 "~" H 1450 7700 50  0001 C CNN
+	1    1450 7700
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	1650 7600 2000 7600
+Wire Wire Line
+	1650 7700 2000 7700
+Text Label 2000 7700 0    50   ~ 0
+GND
+Text Label 2000 7600 0    50   ~ 0
+5V
+Wire Notes Line
+	7250 11200 7250 500 
+Wire Notes Line
+	500  8200 7250 8200
+Text Notes 4350 1050 0    100  ~ 0
+Backup RTC
+Wire Notes Line
+	500  3500 7250 3500
+Wire Notes Line
+	4350 3500 4350 8200
+$Comp
+L Device:Jumper_NC_Dual JP1
+U 1 1 5D8D5E11
+P 2750 6500
+F 0 "JP1" H 2750 6739 50  0000 C CNN
+F 1 "Jumper_NC_Dual" H 2750 6648 50  0000 C CNN
+F 2 "NixieClockMaster:SOLDER-JUMPER_2-WAY" H 2750 6500 50  0001 C CNN
+F 3 "~" H 2750 6500 50  0001 C CNN
+	1    2750 6500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2750 6700 2750 6600
+Wire Wire Line
+	3000 6500 3150 6500
+Wire Wire Line
+	3150 6500 3150 6350
+Wire Wire Line
+	3200 6500 3150 6500
+Connection ~ 3150 6500
+Wire Wire Line
+	2750 6700 1650 6700
+Wire Wire Line
+	2500 6500 2150 6500
+Text Label 2150 6500 0    50   ~ 0
+3V3
+Wire Wire Line
+	3250 2200 3700 2200
+Text Label 3700 2200 2    50   ~ 0
+3V3
+Text Label 2000 6700 0    50   ~ 0
+PIR_VCC
+Wire Wire Line
+	1650 6600 2000 6600
+Text Label 2000 6600 0    50   ~ 0
+GPIO
+Text Label 3700 2300 2    50   ~ 0
+GPIO
+Wire Wire Line
+	3250 2300 3700 2300
+$Comp
+L Connector:TestPoint TP1
+U 1 1 5D7EBCA8
+P 6150 6750
+F 0 "TP1" V 6104 6938 50  0000 L CNN
+F 1 "TestPoint" V 6195 6938 50  0000 L CNN
+F 2 "NixieClockMaster:TESTPAD_P1-13" H 6350 6750 50  0001 C CNN
+F 3 "~" H 6350 6750 50  0001 C CNN
+	1    6150 6750
+	0    1    1    0   
+$EndComp
+$Comp
+L Connector:TestPoint TP2
+U 1 1 5D7EBF69
+P 6150 6950
+F 0 "TP2" V 6104 7138 50  0000 L CNN
+F 1 "TestPoint" V 6195 7138 50  0000 L CNN
+F 2 "NixieClockMaster:TESTPAD_P1-13" H 6350 6950 50  0001 C CNN
+F 3 "~" H 6350 6950 50  0001 C CNN
+	1    6150 6950
+	0    1    1    0   
+$EndComp
+$Comp
+L Connector:TestPoint TP4
+U 1 1 5D7EC09C
+P 6150 7350
+F 0 "TP4" V 6104 7538 50  0000 L CNN
+F 1 "TestPoint" V 6195 7538 50  0000 L CNN
+F 2 "NixieClockMaster:TESTPAD_P1-13" H 6350 7350 50  0001 C CNN
+F 3 "~" H 6350 7350 50  0001 C CNN
+	1    6150 7350
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	6150 6750 5700 6750
+Wire Wire Line
+	6150 6950 5700 6950
+Wire Wire Line
+	6150 7350 5700 7350
+Text Label 5700 6750 0    50   ~ 0
+GND
+Text Label 5700 6950 0    50   ~ 0
+5V
+Text Label 5700 7350 0    50   ~ 0
+3V3
+$Comp
+L NixieClockMaster:DM13A U1
+U 1 1 62AE4237
+P 9260 4200
+F 0 "U1" H 10210 6525 50  0000 C CNN
+F 1 "DM13A" H 10210 6434 50  0000 C CNN
+F 2 "Package_DIP:DIP-24_W7.62mm" H 10360 5750 50  0001 C CNN
+F 3 "" H 10360 5750 50  0001 C CNN
+	1    9260 4200
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9860 2500 9080 2500
+Wire Wire Line
+	9080 2500 9080 1850
+Wire Wire Line
+	9860 2600 8780 2600
+Wire Wire Line
+	8780 2600 8780 1850
+Wire Wire Line
+	9860 2700 8930 2700
+Wire Wire Line
+	8930 2700 8930 1850
+Wire Wire Line
+	9860 2800 9530 2800
+Wire Wire Line
+	9530 2800 9530 1850
+Wire Wire Line
+	9860 2900 9680 2900
+Wire Wire Line
+	9680 2900 9680 1850
+Wire Wire Line
+	9860 3000 9230 3000
+Wire Wire Line
+	9230 3000 9230 1850
+Wire Wire Line
+	9860 3100 9380 3100
+Wire Wire Line
+	9380 3100 9380 1850
+Wire Wire Line
+	9780 3200 9860 3200
+Wire Wire Line
+	9480 3200 9280 3200
+Wire Wire Line
+	10050 1730 9940 1730
+Wire Wire Line
+	9790 1730 9790 2100
+Connection ~ 9790 2100
+Wire Wire Line
+	9790 2100 9860 2100
+Wire Wire Line
+	10350 1730 10600 1730
+Wire Wire Line
+	10600 1730 10600 2100
+Wire Wire Line
+	10600 2100 10560 2100
+Wire Wire Line
+	7600 2100 9790 2100
+Wire Wire Line
+	7600 2200 9860 2200
+Wire Wire Line
+	7600 2300 9860 2300
+Wire Wire Line
+	7600 2400 9860 2400
+Wire Wire Line
+	10560 3200 11130 3200
+Wire Wire Line
+	11130 3200 11130 1850
+Wire Wire Line
+	10560 3100 10830 3100
+Wire Wire Line
+	10830 3100 10830 1850
+Wire Wire Line
+	10560 3000 10980 3000
+Wire Wire Line
+	10980 3000 10980 1850
+Wire Wire Line
+	10560 2900 11580 2900
+Wire Wire Line
+	11580 2900 11580 1850
+Wire Wire Line
+	10560 2800 11730 2800
+Wire Wire Line
+	11730 2800 11730 1850
+Wire Wire Line
+	10560 2700 11280 2700
+Wire Wire Line
+	11280 2700 11280 1850
+Wire Wire Line
+	11430 2600 11430 1850
+Wire Wire Line
+	10560 2500 11210 2500
+Wire Wire Line
+	11210 3200 11290 3200
+Wire Wire Line
+	10560 2600 11430 2600
+Wire Wire Line
+	11210 2500 11210 3200
+Wire Wire Line
+	11590 3200 11640 3200
+Wire Wire Line
+	9940 1790 9940 1730
+Connection ~ 9940 1730
+Wire Wire Line
+	9940 1730 9790 1730
+Wire Wire Line
+	10560 2200 11860 2200
+Wire Wire Line
+	12160 2200 12240 2200
+Wire Wire Line
+	12240 2200 12240 2240
+Wire Wire Line
+	10560 2300 11830 2300
+Wire Wire Line
+	11830 2300 11830 2560
+Wire Wire Line
+	11830 2560 12110 2560
+Text Label 12110 2560 0    50   ~ 0
+DATA1
+Wire Wire Line
+	10560 2400 11780 2400
+Wire Wire Line
+	11780 2400 11780 2640
+Wire Wire Line
+	11780 2640 12110 2640
+Text Label 12110 2640 0    50   ~ 0
+BLANK
+$Comp
+L NixieClockMaster:IV-9 N4
+U 1 1 633E8C12
+P 10830 4590
+F 0 "N4" H 11330 4290 60  0000 L CNN
+F 1 "IV-9" V 11380 3790 60  0000 L CNN
+F 2 "NixieClockMaster:IV-9" H 10830 4590 60  0001 C CNN
+F 3 "" H 10830 4590 60  0001 C CNN
+	1    10830 4590
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	10180 4040 10230 4040
+Wire Wire Line
+	10230 4040 10230 3690
+Wire Wire Line
+	10230 3690 12230 3690
+Wire Wire Line
+	12230 3690 12230 4040
+$Comp
+L Device:C C2
+U 1 1 633E8C20
+P 10200 4370
+F 0 "C2" V 10000 4320 50  0000 L CNN
+F 1 "100nF" V 10060 4270 50  0000 L CNN
+F 2 "NixieClockMaster:C025-024X044" H 10238 4220 50  0001 C CNN
+F 3 "~" H 10200 4370 50  0001 C CNN
+	1    10200 4370
+	0    1    1    0   
+$EndComp
+NoConn ~ 10680 4490
+NoConn ~ 8630 4490
+Text Label 7600 4940 0    50   ~ 0
+CLOCK
+Text Label 7600 5040 0    50   ~ 0
+LATCH
+Text Label 7600 4840 0    50   ~ 0
+DATA1
+Text Label 7600 4740 0    50   ~ 0
+GND
+$Comp
+L Device:R R2
+U 1 1 633E8C31
+P 12010 4840
+F 0 "R2" H 12160 4890 50  0000 C CNN
+F 1 "3k" H 12160 4790 50  0000 C CNN
+F 2 "NixieClockMaster:R-0207_2V" V 11940 4840 50  0001 C CNN
+F 3 "~" H 12010 4840 50  0001 C CNN
+	1    12010 4840
+	0    1    1    0   
+$EndComp
+$Comp
+L IV9Numitron-rescue:GND-power #PWR0104
+U 1 1 633E8C3B
+P 12240 4880
+F 0 "#PWR0104" H 12240 4630 50  0001 C CNN
+F 1 "GND" H 12245 4707 50  0000 C CNN
+F 2 "" H 12240 4880 50  0001 C CNN
+F 3 "" H 12240 4880 50  0001 C CNN
+	1    12240 4880
+	1    0    0    -1  
+$EndComp
+Connection ~ 12230 3690
+$Comp
+L IV9Numitron-rescue:GND-power #PWR0105
+U 1 1 633E8C46
+P 9940 4430
+F 0 "#PWR0105" H 9940 4180 50  0001 C CNN
+F 1 "GND" H 9945 4257 50  0000 C CNN
+F 2 "" H 9940 4430 50  0001 C CNN
+F 3 "" H 9940 4430 50  0001 C CNN
+	1    9940 4430
+	1    0    0    -1  
+$EndComp
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR0106
+U 1 1 633E8C50
+P 12230 3540
+F 0 "#PWR0106" H 12230 3390 50  0001 C CNN
+F 1 "+5V" H 12245 3713 50  0000 C CNN
+F 2 "" H 12230 3540 50  0001 C CNN
+F 3 "" H 12230 3540 50  0001 C CNN
+	1    12230 3540
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	12230 3540 12230 3690
+$Comp
+L Device:LED D5
+U 1 1 633E8C5B
+P 9130 5840
+F 0 "D5" V 9168 5723 50  0000 R CNN
+F 1 "LED" V 9077 5723 50  0000 R CNN
+F 2 "NixieClockMaster:LED_3MM" H 9130 5840 50  0001 C CNN
+F 3 "~" H 9130 5840 50  0001 C CNN
+	1    9130 5840
+	-1   0    0    1   
+$EndComp
+$Comp
+L Device:R R14
+U 1 1 633E8C65
+P 9630 5840
+F 0 "R14" H 9780 5890 50  0000 C CNN
+F 1 "10k" H 9780 5790 50  0000 C CNN
+F 2 "NixieClockMaster:R-0207_2V" V 9560 5840 50  0001 C CNN
+F 3 "~" H 9630 5840 50  0001 C CNN
+	1    9630 5840
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:LED D2
+U 1 1 633E8C6F
+P 11790 5840
+F 0 "D2" V 11828 5723 50  0000 R CNN
+F 1 "LED" V 11737 5723 50  0000 R CNN
+F 2 "NixieClockMaster:LED_3MM" H 11790 5840 50  0001 C CNN
+F 3 "~" H 11790 5840 50  0001 C CNN
+	1    11790 5840
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R R11
+U 1 1 633E8C79
+P 11440 5840
+F 0 "R11" H 11590 5890 50  0000 C CNN
+F 1 "10k" H 11590 5790 50  0000 C CNN
+F 2 "NixieClockMaster:R-0207_2V" V 11370 5840 50  0001 C CNN
+F 3 "~" H 11440 5840 50  0001 C CNN
+	1    11440 5840
+	0    -1   -1   0   
+$EndComp
+$Comp
+L NixieClockMaster:DM13A U2
+U 1 1 633E8C83
+P 9260 6840
+F 0 "U2" H 10210 9165 50  0000 C CNN
+F 1 "DM13A" H 10210 9074 50  0000 C CNN
+F 2 "Package_DIP:DIP-24_W7.62mm" H 10360 8390 50  0001 C CNN
+F 3 "" H 10360 8390 50  0001 C CNN
+	1    9260 6840
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9860 5140 9080 5140
+Wire Wire Line
+	9080 5140 9080 4490
+Wire Wire Line
+	9860 5240 8780 5240
+Wire Wire Line
+	8780 5240 8780 4490
+Wire Wire Line
+	9860 5340 8930 5340
+Wire Wire Line
+	8930 5340 8930 4490
+Wire Wire Line
+	9860 5440 9530 5440
+Wire Wire Line
+	9530 5440 9530 4490
+Wire Wire Line
+	9860 5540 9680 5540
+Wire Wire Line
+	9680 5540 9680 4490
+Wire Wire Line
+	9860 5640 9230 5640
+Wire Wire Line
+	9230 5640 9230 4490
+Wire Wire Line
+	9860 5740 9380 5740
+Wire Wire Line
+	9380 5740 9380 4490
+Wire Wire Line
+	9780 5840 9860 5840
+Wire Wire Line
+	9480 5840 9280 5840
+Wire Wire Line
+	10050 4370 9940 4370
+Wire Wire Line
+	9790 4370 9790 4740
+Connection ~ 9790 4740
+Wire Wire Line
+	9790 4740 9860 4740
+Wire Wire Line
+	10350 4370 10600 4370
+Wire Wire Line
+	10600 4370 10600 4740
+Wire Wire Line
+	10600 4740 10560 4740
+Wire Wire Line
+	7600 4740 9790 4740
+Wire Wire Line
+	7600 4840 9860 4840
+Wire Wire Line
+	7600 4940 9860 4940
+Wire Wire Line
+	7600 5040 9860 5040
+Wire Wire Line
+	10560 5840 11130 5840
+Wire Wire Line
+	11130 5840 11130 4490
+Wire Wire Line
+	10560 5740 10830 5740
+Wire Wire Line
+	10830 5740 10830 4490
+Wire Wire Line
+	10560 5640 10980 5640
+Wire Wire Line
+	10980 5640 10980 4490
+Wire Wire Line
+	10560 5540 11580 5540
+Wire Wire Line
+	11580 5540 11580 4490
+Wire Wire Line
+	10560 5440 11730 5440
+Wire Wire Line
+	11730 5440 11730 4490
+Wire Wire Line
+	10560 5340 11280 5340
+Wire Wire Line
+	11280 5340 11280 4490
+Wire Wire Line
+	11430 5240 11430 4490
+Wire Wire Line
+	10560 5140 11210 5140
+Wire Wire Line
+	11210 5840 11290 5840
+Wire Wire Line
+	10560 5240 11430 5240
+Wire Wire Line
+	11210 5140 11210 5840
+Wire Wire Line
+	11590 5840 11640 5840
+Wire Wire Line
+	9940 4430 9940 4370
+Connection ~ 9940 4370
+Wire Wire Line
+	9940 4370 9790 4370
+Wire Wire Line
+	10560 4840 11860 4840
+Wire Wire Line
+	12160 4840 12240 4840
+Wire Wire Line
+	12240 4840 12240 4880
+Wire Wire Line
+	10560 4940 11830 4940
+Wire Wire Line
+	11830 4940 11830 5200
+Wire Wire Line
+	11830 5200 12110 5200
+Text Label 12110 5200 0    50   ~ 0
+DATA2
+Wire Wire Line
+	10560 5040 11780 5040
+Wire Wire Line
+	11780 5040 11780 5280
+Wire Wire Line
+	11780 5280 12110 5280
+Text Label 12110 5280 0    50   ~ 0
+BLANK
+$Comp
+L NixieClockMaster:IV-9 N3
+U 1 1 633E88C2
+P 8780 4590
+F 0 "N3" H 9280 4440 60  0000 L CNN
+F 1 "IV-9" V 9330 3890 60  0000 L CNN
+F 2 "NixieClockMaster:IV-9" H 8780 4590 60  0001 C CNN
+F 3 "" H 8780 4590 60  0001 C CNN
+	1    8780 4590
+	0    -1   -1   0   
+$EndComp
+$Comp
+L NixieClockMaster:IV-9 N6
+U 1 1 634CD43E
+P 10830 7330
+F 0 "N6" H 11330 7030 60  0000 L CNN
+F 1 "IV-9" V 11380 6530 60  0000 L CNN
+F 2 "NixieClockMaster:IV-9" H 10830 7330 60  0001 C CNN
+F 3 "" H 10830 7330 60  0001 C CNN
+	1    10830 7330
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	10180 6780 10230 6780
+Wire Wire Line
+	10230 6780 10230 6430
+Wire Wire Line
+	10230 6430 12230 6430
+Wire Wire Line
+	12230 6430 12230 6780
+$Comp
+L Device:C C3
+U 1 1 634CDAEE
+P 10200 7110
+F 0 "C3" V 10000 7060 50  0000 L CNN
+F 1 "100nF" V 10060 7010 50  0000 L CNN
+F 2 "NixieClockMaster:C025-024X044" H 10238 6960 50  0001 C CNN
+F 3 "~" H 10200 7110 50  0001 C CNN
+	1    10200 7110
+	0    1    1    0   
+$EndComp
+NoConn ~ 10680 7230
+NoConn ~ 8630 7230
+Text Label 7600 7680 0    50   ~ 0
+CLOCK
+Text Label 7600 7780 0    50   ~ 0
+LATCH
+Text Label 7600 7580 0    50   ~ 0
+DATA2
+Text Label 7600 7480 0    50   ~ 0
+GND
+$Comp
+L Device:R R3
+U 1 1 634CDAFE
+P 12010 7580
+F 0 "R3" H 12160 7630 50  0000 C CNN
+F 1 "3k" H 12160 7530 50  0000 C CNN
+F 2 "NixieClockMaster:R-0207_2V" V 11940 7580 50  0001 C CNN
+F 3 "~" H 12010 7580 50  0001 C CNN
+	1    12010 7580
+	0    1    1    0   
+$EndComp
+$Comp
+L IV9Numitron-rescue:GND-power #PWR0107
+U 1 1 634CDB08
+P 12240 7620
+F 0 "#PWR0107" H 12240 7370 50  0001 C CNN
+F 1 "GND" H 12245 7447 50  0000 C CNN
+F 2 "" H 12240 7620 50  0001 C CNN
+F 3 "" H 12240 7620 50  0001 C CNN
+	1    12240 7620
+	1    0    0    -1  
+$EndComp
+Connection ~ 12230 6430
+$Comp
+L IV9Numitron-rescue:GND-power #PWR0108
+U 1 1 634CDB13
+P 9940 7170
+F 0 "#PWR0108" H 9940 6920 50  0001 C CNN
+F 1 "GND" H 9945 6997 50  0000 C CNN
+F 2 "" H 9940 7170 50  0001 C CNN
+F 3 "" H 9940 7170 50  0001 C CNN
+	1    9940 7170
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	12230 6280 12230 6430
+$Comp
+L Device:LED D4
+U 1 1 634CDB1E
+P 9130 8580
+F 0 "D4" V 9168 8463 50  0000 R CNN
+F 1 "LED" V 9077 8463 50  0000 R CNN
+F 2 "NixieClockMaster:LED_3MM" H 9130 8580 50  0001 C CNN
+F 3 "~" H 9130 8580 50  0001 C CNN
+	1    9130 8580
+	-1   0    0    1   
+$EndComp
+$Comp
+L Device:R R15
+U 1 1 634CDB28
+P 9630 8580
+F 0 "R15" H 9780 8630 50  0000 C CNN
+F 1 "10k" H 9780 8530 50  0000 C CNN
+F 2 "NixieClockMaster:R-0207_2V" V 9560 8580 50  0001 C CNN
+F 3 "~" H 9630 8580 50  0001 C CNN
+	1    9630 8580
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:LED D6
+U 1 1 634CDB32
+P 11790 8580
+F 0 "D6" V 11828 8463 50  0000 R CNN
+F 1 "LED" V 11737 8463 50  0000 R CNN
+F 2 "NixieClockMaster:LED_3MM" H 11790 8580 50  0001 C CNN
+F 3 "~" H 11790 8580 50  0001 C CNN
+	1    11790 8580
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R R16
+U 1 1 634CDB3C
+P 11440 8580
+F 0 "R16" H 11590 8630 50  0000 C CNN
+F 1 "10k" H 11590 8530 50  0000 C CNN
+F 2 "NixieClockMaster:R-0207_2V" V 11370 8580 50  0001 C CNN
+F 3 "~" H 11440 8580 50  0001 C CNN
+	1    11440 8580
+	0    -1   -1   0   
+$EndComp
+$Comp
+L NixieClockMaster:DM13A U3
+U 1 1 634CDB46
+P 9260 9580
+F 0 "U3" H 10210 11905 50  0000 C CNN
+F 1 "DM13A" H 10210 11814 50  0000 C CNN
+F 2 "Package_DIP:DIP-24_W7.62mm" H 10360 11130 50  0001 C CNN
+F 3 "" H 10360 11130 50  0001 C CNN
+	1    9260 9580
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9860 7880 9080 7880
+Wire Wire Line
+	9080 7880 9080 7230
+Wire Wire Line
+	9860 7980 8780 7980
+Wire Wire Line
+	8780 7980 8780 7230
+Wire Wire Line
+	9860 8080 8930 8080
+Wire Wire Line
+	8930 8080 8930 7230
+Wire Wire Line
+	9860 8180 9530 8180
+Wire Wire Line
+	9530 8180 9530 7230
+Wire Wire Line
+	9860 8280 9680 8280
+Wire Wire Line
+	9680 8280 9680 7230
+Wire Wire Line
+	9860 8380 9230 8380
+Wire Wire Line
+	9230 8380 9230 7230
+Wire Wire Line
+	9860 8480 9380 8480
+Wire Wire Line
+	9380 8480 9380 7230
+Wire Wire Line
+	9780 8580 9860 8580
+Wire Wire Line
+	9480 8580 9280 8580
+Wire Wire Line
+	10050 7110 9940 7110
+Wire Wire Line
+	9790 7110 9790 7480
+Connection ~ 9790 7480
+Wire Wire Line
+	9790 7480 9860 7480
+Wire Wire Line
+	10350 7110 10600 7110
+Wire Wire Line
+	10600 7110 10600 7480
+Wire Wire Line
+	10600 7480 10560 7480
+Wire Wire Line
+	7600 7480 9790 7480
+Wire Wire Line
+	7600 7580 9860 7580
+Wire Wire Line
+	7600 7680 9860 7680
+Wire Wire Line
+	7600 7780 9860 7780
+Wire Wire Line
+	10560 8580 11130 8580
+Wire Wire Line
+	11130 8580 11130 7230
+Wire Wire Line
+	10560 8480 10830 8480
+Wire Wire Line
+	10830 8480 10830 7230
+Wire Wire Line
+	10560 8380 10980 8380
+Wire Wire Line
+	10980 8380 10980 7230
+Wire Wire Line
+	10560 8280 11580 8280
+Wire Wire Line
+	11580 8280 11580 7230
+Wire Wire Line
+	10560 8180 11730 8180
+Wire Wire Line
+	11730 8180 11730 7230
+Wire Wire Line
+	10560 8080 11280 8080
+Wire Wire Line
+	11280 8080 11280 7230
+Wire Wire Line
+	11430 7980 11430 7230
+Wire Wire Line
+	10560 7880 11210 7880
+Wire Wire Line
+	11210 8580 11290 8580
+Wire Wire Line
+	10560 7980 11430 7980
+Wire Wire Line
+	11210 7880 11210 8580
+Wire Wire Line
+	11590 8580 11640 8580
+Wire Wire Line
+	9940 7170 9940 7110
+Connection ~ 9940 7110
+Wire Wire Line
+	9940 7110 9790 7110
+Wire Wire Line
+	10560 7580 11860 7580
+Wire Wire Line
+	12160 7580 12240 7580
+Wire Wire Line
+	12240 7580 12240 7620
+Wire Wire Line
+	10560 7780 11780 7780
+Wire Wire Line
+	11780 7780 11780 8020
+Wire Wire Line
+	11780 8020 12110 8020
+Text Label 12110 8020 0    50   ~ 0
+BLANK
+$Comp
+L NixieClockMaster:IV-9 N5
+U 1 1 634CDB8B
+P 8780 7330
+F 0 "N5" H 9280 7180 60  0000 L CNN
+F 1 "IV-9" V 9330 6630 60  0000 L CNN
+F 2 "NixieClockMaster:IV-9" H 8780 7330 60  0001 C CNN
+F 3 "" H 8780 7330 60  0001 C CNN
+	1    8780 7330
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	11940 3200 12020 3200
+Wire Wire Line
+	12020 3200 12020 3500
+Wire Wire Line
+	12020 3500 8910 3500
+Wire Wire Line
+	8910 3500 8910 3200
+Wire Wire Line
+	8910 3200 8980 3200
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR0109
+U 1 1 63596E2A
+P 8910 3160
+F 0 "#PWR0109" H 8910 3010 50  0001 C CNN
+F 1 "+5V" H 8925 3333 50  0000 C CNN
+F 2 "" H 8910 3160 50  0001 C CNN
+F 3 "" H 8910 3160 50  0001 C CNN
+	1    8910 3160
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	8910 3160 8910 3200
+Connection ~ 8910 3200
+Text Label 10600 2100 0    50   ~ 0
+3V3
+Text Label 10600 4740 0    50   ~ 0
+3V3
+Text Label 10600 7480 0    50   ~ 0
+3V3
+Wire Wire Line
+	11940 5840 12000 5840
+Wire Wire Line
+	8930 5840 8980 5840
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR0110
+U 1 1 635D9EAA
+P 8930 5800
+F 0 "#PWR0110" H 8930 5650 50  0001 C CNN
+F 1 "+5V" H 8945 5973 50  0000 C CNN
+F 2 "" H 8930 5800 50  0001 C CNN
+F 3 "" H 8930 5800 50  0001 C CNN
+	1    8930 5800
+	1    0    0    -1  
+$EndComp
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR0111
+U 1 1 635DB8D3
+P 8910 8530
+F 0 "#PWR0111" H 8910 8380 50  0001 C CNN
+F 1 "+5V" H 8925 8703 50  0000 C CNN
+F 2 "" H 8910 8530 50  0001 C CNN
+F 3 "" H 8910 8530 50  0001 C CNN
+	1    8910 8530
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	8910 8530 8910 8580
+Wire Wire Line
+	8910 8580 8980 8580
+Wire Wire Line
+	8910 8580 8910 8860
+Wire Wire Line
+	8910 8860 12010 8860
+Wire Wire Line
+	12010 8860 12010 8580
+Wire Wire Line
+	12010 8580 11940 8580
+Connection ~ 8910 8580
+Wire Wire Line
+	12000 5840 12000 6120
+Wire Wire Line
+	8930 5800 8930 5840
+Connection ~ 8930 5840
+Wire Wire Line
+	8930 5840 8930 6120
+Wire Wire Line
+	8930 6120 12000 6120
+NoConn ~ 10560 7680
+$Comp
+L IV9Numitron-rescue:+5V-power #PWR0112
+U 1 1 63696001
+P 12230 6280
+F 0 "#PWR0112" H 12230 6130 50  0001 C CNN
+F 1 "+5V" H 12245 6453 50  0000 C CNN
+F 2 "" H 12230 6280 50  0001 C CNN
+F 3 "" H 12230 6280 50  0001 C CNN
+	1    12230 6280
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2200 9550 2900 9550
+Wire Wire Line
+	4300 8750 5000 8750
+$Comp
+L Mechanical:MountingHole H3
+U 1 1 62BD36A3
+P 15010 880
+F 0 "H3" H 15110 926 50  0000 L CNN
+F 1 "MountingHole" H 15110 835 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3" H 15010 880 50  0001 C CNN
+F 3 "~" H 15010 880 50  0001 C CNN
+	1    15010 880 
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole H4
+U 1 1 62BD49FD
+P 15010 1060
+F 0 "H4" H 15110 1106 50  0000 L CNN
+F 1 "MountingHole" H 15110 1015 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3" H 15010 1060 50  0001 C CNN
+F 3 "~" H 15010 1060 50  0001 C CNN
+	1    15010 1060
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole H1
+U 1 1 62BD510B
+P 15000 1240
+F 0 "H1" H 15100 1286 50  0000 L CNN
+F 1 "MountingHole" H 15100 1195 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3" H 15000 1240 50  0001 C CNN
+F 3 "~" H 15000 1240 50  0001 C CNN
+	1    15000 1240
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole H2
+U 1 1 62BD5259
+P 15000 1420
+F 0 "H2" H 15100 1466 50  0000 L CNN
+F 1 "MountingHole" H 15100 1375 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3" H 15000 1420 50  0001 C CNN
+F 3 "~" H 15000 1420 50  0001 C CNN
+	1    15000 1420
+	1    0    0    -1  
+$EndComp
+$EndSCHEMATC

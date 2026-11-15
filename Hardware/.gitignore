@@ -1,2 +1,4 @@
-/iv13-6-digit/CAM/*
 *.zip
+/**/*-backups
+/**/CAM/*
+/**/*.DS_Store
