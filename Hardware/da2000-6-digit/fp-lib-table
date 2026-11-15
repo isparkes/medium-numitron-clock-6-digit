@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name "Projects")(type "KiCad")(uri "/Users/iansparkes/Data/Projects")(options "")(descr ""))
+  (lib (name "NixieClockMaster")(type "KiCad")(uri "/Users/iansparkes/Syncthing/Nixie/KiCAD/NixieClockMaster.pretty")(options "")(descr ""))
+)
